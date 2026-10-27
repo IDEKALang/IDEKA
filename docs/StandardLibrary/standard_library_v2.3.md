@@ -1,4 +1,4 @@
-# Flux Standard Library Documentation
+# IDEKA Standard Library Documentation
 
 Version: 2.3
 Date: June 2026
@@ -10,60 +10,60 @@ Date: June 2026
 1. [Overview](#overview)
 2. [Library Structure](#library-structure)
 3. [Core Modules](#core-modules)
-   - [standard.fx](#standardfx)
-   - [types.fx](#typesfx)
-   - [sys.fx](#sysfx)
-   - [io.fx](#iofx)
-   - [math.fx](#mathfx)
+   - [standard.idk](#standardfx)
+   - [types.idk](#typesfx)
+   - [sys.idk](#sysfx)
+   - [io.idk](#iofx)
+   - [math.idk](#mathfx)
 4. [Runtime System](#runtime-system)
-   - [runtime.fx](#runtimefx)
-   - [memory.fx](#memoryfx)
-   - [allocators.fx](#allocatorsfx)
-   - [ffifio.fx](#ffifiofx)
+   - [runtime.idk](#runtimefx)
+   - [memory.idk](#memoryfx)
+   - [allocators.idk](#allocatorsfx)
+   - [ffifio.idk](#ffifiofx)
 5. [String Utilities](#string-utilities)
-   - [string_utilities.fx](#string_utilitiesfx)
-   - [string_object_raw.fx](#string_object_rawfx)
+   - [string_utilities.idk](#string_utilitiesfx)
+   - [string_object_raw.idk](#string_object_rawfx)
 6. [Collections Library](#collections-library)
-   - [collections.fx](#collectionsfx)
+   - [collections.idk](#collectionsfx)
 7. [Vectors Library](#vectors-library)
-   - [vectors.fx](#vectorsfx)
+   - [vectors.idk](#vectorsfx)
 8. [Extended Libraries](#extended-libraries)
-   - [atomics.fx](#atomicsfx)
-   - [threading.fx](#threadingfx)
-   - [timing.fx](#timingfx)
-   - [random.fx](#randomfx)
-   - [cryptography.fx](#cryptographyfx)
-   - [crc32.fx](#crc32fx)
-   - [bigint.fx](#bigintfx)
-   - [decimal.fx](#decimalfx)
-   - [net_windows.fx / socket_object_raw.fx](#net_windowsfx--socket_object_rawfx)
-   - [uuid.fx](#uuidfx)
-   - [sharedmemory.fx](#sharedmemoryfx)
-   - [format.fx](#formatfx)
-   - [console.fx](#consolefx)
-   - [graphing.fx](#graphingfx)
-   - [oglgraphing.fx](#oglgraphingfx)
-   - [opengl.fx](#openglfx)
-   - [windows.fx](#windowsfx)
-   - [wasapi.fx](#wasapifx)
-   - [detour.fx](#detourfx)
-   - [operators.fx](#operatorsfx)
-   - [dotenv.fx](#dotenvfx)
-   - [json.fx](#jsonfx)
-   - [matrices.fx](#matricesfx)
-   - [fourier.fx](#fourierfx)
-   - [physics.fx](#physicsfx)
-   - [tensors.fx](#tensorsfx)
-   - [autograd.fx](#autogradfx)
-   - [raytracing.fx](#raytracingfx)
-   - [raycasting.fx](#raycastingfx)
-   - [datautils.fx](#datautilsfx)
-   - [datetime.fx](#datetimefx)
-   - [xml.fx](#xmlfx)
-   - [csv.fx](#csvfx)
-   - [encodings.fx](#encodingsfx)
+   - [atomics.idk](#atomicsfx)
+   - [threading.idk](#threadingfx)
+   - [timing.idk](#timingfx)
+   - [random.idk](#randomfx)
+   - [cryptography.idk](#cryptographyfx)
+   - [crc32.idk](#crc32fx)
+   - [bigint.idk](#bigintfx)
+   - [decimal.idk](#decimalfx)
+   - [net_windows.idk / socket_object_raw.idk](#net_windowsfx--socket_object_rawfx)
+   - [uuid.idk](#uuidfx)
+   - [sharedmemory.idk](#sharedmemoryfx)
+   - [format.idk](#formatfx)
+   - [console.idk](#consolefx)
+   - [graphing.idk](#graphingfx)
+   - [oglgraphing.idk](#oglgraphingfx)
+   - [opengl.idk](#openglfx)
+   - [windows.idk](#windowsfx)
+   - [wasapi.idk](#wasapifx)
+   - [detour.idk](#detourfx)
+   - [operators.idk](#operatorsfx)
+   - [dotenv.idk](#dotenvfx)
+   - [json.idk](#jsonfx)
+   - [matrices.idk](#matricesfx)
+   - [fourier.idk](#fourierfx)
+   - [physics.idk](#physicsfx)
+   - [tensors.idk](#tensorsfx)
+   - [autograd.idk](#autogradfx)
+   - [raytracing.idk](#raytracingfx)
+   - [raycasting.idk](#raycastingfx)
+   - [datautils.idk](#datautilsfx)
+   - [datetime.idk](#datetimefx)
+   - [xml.idk](#xmlfx)
+   - [csv.idk](#csvfx)
+   - [encodings.idk](#encodingsfx)
 9. [Security](#security)
-   - [shadowstack.fx](#shadowstackfx)
+   - [shadowstack.idk](#shadowstackfx)
 10. [Import Guidelines](#import-guidelines)
 11. [Platform Support](#platform-support)
 
@@ -71,7 +71,7 @@ Date: June 2026
 
 ## Overview
 
-The Flux Standard Library provides a comprehensive set of tools and utilities for systems programming, designed to work across Windows, Linux, and macOS platforms.
+The IDEKA Standard Library provides a comprehensive set of tools and utilities for systems programming, designed to work across Windows, Linux, and macOS platforms.
 
 ### Design Philosophy
 
@@ -87,90 +87,90 @@ The Flux Standard Library provides a comprehensive set of tools and utilities fo
 
 ```
 stdlib/
-  `----/ standard.fx              # Main entry point
-  `----/runtime/runtime.fx        # Runtime initialization and entry point
-  `----/ types.fx                 # Type definitions and utilities
-  `----/ sys.fx                   # OS detection
-  `----/ io.fx                    # Input/output operations
-  `----/ math.fx                  # Mathematical functions
-  `----/runtime/memory.fx         # Memory management
-  `----/runtime/allocators.fx     # stdheap/stdstack/stdpool/stdarena/stdring allocators
-  `----/runtime/ffifio.fx         # FFI-based file I/O (C runtime)
-  `----/ string_utilities.fx      # String manipulation functions
-  `----/ string_object_raw.fx     # String object implementation
-  `----/ file_object_raw.fx       # File object implementation
-  `----/ socket_object_raw.fx     # Socket object + Winsock FFI (standard::sockets)
-  `----/ collections.fx           # Dynamic data structures (Array, HashMap, HashMapInt,
+  `----/ standard.idk              # Main entry point
+  `----/runtime/runtime.idk        # Runtime initialization and entry point
+  `----/ types.idk                 # Type definitions and utilities
+  `----/ sys.idk                   # OS detection
+  `----/ io.idk                    # Input/output operations
+  `----/ math.idk                  # Mathematical functions
+  `----/runtime/memory.idk         # Memory management
+  `----/runtime/allocators.idk     # stdheap/stdstack/stdpool/stdarena/stdring allocators
+  `----/runtime/ffifio.idk         # FFI-based file I/O (C runtime)
+  `----/ string_utilities.idk      # String manipulation functions
+  `----/ string_object_raw.idk     # String object implementation
+  `----/ file_object_raw.idk       # File object implementation
+  `----/ socket_object_raw.idk     # Socket object + Winsock FFI (standard::sockets)
+  `----/ collections.idk           # Dynamic data structures (Array, HashMap, HashMapInt,
   `----/                          #   LinkedList, Stack, Queue, Deque, RingBuffer,
   `----/                          #   HashSet, HashSetInt, BinarySearchTree, MinHeap)
-  `----/ vectors.fx               # 3D/4D vector mathematics
-  `----/runtime/atomics.fx        # Atomic operations
-  `----/runtime/threading.fx      # Threads, mutexes, condition variables
-  `----/runtime/timing.fx         # High-resolution timers
-  `----/ random.fx                # Random number generation
-  `----/ cryptography.fx          # SHA-256, MD5, AES
-  `----/ crc32.fx                 # CRC32 (IEEE 802.3, reflected poly)
-  `----/ bigint.fx                # Arbitrary-precision integers
-  `----/ decimal.fx               # Arbitrary-precision decimals
-  `----/ net_windows.fx           # Winsock2 glue; full networking in socket_object_raw.fx
-  `----/ uuid.fx                  # UUID generation (v1, v4, v7)
-  `----/runtime/sharedmemory.fx   # Named shared memory regions
-  `----/ format.fx                # ANSI color and text formatting
-  `----/ console.fx               # TUI cursor and color control
-  `----/ graphing.fx              # 2D/3D ASCII graphing
-  `----/ oglgraphing.fx           # OpenGL-backed 2D/3D graphing
-  `----/ opengl.fx                # OpenGL context and rendering helpers
-  `----/ windows.fx               # Win32 window and GDI wrapper
-  `----/ wasapi.fx                # WASAPI loopback audio capture
-  `----/ detour.fx                # x86-64 inline hook / detour
-  `----/ operators.fx             # Extended operator utilities
-  `----/ dotenv.fx                # .env file loader (cross-platform)
-  `----/ json.fx                  # JSON parse, build, and serialize library
-  `----/ matrices.fx              # Mat3/Mat4/Mat5 matrix math
-  `----/ fourier.fx               # DFT and FFT (Cooley-Tukey)
-  `----/ physics.fx               # Rigid body + soft body physics engine
-  `----/ tensors.fx               # N-dimensional tensor library
-  `----/ autograd.fx              # Tape-based reverse-mode automatic differentiation
-  `----/ raytracing.fx            # Physically-based path tracer
-  `----/ raycasting.fx            # 2.5D tile raycaster (Wolfenstein-style)
-  `----/ datautils.fx             # Low-level byte writer utilities
-  `----/ datetime.fx              # Calendar date/time, duration, ISO 8601 parsing/formatting
-  `----/ xml.fx                   # XML parse, build, and serialize (arena-backed)
-  `----/ csv.fx                   # CSV parse, write, and cleanup (RFC 4180)
-  `----/ encoding.fx              # Hex, Base32, Base58, Base64, Base64URL, URL percent-encoding
-  `----/runtime/shadowstack.fx    # Opt-in shadow stack protection (Windows x86-64)
+  `----/ vectors.idk               # 3D/4D vector mathematics
+  `----/runtime/atomics.idk        # Atomic operations
+  `----/runtime/threading.idk      # Threads, mutexes, condition variables
+  `----/runtime/timing.idk         # High-resolution timers
+  `----/ random.idk                # Random number generation
+  `----/ cryptography.idk          # SHA-256, MD5, AES
+  `----/ crc32.idk                 # CRC32 (IEEE 802.3, reflected poly)
+  `----/ bigint.idk                # Arbitrary-precision integers
+  `----/ decimal.idk               # Arbitrary-precision decimals
+  `----/ net_windows.idk           # Winsock2 glue; full networking in socket_object_raw.idk
+  `----/ uuid.idk                  # UUID generation (v1, v4, v7)
+  `----/runtime/sharedmemory.idk   # Named shared memory regions
+  `----/ format.idk                # ANSI color and text formatting
+  `----/ console.idk               # TUI cursor and color control
+  `----/ graphing.idk              # 2D/3D ASCII graphing
+  `----/ oglgraphing.idk           # OpenGL-backed 2D/3D graphing
+  `----/ opengl.idk                # OpenGL context and rendering helpers
+  `----/ windows.idk               # Win32 window and GDI wrapper
+  `----/ wasapi.idk                # WASAPI loopback audio capture
+  `----/ detour.idk                # x86-64 inline hook / detour
+  `----/ operators.idk             # Extended operator utilities
+  `----/ dotenv.idk                # .env file loader (cross-platform)
+  `----/ json.idk                  # JSON parse, build, and serialize library
+  `----/ matrices.idk              # Mat3/Mat4/Mat5 matrix math
+  `----/ fourier.idk               # DFT and FFT (Cooley-Tukey)
+  `----/ physics.idk               # Rigid body + soft body physics engine
+  `----/ tensors.idk               # N-dimensional tensor library
+  `----/ autograd.idk              # Tape-based reverse-mode automatic differentiation
+  `----/ raytracing.idk            # Physically-based path tracer
+  `----/ raycasting.idk            # 2.5D tile raycaster (Wolfenstein-style)
+  `----/ datautils.idk             # Low-level byte writer utilities
+  `----/ datetime.idk              # Calendar date/time, duration, ISO 8601 parsing/formatting
+  `----/ xml.idk                   # XML parse, build, and serialize (arena-backed)
+  `----/ csv.idk                   # CSV parse, write, and cleanup (RFC 4180)
+  `----/ encoding.idk              # Hex, Base32, Base58, Base64, Base64URL, URL percent-encoding
+  `----/runtime/shadowstack.idk    # Opt-in shadow stack protection (Windows x86-64)
 ```
 
 ---
 
 ## Core Modules
 
-### standard.fx
+### standard.idk
 
-**Purpose**: Main entry point for the Flux Standard Library
+**Purpose**: Main entry point for the IDEKA Standard Library
 
 **Usage**:
-```flux
-#import <standard.fx>;
+```IDEKA
+#import <standard.idk>;
 ```
 
 **Description**:  
-The `standard.fx` file serves as the primary import point for applications using the Flux Standard Library. It defines preprocessor guards and unconditionally imports `runtime.fx`, which pulls in the full runtime chain.
+The `standard.idk` file serves as the primary import point for applications using the IDEKA Standard Library. It defines preprocessor guards and unconditionally imports `runtime.idk`, which pulls in the full runtime chain.
 
 **Features**:
-- Defines `FLUX_STANDARD` preprocessor constant
-- Imports `runtime.fx` (which in turn imports `types.fx`, `memory.fx`, `allocators.fx`, `sys.fx`, `io.fx`, `ffifio.fx`, and the raw builtins)
-- Provides the stable import surface for all Flux programs
+- Defines `IDEKA_STANDARD` preprocessor constant
+- Imports `runtime.idk` (which in turn imports `types.idk`, `memory.idk`, `allocators.idk`, `sys.idk`, `io.idk`, `ffifio.idk`, and the raw builtins)
+- Provides the stable import surface for all IDEKA programs
 
 ---
 
-### types.fx
+### types.idk
 
 **Purpose**: Comprehensive type system definitions and utilities
 
 **Namespace**: `standard::types`
 
-**Guard macro**: `FLUX_STANDARD_TYPES`
+**Guard macro**: `IDEKA_STANDARD_TYPES`
 
 #### Type Definitions
 
@@ -201,7 +201,7 @@ The `standard.fx` file serves as the primary import point for applications using
 ##### Platform-Specific Types
 
 **x86_64 and ARM64**:
-```flux
+```IDEKA
 intptr    // i64* - Pointer-sized signed integer
 uintptr   // u64* - Pointer-sized unsigned integer
 ssize_t   // i64  - Signed size type
@@ -209,7 +209,7 @@ size_t    // u64  - Unsigned size type
 ```
 
 **x86 (32-bit)**:
-```flux
+```IDEKA
 intptr    // i32* - Pointer-sized signed integer
 uintptr   // u32* - Pointer-sized unsigned integer
 ssize_t   // i32  - Signed size type
@@ -217,21 +217,21 @@ size_t    // u32  - Unsigned size type
 ```
 
 **Windows-Specific**:
-```flux
+```IDEKA
 wchar     // i16  - Wide character (UTF-16)
 ```
 
 ##### Network/Endian Types
 
 **Big-Endian (Network Byte Order)**:
-```flux
+```IDEKA
 be16  // unsigned data{16::1}
 be32  // unsigned data{32::1}
 be64  // unsigned data{64::1}
 ```
 
 **Little-Endian (Host Byte Order)**:
-```flux
+```IDEKA
 le16  // unsigned data{16::0}
 le32  // unsigned data{32::0}
 le64  // unsigned data{64::0}
@@ -241,7 +241,7 @@ le64  // unsigned data{64::0}
 
 ##### Byte Swapping
 
-```flux
+```IDEKA
 def bswap16(u16 value) -> u16
 def bswap32(u32 value) -> u32
 def bswap64(u64 value) -> u64
@@ -250,15 +250,15 @@ def bswap64(u64 value) -> u64
 Swap byte order for endianness conversion.
 
 **Example**:
-```flux
+```IDEKA
 u16 net_value = bswap16(0x1234);  // 0x3412
 ```
 
 ##### Network/Host Conversion
 
-**Deprecated** - these wrappers remain present but are superseded by `net_windows.fx` helpers.
+**Deprecated** - these wrappers remain present but are superseded by `net_windows.idk` helpers.
 
-```flux
+```IDEKA
 def ntoh16(be16 net_value) -> le16
 def ntoh32(be32 net_value) -> le32
 def hton16(le16 host_value) -> be16
@@ -267,46 +267,46 @@ def hton32(le32 host_value) -> be32
 
 ##### Bit Manipulation
 
-```flux
+```IDEKA
 def bit_test(u32 value, u32 bit) -> bool    // Test if bit is set
 ```
 
 **Example**:
-```flux
+```IDEKA
 u32 flags = 0b00001000;
 bool is_set = bit_test(flags, 3);  // true
 ```
 
 ##### Alignment Utilities
 
-```flux
+```IDEKA
 def align_up(u64 value, u64 alignment) -> u64
 def align_down(u64 value, u64 alignment) -> u64
 def is_aligned(u64 value, u64 alignment) -> bool
 ```
 
 **Example**:
-```flux
+```IDEKA
 u64 aligned = align_up(137, 16);  // 144
 bool check = is_aligned(144, 16);  // true
 ```
 
 ---
 
-### sys.fx
+### sys.idk
 
 **Purpose**: OS detection and platform constants
 
 **Namespace**: `standard::system`
 
-**Guard macro**: `FLUX_STANDARD_SYSTEM`
+**Guard macro**: `IDEKA_STANDARD_SYSTEM`
 
 **Description**:  
-Sets the `CURRENT_OS` preprocessor constant at compile time and provides Win32 FFI declarations needed by the runtime. Automatically imported by `runtime.fx`.
+Sets the `CURRENT_OS` preprocessor constant at compile time and provides Win32 FFI declarations needed by the runtime. Automatically imported by `runtime.idk`.
 
 #### Platform Constants
 
-```flux
+```IDEKA
 CURRENT_OS  // Set at compile time
   1 = Windows
   2 = Linux
@@ -314,7 +314,7 @@ CURRENT_OS  // Set at compile time
 ```
 
 **Example**:
-```flux
+```IDEKA
 switch (CURRENT_OS)
 {
     case (1) { print("Running on Windows\0"); }
@@ -325,13 +325,13 @@ switch (CURRENT_OS)
 
 ---
 
-### io.fx
+### io.idk
 
 **Purpose**: Cross-platform input/output operations
 
 **Namespace**: `standard::io`
 
-**Guard macro**: `FLUX_STANDARD_IO`
+**Guard macro**: `IDEKA_STANDARD_IO`
 
 **Sub-namespaces**:
 - `standard::io::console` - Console I/O operations
@@ -341,7 +341,7 @@ switch (CURRENT_OS)
 
 ##### Input Functions
 
-```flux
+```IDEKA
 def input(byte[] buffer, int max_len) -> int
 ```
 
@@ -360,7 +360,7 @@ Read user input from console. Platform-agnostic wrapper that calls the appropria
 
 ##### Output Functions
 
-```flux
+```IDEKA
 def print(noopstr s, int len) -> void
 def print(noopstr s) -> void
 def print(byte s) -> void
@@ -374,7 +374,7 @@ Print to console output.
 - `print(byte s)`: Print single character
 
 **Example**:
-```flux
+```IDEKA
 print("Hello, World!\0\0");
 print('A');  // Print single character
 ```
@@ -391,7 +391,7 @@ The file I/O system provides both native syscall-based and FFI-based implementat
 ##### Windows File I/O
 
 **Constants**:
-```flux
+```IDEKA
 GENERIC_READ          = 0x80000000
 GENERIC_WRITE         = 0x40000000
 GENERIC_READ_WRITE    = 0xC0000000
@@ -407,7 +407,7 @@ INVALID_HANDLE_VALUE  = -1
 
 **Core Functions**:
 
-```flux
+```IDEKA
 def win_open(byte* path, i32 access, i32 share, i32 create, i32 flags) -> i64
 def win_read(i64 handle, byte* buffer, u32 bytes_to_read, u32* bytes_read) -> i32
 def win_write(i64 handle, byte* buffer, u32 bytes_to_write, u32* bytes_written) -> i32
@@ -416,7 +416,7 @@ def win_close(i64 handle) -> i32
 
 **Helper Functions**:
 
-```flux
+```IDEKA
 def open_read(byte* path) -> i64
 def open_write(byte* path) -> i64
 def open_append(byte* path) -> i64
@@ -426,7 +426,7 @@ def open_read_write(byte* path) -> i64
 ##### Linux File I/O
 
 **System Call Numbers**:
-```flux
+```IDEKA
 SYS_OPEN  = 2
 SYS_READ  = 0
 SYS_WRITE = 1
@@ -435,7 +435,7 @@ SYS_EXIT  = 60
 ```
 
 **Open Flags**:
-```flux
+```IDEKA
 O_RDONLY = 0x0000
 O_WRONLY = 0x0001
 O_RDWR   = 0x0002
@@ -445,7 +445,7 @@ O_APPEND = 0x0400
 ```
 
 **Permission Modes**:
-```flux
+```IDEKA
 S_IRUSR = 0x0400  // User read
 S_IWUSR = 0x0200  // User write
 S_IXUSR = 0x0100  // User execute
@@ -460,7 +460,7 @@ DEFAULT_PERM = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
 
 **Core Functions**:
 
-```flux
+```IDEKA
 open(byte* path, i32 flags, i32 mode) -> i64
 read(i64 fd, byte* buffer, u64 count) -> i64
 write(i64 fd, byte* buffer, u64 count) -> i64
@@ -469,7 +469,7 @@ close(i64 fd) -> i32
 
 **Helper Functions**:
 
-```flux
+```IDEKA
 open_read(byte* path) -> i64
 open_write(byte* path) -> i64
 open_append(byte* path) -> i64
@@ -479,8 +479,8 @@ write32(i64 fd, byte* buffer, u32 count) -> i32
 ```
 
 **Example Usage**:
-```flux
-#import <standard.fx>;
+```IDEKA
+#import <standard.idk>;
 
 def main() -> int
 {
@@ -501,17 +501,17 @@ def main() -> int
 
 ---
 
-### math.fx
+### math.idk
 
 **Purpose**: Comprehensive mathematical functions with type overloading
 
 **Namespace**: `standard::math`
 
-**Guard macro**: `FLUX_STANDARD_MATH`
+**Guard macro**: `IDEKA_STANDARD_MATH`
 
 #### Mathematical Constants
 
-```flux
+```IDEKA
 // Integer approximations
 PI8, PI16, PI32, PI64 = 3
 E8, E16, E32, E64 = 2
@@ -527,20 +527,20 @@ All functions are overloaded for types: `i8`, `i16`, `i32`, `i64`, `float`
 
 ##### Absolute Value
 
-```flux
+```IDEKA
 def abs(T x) -> T  // T {i8, i16, i32, i64, float}
 ```
 
 ##### Minimum and Maximum
 
-```flux
+```IDEKA
 def min(T a, T b) -> T
 def max(T a, T b) -> T
 ```
 
 ##### Clamp
 
-```flux
+```IDEKA
 def clamp(T value, T low, T high) -> T
 ```
 
@@ -548,7 +548,7 @@ Constrains `value` to be within [`low`, `high`].
 
 ##### Square Root
 
-```flux
+```IDEKA
 def sqrt(T x) -> T
 ```
 
@@ -556,20 +556,20 @@ Uses Newton's method. Integer versions use integer arithmetic; float version use
 
 ##### Factorial
 
-```flux
+```IDEKA
 def factorial(T n) -> T  // T {i8, i16, i32, i64}
 ```
 
 ##### GCD / LCM
 
-```flux
+```IDEKA
 def gcd(T a, T b) -> T
 def lcm(T a, T b) -> T
 ```
 
 ##### Power
 
-```flux
+```IDEKA
 def pow(T base, T exp) -> T  // T {i8, i16, i32, i64, float}
 ```
 
@@ -577,7 +577,7 @@ Integer versions use repeated multiplication. Float version supports fractional 
 
 #### Trigonometric Functions
 
-```flux
+```IDEKA
 def sin(float x) -> float
 def cos(float x) -> float
 def tan(float x) -> float
@@ -587,14 +587,14 @@ Input in radians. Implemented via Taylor series.
 
 #### Logarithmic Functions
 
-```flux
+```IDEKA
 def log(float x) -> float    // Natural logarithm
 def log10(float x) -> float  // Base-10 logarithm
 ```
 
 #### Additional Utilities
 
-```flux
+```IDEKA
 def lerp(T a, T b, float t) -> T         // Linear interpolation
 def sign(T x) -> T                        // -1, 0, or 1
 def popcount(T x) -> T                    // Count set bits
@@ -605,16 +605,16 @@ def reverse_bits(T x) -> T               // Reverse bit order
 
 ## Runtime System
 
-### runtime.fx
+### runtime.idk
 
 **Purpose**: Runtime initialization and program entry point management
 
 **Description**:  
-Manages the full startup chain for Flux programs. Imports `types.fx`, `memory.fx`, `sys.fx`, `io.fx`, `ffifio.fx`, and the raw builtins. Defines `STDLIB_GVP`, `NULL`, `U64MAXVAL`, and the `FRTStartup` entry point.
+Manages the full startup chain for IDEKA programs. Imports `types.idk`, `memory.idk`, `sys.idk`, `io.idk`, `ffifio.idk`, and the raw builtins. Defines `STDLIB_GVP`, `NULL`, `U64MAXVAL`, and the `FRTStartup` entry point.
 
 #### Global Constants
 
-```flux
+```IDEKA
 const void* STDLIB_GVP  // Standard global void pointer (null sentinel)
 #def NULL STDLIB_GVP    // Alias for STDLIB_GVP
 const data{64} U64MAXVAL = 0xFFFFFFFFFFFFFFFFu
@@ -625,13 +625,13 @@ const data{64} U64MAXVAL = 0xFFFFFFFFFFFFFFFFu
 #### Entry Points
 
 **User-Defined Main Functions**:
-```flux
+```IDEKA
 def main() -> int
 def main(int* argc, byte** argv) -> int
 ```
 
 **Runtime Entry Point** (do not redefine):
-```flux
+```IDEKA
 def FRTStartup() -> int
 ```
 
@@ -643,21 +643,21 @@ def FRTStartup() -> int
 5. Process cleanup
 
 **Linux Entry**:
-```flux
+```IDEKA
 def _start() -> void  // Calls FRTStartup()
 ```
 
 #### Exit Functions
 
-```flux
+```IDEKA
 def exit(int code) -> void   // Platform-native process exit
 def abort() -> void          // Abnormal process termination
 def atexit(void* fn) -> int  // Register exit callback (stub on Linux/macOS)
 ```
 
 **Example**:
-```flux
-#import <standard.fx>;
+```IDEKA
+#import <standard.idk>;
 
 def main(int* argc, byte** argv) -> int
 {
@@ -673,20 +673,20 @@ def main(int* argc, byte** argv) -> int
 
 ---
 
-### memory.fx
+### memory.idk
 
 **Purpose**: Memory management - native implementations and C runtime FFI
 
 **Namespace**: `standard::memory`
 
-**Guard macro**: `FLUX_STANDARD_MEMORY`
+**Guard macro**: `IDEKA_STANDARD_MEMORY`
 
 **Description**:  
 Provides both platform-native implementations of `malloc`/`free`/`calloc`/`realloc` (using `mmap`/`munmap` on Linux and macOS, C FFI on Windows) and a `standard::memory` namespace with higher-level utilities. Also exposes Win32 virtual memory functions.
 
 #### Low-Level Allocation (C-compatible ABI)
 
-```flux
+```IDEKA
 def malloc(size_t size) -> void*
 def free(void* ptr) -> void
 def calloc(size_t count, size_t size) -> void*
@@ -697,20 +697,20 @@ On Windows these are C runtime FFI declarations. On Linux and macOS they are nat
 
 #### Memory Operations
 
-```flux
+```IDEKA
 def memset(void* ptr, int value, size_t n) -> void*
 def memcpy(void* dst, void* src, size_t n) -> void*
 def memmove(void* dst, void* src, size_t n) -> void*
 def memcmp(void* a, void* b, size_t n) -> int
 ```
 
-All four are native Flux implementations with no C runtime dependency.
+All four are native IDEKA implementations with no C runtime dependency.
 
 #### Win32 Virtual Memory
 
 Available on Windows only:
 
-```flux
+```IDEKA
 extern def VirtualAlloc(ulong, size_t, u32, u32) -> ulong
 extern def VirtualFree(ulong, size_t, u32) -> bool
 extern def VirtualProtect(ulong, size_t, u32, u32*) -> bool
@@ -719,7 +719,7 @@ extern def FlushInstructionCache(ulong, ulong, size_t) -> bool
 
 #### standard::memory Utilities
 
-```flux
+```IDEKA
 def mem_zero(void* ptr, size_t size) -> void
 def mem_fill(void* ptr, byte value, size_t size) -> void
 def mem_copy(void* dest, void* src, size_t size) -> void
@@ -730,7 +730,7 @@ def mem_equals(void* a, void* b, size_t size) -> bool
 
 #### Aligned Allocation
 
-```flux
+```IDEKA
 def align_forward(size_t addr, size_t alignment) -> size_t
 def is_aligned(size_t addr, size_t alignment) -> bool
 def malloc_aligned(size_t size, size_t alignment) -> void*
@@ -739,7 +739,7 @@ def free_aligned(void* ptr) -> void
 
 #### Reference Counting
 
-```flux
+```IDEKA
 struct RefCountHeader { size_t ref_count, size; };
 
 def ref_alloc(size_t size) -> void*
@@ -750,7 +750,7 @@ def ref_count(void* ptr) -> size_t
 
 #### Byte Manipulation
 
-```flux
+```IDEKA
 def swap_bytes(byte* a, byte* b) -> void
 def reverse_bytes(byte* buffer, size_t size) -> void
 def copy_bytes(byte* dest, byte* src, size_t count) -> void
@@ -758,7 +758,7 @@ def zero_bytes(byte* buffer, size_t count) -> void
 ```
 
 **Example**:
-```flux
+```IDEKA
 void* buffer = malloc(100);
 if (buffer == NULL)
 {
@@ -771,13 +771,13 @@ free(buffer);
 
 ---
 
-### allocators.fx
+### allocators.idk
 
-**Purpose**: Flux custom allocators — heap, stack, pool, arena, and ring
+**Purpose**: IDEKA custom allocators — heap, stack, pool, arena, and ring
 
 **Namespace**: `standard::memory::allocators`
 
-**Guard macro**: `FLUX_STANDARD_ALLOCATORS`
+**Guard macro**: `IDEKA_STANDARD_ALLOCATORS`
 
 **Description**:  
 Provides five allocators under the `standard::memory::allocators` namespace. The primary heap allocator (`stdheap`) is automatically initialized by `FRTStartup()`. All others must be constructed manually.
@@ -792,13 +792,13 @@ Provides five allocators under the `standard::memory::allocators` namespace. The
 - Large allocations (>4096 bytes) get a dedicated OS slab, released on `ffree`
 - Block metadata lives in a separate table slab (open-addressed hash map keyed by user pointer)
 - No inline headers; user data blocks are completely clean
-- No zeroing (Flux zero-initializes at the language level)
+- No zeroing (IDEKA zero-initializes at the language level)
 - Slabs acquired from OS: 4MB → 8MB → 16MB → 32MB → 64MB cap
 - Zero OS memory consumed until the first `fmalloc` call
 
 **Public API**:
 
-```flux
+```IDEKA
 def fmalloc(size_t size) -> u64     // Allocate; returns integer address
 def ffree(u64 ptr) -> void          // Free by integer address
 def ffree(byte* ptr) -> void        // Free by pointer (overload)
@@ -807,7 +807,7 @@ def frealloc(u64 ptr, size_t new_size) -> u64  // Reallocate
 
 **Note**: `fmalloc` returns a `u64` (raw address). Cast to the desired pointer type:
 
-```flux
+```IDEKA
 byte* buf = (byte*)fmalloc(256);
 // ... use buf ...
 ffree((u64)buf);
@@ -815,7 +815,7 @@ ffree((u64)buf);
 
 **Internal API** (do not call directly):
 
-```flux
+```IDEKA
 def stdheap::table_init() -> bool   // Called by FRTStartup()
 ```
 
@@ -827,7 +827,7 @@ def stdheap::table_init() -> bool   // Called by FRTStartup()
 
 **Description**: Bump-pointer allocator backed by a single `stdheap` allocation. All allocations happen in order; only a bulk reset is supported (no individual frees).
 
-```flux
+```IDEKA
 object StackAllocator
 {
     def __init(size_t size) -> this,
@@ -847,7 +847,7 @@ object StackAllocator
 
 **Description**: Fixed-size block pool. All blocks are the same size. O(1) alloc and free via an in-place free list. Returns `null` when exhausted.
 
-```flux
+```IDEKA
 object PoolAllocator
 {
     def __init(size_t block_size, size_t block_count) -> this,
@@ -869,7 +869,7 @@ object PoolAllocator
 
 **Chunk growth**: 1 MB initial → doubles each chunk → 64 MB cap.
 
-```flux
+```IDEKA
 struct Arena     { /* head chunk, next_chunk_size, chunk_size_cap */ };
 struct ArenaMark { /* chunk pointer + offset snapshot */ };
 
@@ -889,8 +889,8 @@ def arena_committed(Arena* a) -> size_t          // Total bytes committed from O
 
 **Example**:
 
-```flux
-#import "allocators.fx";
+```IDEKA
+#import "allocators.idk";
 using standard::memory::allocators::stdarena;
 
 Arena a;
@@ -908,7 +908,7 @@ arena_destroy(@a);
 
 **Description**: Fixed-capacity circular buffer allocator. Returns a `RingAllocResult*` on success or `null` when the buffer has wrapped around to occupied space.
 
-```flux
+```IDEKA
 struct RingAllocResult { /* user data follows header */ };
 
 // Constructed via object syntax; capacity set at init.
@@ -917,18 +917,18 @@ def allocate(size_t size) -> RingAllocResult*
 
 ---
 
-### ffifio.fx
+### ffifio.idk
 
 **Purpose**: File I/O through C standard library FFI
 
 **Namespace**: `standard::io::file`
 
 **Description**:  
-Provides high-level file I/O operations using C's `stdio.h` through FFI. An alternative to the native syscall-based file I/O in `io.fx`.
+Provides high-level file I/O operations using C's `stdio.h` through FFI. An alternative to the native syscall-based file I/O in `io.idk`.
 
 #### C stdio FFI Declarations
 
-```flux
+```IDEKA
 extern def !!
     fopen(byte* filename, byte* mode) -> void*,
     fclose(void* stream) -> int,
@@ -956,7 +956,7 @@ extern def !!
 
 #### Seek Constants
 
-```flux
+```IDEKA
 SEEK_SET = 0  // Beginning of file
 SEEK_CUR = 1  // Current position
 SEEK_END = 2  // End of file
@@ -964,7 +964,7 @@ SEEK_END = 2  // End of file
 
 #### High-Level Helper Functions
 
-```flux
+```IDEKA
 def read_file(byte* filename, byte[] buffer, int buffer_size) -> int
 def write_file(byte* filename, byte[] data, int data_size) -> int
 def append_file(byte* filename, byte[] data, int data_size) -> int
@@ -973,8 +973,8 @@ def file_exists(byte* filename) -> bool
 ```
 
 **Example**:
-```flux
-#import <standard.fx>;
+```IDEKA
+#import <standard.idk>;
 
 def main() -> int
 {
@@ -1000,23 +1000,23 @@ def main() -> int
 
 ## String Utilities
 
-### string_utilities.fx
+### string_utilities.idk
 
 **Purpose**: Comprehensive string manipulation functions
 
 **Description**:  
-Native Flux implementations of string operations without C runtime dependencies.
+Native IDEKA implementations of string operations without C runtime dependencies.
 
 #### Core String Functions
 
-```flux
+```IDEKA
 def strlen(byte* ps) -> int
 def strcpy(noopstr dest, noopstr src) -> noopstr
 ```
 
 #### Integer to String Conversion
 
-```flux
+```IDEKA
 def i32str(i32 value, byte* buffer) -> i32
 def i64str(i64 value, byte* buffer) -> i64
 def u32str(u32 value, byte* buffer) -> u32
@@ -1024,7 +1024,7 @@ def u64str(u64 value, byte* buffer) -> u64
 ```
 
 **Example**:
-```flux
+```IDEKA
 byte[32] buffer;
 i32 len = i32str(-12345, @buffer[0]);
 print(buffer);  // Prints "-12345"
@@ -1032,7 +1032,7 @@ print(buffer);  // Prints "-12345"
 
 #### String to Integer Conversion
 
-```flux
+```IDEKA
 def str2i32(byte* str) -> int
 def str2u32(byte* str) -> uint
 def str2i64(byte* str) -> i64
@@ -1041,14 +1041,14 @@ def str2u64(byte* str) -> u64
 
 #### Float Conversion
 
-```flux
+```IDEKA
 def fstr(float value, byte* buffer, int precision) -> int
 def str2f(byte* str) -> float
 ```
 
 #### Character Classification
 
-```flux
+```IDEKA
 def is_digit(byte c) -> bool
 def is_alpha(byte c) -> bool
 def is_alnum(byte c) -> bool
@@ -1062,7 +1062,7 @@ def is_identifier_char(byte c) -> bool
 
 #### Character Conversion
 
-```flux
+```IDEKA
 def to_upper(byte c) -> byte
 def to_lower(byte c) -> byte
 def hex_to_int(byte c) -> int
@@ -1070,7 +1070,7 @@ def hex_to_int(byte c) -> int
 
 #### String Comparison
 
-```flux
+```IDEKA
 def str_equals(byte* s1, byte* s2) -> bool
 def str_equals_n(byte* s1, byte* s2, int n) -> bool
 def starts_with(byte* str, byte* prefix) -> bool
@@ -1079,7 +1079,7 @@ def ends_with(byte* str, byte* suffix) -> bool
 
 #### String Search
 
-```flux
+```IDEKA
 def find_char(byte* str, byte ch, int start_pos) -> int
 def find_char_last(byte* str, byte ch) -> int
 def find_substring(byte* haystack, byte* needle, int start_pos) -> int
@@ -1088,7 +1088,7 @@ def count_char(byte* str, byte ch) -> int
 
 #### String Manipulation
 
-```flux
+```IDEKA
 def skip_whitespace(byte* str, int pos) -> int
 def trim_start(byte* str) -> int
 def trim_end(byte* str) -> int
@@ -1096,7 +1096,7 @@ def trim_end(byte* str) -> int
 
 **Memory-Allocating Functions** (caller must free):
 
-```flux
+```IDEKA
 def copy_string(byte* src) -> byte*
 def copy_n(byte* src, int n) -> byte*
 def substring(byte* str, int start, int length) -> byte*
@@ -1105,14 +1105,14 @@ def concat(byte* s1, byte* s2) -> byte*
 
 #### Parsing Functions
 
-```flux
+```IDEKA
 def parse_int(byte* str, int start_pos, int* end_pos) -> int
 def parse_hex(byte* str, int start_pos, int* end_pos) -> int
 ```
 
 #### Line and Word Operations
 
-```flux
+```IDEKA
 def count_lines(byte* str) -> int
 def get_line(byte* str, int line_num) -> byte*
 def count_words(byte* str) -> int
@@ -1120,13 +1120,13 @@ def count_words(byte* str) -> int
 
 #### String Replacement
 
-```flux
+```IDEKA
 def replace_first(byte* str, byte* find, byte* replace) -> byte*
 ```
 
 #### Tokenization Helpers
 
-```flux
+```IDEKA
 def skip_until(byte* str, int pos, char ch) -> int
 def skip_while_digit(byte* str, int pos) -> int
 def skip_while_alnum(byte* str, int pos) -> int
@@ -1136,16 +1136,16 @@ def match_at(byte* str, int pos, byte* pattern) -> bool
 
 ---
 
-### string_object_raw.fx
+### string_object_raw.idk
 
 **Purpose**: Object-oriented string wrapper
 
 **Description**:  
-Provides an object-oriented interface for string manipulation. Imported by `runtime.fx`; marked for deprecation from direct runtime use.
+Provides an object-oriented interface for string manipulation. Imported by `runtime.idk`; marked for deprecation from direct runtime use.
 
 #### String Object
 
-```flux
+```IDEKA
 object string
 {
     noopstr value;
@@ -1239,7 +1239,7 @@ object string
 ```
 
 **Example**:
-```flux
+```IDEKA
 string myStr("Hello, World!\0");
 print(myStr.val());
 int length = myStr.len();
@@ -1249,13 +1249,13 @@ int length = myStr.len();
 
 ## Collections Library
 
-### collections.fx
+### collections.idk
 
-**Purpose**: Comprehensive data structure implementations for Flux
+**Purpose**: Comprehensive data structure implementations for IDEKA
 
 **Namespace**: `standard::collections`
 
-**Dependencies**: `types.fx`, `memory.fx`
+**Dependencies**: `types.idk`, `memory.idk`
 
 **Description**:  
 Provides essential data structures for efficient data management. All collections are generic (using `void*` payloads) and manage their own allocation. Caller is responsible for freeing payloads.
@@ -1263,7 +1263,7 @@ Provides essential data structures for efficient data management. All collection
 #### Dynamic Array (Array)
 
 **Definition**:
-```flux
+```IDEKA
 object Array
 {
     void** items;
@@ -1273,7 +1273,7 @@ object Array
 ```
 
 **Constructors**:
-```flux
+```IDEKA
 Array()                        // Default capacity: 16
 Array(size_t initial_capacity) // Custom capacity
 ```
@@ -1292,7 +1292,7 @@ Array(size_t initial_capacity) // Custom capacity
 | `insert_at(size_t index, void* item)` | `bool` | Insert at index (shift right) |
 
 **Example**:
-```flux
+```IDEKA
 Array myArray(32);
 myArray.push((void*)42);
 size_t count = myArray.get_size();  // 1
@@ -1304,7 +1304,7 @@ void* value = myArray.get(0);       // (void*)42
 #### Doubly Linked List (LinkedList)
 
 **Definition**:
-```flux
+```IDEKA
 struct LinkedListNode
 {
     void* payload;
@@ -1369,7 +1369,7 @@ FIFO wrapper over `LinkedList`.
 #### Hash Map (HashMap)
 
 **Definition**:
-```flux
+```IDEKA
 struct HashMapEntry { i64 key; void* value; HashMapEntry* next; };
 
 object HashMap
@@ -1381,7 +1381,7 @@ object HashMap
 ```
 
 **Constructors**:
-```flux
+```IDEKA
 HashMap()               // Default: 16 buckets
 HashMap(size_t buckets) // Custom bucket count
 ```
@@ -1403,7 +1403,7 @@ Uses chaining for collision resolution. Fixed bucket count (no auto-rehashing).
 #### Binary Search Tree (BinarySearchTree)
 
 **Definition**:
-```flux
+```IDEKA
 struct BinaryTreeNode
 {
     void* payload;
@@ -1531,24 +1531,24 @@ Binary min-heap keyed by `i64`. Always returns the lowest-keyed item from `peek`
 
 
 
-### vectors.fx
+### vectors.idk
 
 **Purpose**: 3D and 4D vector mathematics
 
 **Namespace**: `standard::vectors`
 
-**Dependencies**: `types.fx`, `math.fx`
+**Dependencies**: `types.idk`, `math.idk`
 
 #### Vector Structures
 
-```flux
+```IDEKA
 struct Vec3 { float x, y, z; };
 struct Vec4 { float x, y, z, w; };
 ```
 
 #### Vec3 Constructors
 
-```flux
+```IDEKA
 def vec3(float x, float y, float z) -> Vec3
 def vec3_zero() -> Vec3    // (0, 0, 0)
 def vec3_one() -> Vec3     // (1, 1, 1)
@@ -1562,7 +1562,7 @@ def vec3_back() -> Vec3    // (0, 0, -1)
 
 #### Vec4 Constructors
 
-```flux
+```IDEKA
 def vec4(float x, float y, float z, float w) -> Vec4
 def vec4_zero() -> Vec4
 def vec4_one() -> Vec4
@@ -1571,7 +1571,7 @@ def vec4_from_vec3(Vec3 v, float w) -> Vec4
 
 #### Arithmetic Operations
 
-```flux
+```IDEKA
 def vec3_add(Vec3 a, Vec3 b) -> Vec3
 def vec3_sub(Vec3 a, Vec3 b) -> Vec3
 def vec3_mul(Vec3 v, float scalar) -> Vec3
@@ -1589,7 +1589,7 @@ def vec4_scale(Vec4 a, Vec4 b) -> Vec4
 
 #### Dot and Cross Products
 
-```flux
+```IDEKA
 def vec3_dot(Vec3 a, Vec3 b) -> float
 def vec4_dot(Vec4 a, Vec4 b) -> float
 def vec3_cross(Vec3 a, Vec3 b) -> Vec3  // Right-hand rule
@@ -1597,7 +1597,7 @@ def vec3_cross(Vec3 a, Vec3 b) -> Vec3  // Right-hand rule
 
 #### Length and Normalization
 
-```flux
+```IDEKA
 def vec3_length_squared(Vec3 v) -> float
 def vec3_length(Vec3 v) -> float
 def vec3_normalize(Vec3 v) -> Vec3
@@ -1613,7 +1613,7 @@ def vec4_distance_squared(Vec4 a, Vec4 b) -> float
 
 #### Interpolation
 
-```flux
+```IDEKA
 def vec3_lerp(Vec3 a, Vec3 b, float t) -> Vec3
 def vec4_lerp(Vec4 a, Vec4 b, float t) -> Vec4
 def vec3_slerp(Vec3 a, Vec3 b, float t) -> Vec3
@@ -1622,7 +1622,7 @@ def vec4_slerp(Vec4 a, Vec4 b, float t) -> Vec4
 
 #### Projection and Reflection
 
-```flux
+```IDEKA
 def vec3_project(Vec3 v, Vec3 onto) -> Vec3
 def vec3_reject(Vec3 v, Vec3 from) -> Vec3
 def vec3_reflect(Vec3 v, Vec3 normal) -> Vec3
@@ -1634,7 +1634,7 @@ def vec4_reflect(Vec4 v, Vec4 normal) -> Vec4
 
 #### Angle, Min/Max/Clamp, Rotation, Advanced
 
-```flux
+```IDEKA
 def vec3_angle(Vec3 a, Vec3 b) -> float  // Radians, range [0, π]
 def vec4_angle(Vec4 a, Vec4 b) -> float
 
@@ -1656,20 +1656,20 @@ def vec4_abs(Vec4 v) -> Vec4
 
 ## Extended Libraries
 
-### atomics.fx
+### atomics.idk
 
 **Purpose**: Lock-free atomic primitives for multi-threaded access
 
 **Namespace**: `standard::atomic`
 
-**Guard macro**: `FLUX_STANDARD_ATOMICS`
+**Guard macro**: `IDEKA_STANDARD_ATOMICS`
 
 **Description**:  
-Provides hardware atomics via inline assembly for x86-64 and ARM64. Used internally by `threading.fx`.
+Provides hardware atomics via inline assembly for x86-64 and ARM64. Used internally by `threading.idk`.
 
 #### Memory Barriers
 
-```flux
+```IDEKA
 def fence() -> void           // Full memory barrier
 def compiler_barrier() -> void // Compiler-only barrier
 def load_fence() -> void       // Acquire barrier
@@ -1678,7 +1678,7 @@ def store_fence() -> void      // Release barrier
 
 #### Atomic Load / Store
 
-```flux
+```IDEKA
 def load32(i32* ptr) -> i32
 def load64(i64* ptr) -> i64
 def store32(i32* ptr, i32 value) -> void
@@ -1687,21 +1687,21 @@ def store64(i64* ptr, i64 value) -> void
 
 #### Atomic Exchange
 
-```flux
+```IDEKA
 def exchange32(i32* ptr, i32 value) -> i32
 def exchange64(i64* ptr, i64 value) -> i64
 ```
 
 #### Compare-and-Swap
 
-```flux
+```IDEKA
 def cas32(i32* ptr, i32 expected, i32 desired) -> bool
 def cas64(i64* ptr, i64 expected, i64 desired) -> bool
 ```
 
 #### Atomic Arithmetic
 
-```flux
+```IDEKA
 def fetch_add32(i32* ptr, i32 delta) -> i32
 def fetch_add64(i64* ptr, i64 delta) -> i64
 def fetch_sub32(i32* ptr, i32 delta) -> i32
@@ -1720,7 +1720,7 @@ def dec64(i64* ptr) -> i64
 
 #### Spin Lock
 
-```flux
+```IDEKA
 def spin_lock(i32* lock) -> void
 def spin_unlock(i32* lock) -> void
 def spin_trylock(i32* lock) -> bool
@@ -1728,14 +1728,14 @@ def spin_trylock(i32* lock) -> bool
 
 #### One-Time Initialization
 
-```flux
+```IDEKA
 def once_begin(i32* flag) -> bool  // Returns true if this caller wins the race
 def once_end(i32* flag) -> void    // Signal initialization complete
 ```
 
 #### Reference Counting / Flags
 
-```flux
+```IDEKA
 def ref_inc(i32* counter) -> void
 def ref_dec_and_test(i32* counter) -> bool  // Returns true when count hits 0
 def ref_get(i32* counter) -> i32
@@ -1748,21 +1748,21 @@ def flag_test_and_set(i32* flag) -> bool
 
 ---
 
-### threading.fx
+### threading.idk
 
 **Purpose**: Thread creation and synchronization primitives
 
 **Namespace**: `standard::threading`
 
-**Guard macro**: `FLUX_STANDARD_THREADING`
+**Guard macro**: `IDEKA_STANDARD_THREADING`
 
-**Dependencies**: `types.fx`, `atomics.fx`
+**Dependencies**: `types.idk`, `atomics.idk`
 
 **Supported platforms**: Windows, Linux, macOS (x86-64 and ARM64)
 
 #### Structures
 
-```flux
+```IDEKA
 struct Thread    { /* platform handle + id */ };
 struct Mutex     { /* platform CS or pthread_mutex */ };
 struct RWLock    { /* platform SRW or pthread_rwlock */ };
@@ -1774,7 +1774,7 @@ struct TLSKey    { /* platform TLS slot */ };
 
 #### Thread
 
-```flux
+```IDEKA
 def thread_create(void* fn, void* arg, Thread* out) -> int  // 0 on success
 def thread_join(Thread* t) -> int
 def thread_id() -> u64
@@ -1784,7 +1784,7 @@ def thread_sleep_ms(u32 ms) -> void
 
 #### Mutex
 
-```flux
+```IDEKA
 def mutex_init(Mutex* m) -> int
 def mutex_destroy(Mutex* m) -> void
 def mutex_lock(Mutex* m) -> void
@@ -1794,7 +1794,7 @@ def mutex_trylock(Mutex* m) -> bool
 
 #### Reader/Writer Lock
 
-```flux
+```IDEKA
 def rwlock_init(RWLock* rw) -> int
 def rwlock_destroy(RWLock* rw) -> void
 def rwlock_read_lock(RWLock* rw) -> void
@@ -1807,14 +1807,14 @@ def rwlock_try_write_lock(RWLock* rw) -> bool
 
 #### Barrier
 
-```flux
+```IDEKA
 def barrier_init(Barrier* b, i32 n) -> void  // n = thread count
 def barrier_wait(Barrier* b) -> bool          // Returns true for the last thread
 ```
 
 #### Thread-Local Storage
 
-```flux
+```IDEKA
 def tls_key_create(TLSKey* k) -> int
 def tls_key_destroy(TLSKey* k) -> void
 def tls_set(TLSKey* k, void* value) -> int
@@ -1822,8 +1822,8 @@ def tls_get(TLSKey* k) -> void*
 ```
 
 **Example**:
-```flux
-#import "threading.fx";
+```IDEKA
+#import "threading.idk";
 using standard::threading;
 
 Thread t;
@@ -1833,7 +1833,7 @@ thread_join(@t);
 
 ---
 
-### timing.fx
+### timing.idk
 
 **Purpose**: High-resolution timestamps, timers, and benchmarking utilities
 
@@ -1844,7 +1844,7 @@ Provides nanosecond-resolution timing across all supported platforms.
 
 #### Core Functions
 
-```flux
+```IDEKA
 def time_now() -> i64      // Current time in nanoseconds (platform-appropriate)
 def sleep_ms(u32 ms) -> void
 def sleep_us(u32 us) -> void
@@ -1852,7 +1852,7 @@ def sleep_us(u32 us) -> void
 
 #### Unit Conversion
 
-```flux
+```IDEKA
 def ns_to_us(i64 ns) -> i64
 def ns_to_ms(i64 ns) -> i64
 def ns_to_sec(i64 ns) -> i64
@@ -1863,7 +1863,7 @@ def sec_to_ns(i64 s) -> i64
 
 #### Timer Object
 
-```flux
+```IDEKA
 struct Timer { /* start/stop timestamps */ };
 
 def timer_start(Timer* t) -> void
@@ -1871,8 +1871,8 @@ def timer_stop(Timer* t) -> i64   // Returns elapsed nanoseconds
 ```
 
 **Example**:
-```flux
-#import "timing.fx";
+```IDEKA
+#import "timing.idk";
 using standard::time;
 
 Timer t;
@@ -1883,7 +1883,7 @@ i64 elapsed_ns = timer_stop(@t);
 
 ---
 
-### random.fx
+### random.idk
 
 **Purpose**: Random number generation
 
@@ -1894,7 +1894,7 @@ Provides multiple RNG algorithms. Uses `rdtsc` or OS entropy for seeding. The re
 
 #### RNG Structures
 
-```flux
+```IDEKA
 struct XorShift64  { /* 64-bit state */ };
 struct XorShift128 { /* 128-bit state */ };
 struct PCG32       { /* state + sequence */ };
@@ -1903,7 +1903,7 @@ struct LCG         { /* state */ };
 
 #### Seeding
 
-```flux
+```IDEKA
 def xorshift64_seed(XorShift64* rng, u64 seed) -> void
 def xorshift64_init(XorShift64* rng) -> void   // Auto-seed from entropy
 def xorshift128_seed(XorShift128* rng, u64 seed1, u64 seed2) -> void
@@ -1916,7 +1916,7 @@ def lcg_init(LCG* rng) -> void
 
 #### Generation
 
-```flux
+```IDEKA
 def xorshift64_next(XorShift64* rng) -> u64
 def xorshift128_next(XorShift128* rng) -> u64
 def pcg32_next(PCG32* rng) -> u32
@@ -1925,7 +1925,7 @@ def lcg_next(LCG* rng) -> u32
 
 #### Utilities
 
-```flux
+```IDEKA
 def random_range_u64(XorShift128* rng, u64 max) -> u64
 def random_range_u32(PCG32* rng, u32 max) -> u32
 def random_range_int(PCG32* rng, int min, int max) -> int
@@ -1944,14 +1944,14 @@ def random_hex(PCG32* rng, byte* buffer, u32 length) -> void
 
 #### Global Convenience Interface
 
-```flux
+```IDEKA
 def init_random() -> void  // Initialize global PCG32 state
 def random() -> u32        // Draw from global state
 ```
 
 ---
 
-### cryptography.fx
+### cryptography.idk
 
 **Purpose**: Hashing and encryption primitives
 
@@ -1962,7 +1962,7 @@ def random() -> u32        // Draw from global state
 
 #### SHA-256
 
-```flux
+```IDEKA
 struct SHA256_CTX { /* 256-bit digest state */ };
 
 def sha256_init(SHA256_CTX* ctx) -> void
@@ -1972,7 +1972,7 @@ def sha256_final(SHA256_CTX* ctx, byte* hash) -> void  // hash: 32-byte output b
 
 #### MD5
 
-```flux
+```IDEKA
 struct MD5_CTX { /* 128-bit digest state */ };
 
 def md5_init(MD5_CTX* ctx) -> void
@@ -1982,7 +1982,7 @@ def md5_final(MD5_CTX* ctx, byte* digest) -> void  // digest: 16-byte output buf
 
 #### AES
 
-```flux
+```IDEKA
 struct AES_CTX { /* round keys */ };
 
 def aes_key_expansion(AES_CTX* ctx, byte* key) -> void          // 16-byte key
@@ -1991,8 +1991,8 @@ def aes_decrypt_block(AES_CTX* ctx, byte* ciphertext, byte* plaintext) -> void
 ```
 
 **Example** (SHA-256):
-```flux
-#import "cryptography.fx";
+```IDEKA
+#import "cryptography.idk";
 using standard::crypto::hashing::SHA256;
 
 byte[32] hash;
@@ -2004,23 +2004,23 @@ sha256_final(@ctx, @hash[0]);
 
 ---
 
-### bigint.fx
+### bigint.idk
 
 **Purpose**: Arbitrary-precision integer arithmetic
 
 **Namespace**: `math::bigint`
 
-**Dependencies**: `math.fx`
+**Dependencies**: `math.idk`
 
 #### BigInt Structure
 
-```flux
+```IDEKA
 struct BigInt { /* limb array, length, sign */ };
 ```
 
 #### Construction
 
-```flux
+```IDEKA
 def bigint_zero(BigInt* num) -> void
 def bigint_one(BigInt* num) -> void
 def bigint_from_uint(BigInt* num, uint value) -> void
@@ -2029,14 +2029,14 @@ def bigint_from_u64(BigInt* num, u64 value) -> void
 
 #### Predicates
 
-```flux
+```IDEKA
 def bigint_is_zero(BigInt* num) -> bool
 def bigint_is_one(BigInt* num) -> bool
 ```
 
 #### Arithmetic
 
-```flux
+```IDEKA
 def bigint_add(BigInt* result, BigInt* a, BigInt* b) -> void
 def bigint_sub(BigInt* result, BigInt* a, BigInt* b) -> void
 def bigint_mul(BigInt* result, BigInt* a, BigInt* b) -> void  // Karatsuba for large inputs
@@ -2048,14 +2048,14 @@ def bigint_pow_uint(BigInt* result, BigInt* base, uint exp) -> void
 
 #### Bit Shifts
 
-```flux
+```IDEKA
 def bigint_shl(BigInt* result, BigInt* a, uint n) -> void
 def bigint_shr(BigInt* result, BigInt* a, uint n) -> void
 ```
 
 #### Comparison and Utilities
 
-```flux
+```IDEKA
 def bigint_cmp(BigInt* a, BigInt* b) -> int  // -1, 0, 1
 def bigint_cmp_abs(BigInt* a, BigInt* b) -> int
 def bigint_copy(BigInt* dest, BigInt* src) -> void
@@ -2067,30 +2067,30 @@ def bigint_print_decimal(BigInt* num) -> void
 
 ---
 
-### decimal.fx
+### decimal.idk
 
 **Purpose**: Arbitrary-precision decimal arithmetic
 
 **Namespace**: `math::decimal`
 
-**Dependencies**: `bigint.fx`
+**Dependencies**: `bigint.idk`
 
 #### Decimal Structure
 
-```flux
+```IDEKA
 struct Decimal { BigInt coefficient; i32 exponent; bool negative; };
 ```
 
 #### Precision Control
 
-```flux
+```IDEKA
 def decimal_set_precision(i32 prec) -> void
 def decimal_get_precision() -> i32
 ```
 
 #### Construction
 
-```flux
+```IDEKA
 def decimal_zero(Decimal* d) -> void
 def decimal_one(Decimal* d) -> void
 def decimal_from_i64(Decimal* d, i64 value) -> void
@@ -2101,7 +2101,7 @@ def decimal_copy(Decimal* dest, Decimal* src) -> void
 
 #### Arithmetic
 
-```flux
+```IDEKA
 def decimal_add(Decimal* result, Decimal* a, Decimal* b) -> void
 def decimal_sub(Decimal* result, Decimal* a, Decimal* b) -> void
 def decimal_mul(Decimal* result, Decimal* a, Decimal* b) -> void
@@ -2115,7 +2115,7 @@ def decimal_sqrt(Decimal* result, Decimal* a) -> void
 
 **Important**: Never pass the same pointer as both input and output (alias corruption). Always route through an intermediate variable:
 
-```flux
+```IDEKA
 Decimal tmp;
 decimal_div(@tmp, @zoom, @two);  // Correct
 decimal_copy(@zoom, @tmp);
@@ -2124,7 +2124,7 @@ decimal_copy(@zoom, @tmp);
 
 #### Rounding and Truncation
 
-```flux
+```IDEKA
 def decimal_round(Decimal* result, Decimal* a, i32 places) -> void
 def decimal_truncate(Decimal* result, Decimal* a, i32 places) -> void
 def decimal_floor(Decimal* result, Decimal* a) -> void
@@ -2133,7 +2133,7 @@ def decimal_ceil(Decimal* result, Decimal* a) -> void
 
 #### Comparison and Predicates
 
-```flux
+```IDEKA
 def decimal_cmp(Decimal* a, Decimal* b) -> i32  // -1, 0, 1
 def decimal_cmp_abs(Decimal* a, Decimal* b) -> i32
 def decimal_is_zero(Decimal* d) -> bool
@@ -2143,7 +2143,7 @@ def decimal_is_positive(Decimal* d) -> bool
 
 #### Output
 
-```flux
+```IDEKA
 def decimal_to_double(Decimal* d) -> double
 def decimal_print(Decimal* d) -> void
 def decimal_print_sci(Decimal* d) -> void  // Scientific notation
@@ -2151,7 +2151,7 @@ def decimal_print_sci(Decimal* d) -> void  // Scientific notation
 
 ---
 
-### net_windows.fx / socket_object_raw.fx
+### net_windows.idk / socket_object_raw.idk
 
 **Purpose**: TCP/UDP networking (Windows Sockets API — Winsock2)
 
@@ -2160,11 +2160,11 @@ def decimal_print_sci(Decimal* d) -> void  // Scientific notation
 **Platform**: Windows only
 
 **Description**:  
-`net_windows.fx` is the thin glue file that sets up the guard macro and imports `socket_object_raw.fx`. All actual networking functionality lives in `socket_object_raw.fx` under the `standard::sockets` namespace. Importing either file makes the full API available. A `using standard::sockets;` directive is emitted automatically at the bottom of `socket_object_raw.fx`.
+`net_windows.idk` is the thin glue file that sets up the guard macro and imports `socket_object_raw.idk`. All actual networking functionality lives in `socket_object_raw.idk` under the `standard::sockets` namespace. Importing either file makes the full API available. A `using standard::sockets;` directive is emitted automatically at the bottom of `socket_object_raw.idk`.
 
 #### Structures
 
-```flux
+```IDEKA
 struct sockaddr_in
 {
     u16 sin_family, sin_port;
@@ -2192,7 +2192,7 @@ enum socket_error { OK, NOT_OPEN, BIND_FAILED, CONNECT_FAILED,
 
 #### Constants
 
-```flux
+```IDEKA
 // Address families
 AF_INET = 2, AF_INET6 = 23
 
@@ -2225,7 +2225,7 @@ WINSOCK_VERSION = 0x0202
 
 #### Initialization
 
-```flux
+```IDEKA
 def init() -> int           // WSAStartup (call before any socket ops)
 def cleanup() -> int        // WSACleanup
 def get_last_error() -> int // WSAGetLastError
@@ -2233,14 +2233,14 @@ def get_last_error() -> int // WSAGetLastError
 
 #### Socket Creation
 
-```flux
+```IDEKA
 def tcp_socket() -> int
 def udp_socket() -> int
 ```
 
 #### Address Helpers
 
-```flux
+```IDEKA
 def init_sockaddr(sockaddr_in* addr, u32 ip_addr, u16 port) -> void
 def init_sockaddr_str(sockaddr_in* addr, byte* ip_str, u16 port) -> void
 def get_ip_string(sockaddr_in* addr) -> byte*
@@ -2251,7 +2251,7 @@ def port_hton(u16 host_port) -> u16
 
 #### Socket Options
 
-```flux
+```IDEKA
 def set_nonblocking(int sockfd) -> int
 def set_blocking(int sockfd) -> int
 def set_reuseaddr(int sockfd, bool enable) -> int
@@ -2262,7 +2262,7 @@ def is_valid_socket(int sockfd) -> bool
 
 #### TCP Helpers
 
-```flux
+```IDEKA
 def tcp_server_create(u16 port, int backlog) -> int
 def tcp_server_accept(int server_sockfd, sockaddr_in* client_addr) -> int
 def tcp_client_connect(byte* ip_addr, u16 port) -> int
@@ -2275,7 +2275,7 @@ def tcp_close(int sockfd) -> int
 
 #### UDP Helpers
 
-```flux
+```IDEKA
 def udp_socket_bind(u16 port) -> int
 def udp_send(int sockfd, byte[] data, int length, byte* dest_ip, u16 dest_port) -> int
 def udp_recv(int sockfd, byte[] buffer, int buffer_size, sockaddr_in* src_addr) -> int
@@ -2286,7 +2286,7 @@ def udp_close(int sockfd) -> int
 
 The `socket` object wraps a file descriptor and provides a method-based interface:
 
-```flux
+```IDEKA
 object socket
 {
     int fd, type, error_state;
@@ -2335,8 +2335,8 @@ object socket
 
 **Example**:
 
-```flux
-#import "net_windows.fx";
+```IDEKA
+#import "net_windows.idk";
 
 def main() -> int
 {
@@ -2355,23 +2355,23 @@ def main() -> int
 
 ---
 
-### uuid.fx
+### uuid.idk
 
 **Purpose**: UUID generation (versions 1, 4, and 7)
 
 **Namespace**: `standard::uuid`
 
-**Dependencies**: `random.fx`
+**Dependencies**: `random.idk`
 
 #### UUID Structure
 
-```flux
+```IDEKA
 struct UUID { /* 16 bytes */ };
 ```
 
 #### Generation
 
-```flux
+```IDEKA
 def uuid_v4(UUID* uuid, PCG32* rng) -> void       // Random UUID
 def uuid_v4_quick(UUID* uuid) -> void              // Auto-seeded
 def uuid_v7(UUID* uuid, PCG32* rng) -> void       // Time-ordered UUID
@@ -2384,7 +2384,7 @@ def uuid_generate_batch_v4(UUID* uuids, int count, PCG32* rng) -> void
 
 #### String Conversion
 
-```flux
+```IDEKA
 def uuid_to_string(UUID* uuid, byte* buffer) -> void        // Lowercase, 37-byte buffer
 def uuid_to_string_upper(UUID* uuid, byte* buffer) -> void  // Uppercase
 def uuid_to_hex(UUID* uuid, byte* buffer) -> void           // 32 hex chars, no dashes
@@ -2392,7 +2392,7 @@ def uuid_to_hex(UUID* uuid, byte* buffer) -> void           // 32 hex chars, no 
 
 #### Utilities
 
-```flux
+```IDEKA
 def uuid_equals(UUID* a, UUID* b) -> bool
 def uuid_is_nil(UUID* uuid) -> bool
 def uuid_version(UUID* uuid) -> int
@@ -2401,7 +2401,7 @@ def uuid_copy(UUID* dest, UUID* src) -> void
 
 ---
 
-### sharedmemory.fx
+### sharedmemory.idk
 
 **Purpose**: Named shared memory regions visible across processes
 
@@ -2409,13 +2409,13 @@ def uuid_copy(UUID* dest, UUID* src) -> void
 
 #### SharedMem Structure
 
-```flux
+```IDEKA
 struct SharedMem { /* handle, mapping pointer, size, name */ };
 ```
 
 #### Lifecycle
 
-```flux
+```IDEKA
 def shm_create(SharedMem* out, byte* name, size_t size) -> int      // Create new region
 def shm_open_existing(SharedMem* out, byte* name, size_t size) -> int // Open existing
 def shm_map(SharedMem* shm, u32 access) -> void*  // Map into address space
@@ -2427,19 +2427,19 @@ def shm_destroy(SharedMem* shm, byte* name) -> int  // Unmap + close + delete
 
 ---
 
-### format.fx
+### format.idk
 
 **Purpose**: ANSI color codes, text formatting, borders, and separators
 
 **Namespace**: `standard::format`
 
-**Guard macro**: `FLUX_STANDARD_FORMAT`
+**Guard macro**: `IDEKA_STANDARD_FORMAT`
 
 #### Color Constants (`standard::format::colors`)
 
 Pre-built ANSI escape strings as global `byte[]` constants:
 
-```flux
+```IDEKA
 RESET, BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE
 BRIGHT_BLACK, BRIGHT_RED, BRIGHT_GREEN, BRIGHT_YELLOW
 BRIGHT_BLUE, BRIGHT_MAGENTA, BRIGHT_CYAN, BRIGHT_WHITE
@@ -2449,7 +2449,7 @@ BG_BRIGHT_BLACK ... BG_BRIGHT_WHITE
 
 #### Printing Utilities
 
-```flux
+```IDEKA
 def print_charn(char c, int count) -> void          // Print char N times
 def print_repeat(byte* str, int count) -> void
 def print_separator(char c, int width) -> void
@@ -2460,7 +2460,7 @@ def hline_light(int width) -> void
 
 #### Colored Output
 
-```flux
+```IDEKA
 def print_colored(byte* text, byte* color) -> void
 def println_colored(byte* text, byte* color) -> void
 def print_red(byte* text) -> void
@@ -2473,7 +2473,7 @@ def print_magenta(byte* text) -> void
 
 #### Text Styling
 
-```flux
+```IDEKA
 def print_styled(byte* text, byte* style) -> void
 def print_bold(byte* text) -> void
 def print_italic(byte* text) -> void
@@ -2482,26 +2482,26 @@ def print_underline(byte* text) -> void
 
 #### Borders and Boxes
 
-```flux
+```IDEKA
 def print_box_top(int width, bool double_line) -> void
 def print_box_bottom(int width, bool double_line) -> void
 ```
 
 ---
 
-### console.fx
+### console.idk
 
 **Purpose**: TUI cursor positioning, color control, and region management (Windows)
 
 **Namespace**: `standard::io::console`
 
-**Guard macro**: `FLUX_STANDARD_CONSOLE`
+**Guard macro**: `IDEKA_STANDARD_CONSOLE`
 
 **Platform**: Windows only
 
 **Usage**:
-```flux
-#import "console.fx";
+```IDEKA
+#import "console.idk";
 using standard::io::console;
 
 Console con;
@@ -2513,7 +2513,7 @@ con.reset_attr();
 
 #### Coordinate Helpers
 
-```flux
+```IDEKA
 def make_coord(i16 x, i16 y) -> i32  // Pack (x, y) into COORD DWORD
 def coord_x(i32 coord) -> i16
 def coord_y(i32 coord) -> i16
@@ -2521,7 +2521,7 @@ def coord_y(i32 coord) -> i16
 
 #### Console Object
 
-```flux
+```IDEKA
 object Console
 {
     def __init() -> this,
@@ -2558,7 +2558,7 @@ object Console
 
 ---
 
-### graphing.fx
+### graphing.idk
 
 **Purpose**: 2D line graphs, bar charts, scatter plots, and a full 3D graphing system
 
@@ -2566,7 +2566,7 @@ object Console
 
 #### 2D Graphing
 
-```flux
+```IDEKA
 struct Graph { /* dimensions, axes, data series */ };
 ```
 
@@ -2574,7 +2574,7 @@ Provides terminal-based 2D rendering of line graphs, bar charts, and scatter plo
 
 #### 3D Graphing
 
-```flux
+```IDEKA
 struct Graph3D { /* 3D axes, parametric data generators */ };
 ```
 
@@ -2582,7 +2582,7 @@ Full 3D graphing system with parametric surface and curve generators.
 
 ---
 
-### opengl.fx
+### opengl.idk
 
 **Purpose**: OpenGL context setup and rendering helpers via Win32 WGL
 
@@ -2592,7 +2592,7 @@ Full 3D graphing system with parametric surface and curve generators.
 
 #### Context Setup
 
-```flux
+```IDEKA
 def setup_opengl(HDC device_context) -> HGLRC
 def swap_buffers(HDC device_context) -> void
 def gl_load_extensions() -> void
@@ -2600,14 +2600,14 @@ def gl_load_extensions() -> void
 
 #### Shader Utilities
 
-```flux
+```IDEKA
 def compile_shader(int shader_type, byte* src) -> int
 def link_program(int vert, int frag) -> int
 ```
 
 #### Matrix Math (for shaders)
 
-```flux
+```IDEKA
 struct Matrix4 { /* 4x4 float matrix */ };
 struct GLVec3  { float x, y, z; };
 
@@ -2623,7 +2623,7 @@ def vec3_dot(GLVec3* a, GLVec3* b) -> float
 
 ---
 
-### windows.fx
+### windows.idk
 
 **Purpose**: Win32 window creation and GDI drawing
 
@@ -2633,7 +2633,7 @@ def vec3_dot(GLVec3* a, GLVec3* b) -> float
 
 #### Structures
 
-```flux
+```IDEKA
 struct MSG          { /* Windows message */ };
 struct WNDCLASSEXA  { /* Window class descriptor */ };
 struct RECT         { left, top, right, bottom; };
@@ -2642,14 +2642,14 @@ struct PAINTSTRUCT  { /* Paint context */ };
 
 #### Helpers
 
-```flux
+```IDEKA
 def DefaultWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) -> LRESULT
 def RGB(byte r, byte g, byte b) -> DWORD
 ```
 
 #### Window Object
 
-```flux
+```IDEKA
 object Window
 {
     def __init(byte* title, int w, int h, int x, int y) -> this,
@@ -2664,7 +2664,7 @@ object Window
 
 #### Canvas Object
 
-```flux
+```IDEKA
 object Canvas
 {
     def __init(HWND hwnd, HDC hdc) -> this,
@@ -2679,7 +2679,7 @@ object Canvas
 
 ---
 
-### detour.fx
+### detour.idk
 
 **Purpose**: x86-64 inline hook / detour (Windows)
 
@@ -2687,7 +2687,7 @@ object Canvas
 
 #### Detour Object
 
-```flux
+```IDEKA
 object Detour
 {
     def __init() -> this,
@@ -2705,7 +2705,7 @@ object Detour
 
 ---
 
-### operators.fx
+### operators.idk
 
 **Purpose**: Extended operator utilities
 
@@ -2715,17 +2715,17 @@ object Detour
 
 ---
 
-### crc32.fx
+### crc32.idk
 
 **Purpose**: CRC32 checksum computation (IEEE 802.3, reflected polynomial 0xEDB88320)
 
 **Namespace**: `crc32`
 
-**Guard macro**: `FLUX_STANDARD_STRINGS` (imports `string_utilities.fx`)
+**Guard macro**: `IDEKA_STANDARD_STRINGS` (imports `string_utilities.idk`)
 
 #### Functions
 
-```flux
+```IDEKA
 def crc32::compute(byte* buf, uint length) -> uint
 def crc32::of_string(byte* str) -> uint
 ```
@@ -2733,8 +2733,8 @@ def crc32::of_string(byte* str) -> uint
 `compute` builds the lookup table internally and processes `length` bytes from `buf`. `of_string` is a convenience wrapper that calls `strlen` first.
 
 **Example**:
-```flux
-#import "crc32.fx";
+```IDEKA
+#import "crc32.idk";
 
 uint checksum = crc32::compute(@data[0], data_len);
 uint hash     = crc32::of_string("hello\0");
@@ -2742,7 +2742,7 @@ uint hash     = crc32::of_string("hello\0");
 
 ---
 
-### dotenv.fx
+### dotenv.idk
 
 **Purpose**: `.env` file parser and environment variable loader
 
@@ -2752,14 +2752,14 @@ uint hash     = crc32::of_string("hello\0");
 
 **Platform**: Windows and Linux/macOS (conditional compilation)
 
-**Guard macro**: `FLUX_DOTENV`
+**Guard macro**: `IDEKA_DOTENV`
 
 **Description**:  
 Loads `key=value` pairs from a `.env` file into the process environment via `_putenv_s` (Windows) or `setenv` (POSIX). Supports `${VAR}` substitution within values. Lines beginning with `#` or `;` are treated as comments.
 
 #### Error Codes (`dotenv::err`)
 
-```flux
+```IDEKA
 dotenv::err::OK                  =  0   // Success
 dotenv::err::ERR_FILE_NOT_FOUND  = -1   // fopen returned 0
 dotenv::err::ERR_ALLOC_FAILED    = -2   // fmalloc or frealloc returned 0
@@ -2771,7 +2771,7 @@ dotenv::err::ERR_READ_FAILED     = -6   // File exists but could not be read
 
 #### Functions
 
-```flux
+```IDEKA
 def dotenv::loadenv(byte* path, bool overwrite, bool verbose) -> int
 def dotenv::setenv(byte* name, byte* value, bool overwrite) -> int
 ```
@@ -2779,9 +2779,9 @@ def dotenv::setenv(byte* name, byte* value, bool overwrite) -> int
 `loadenv` opens the file at `path`, parses every non-comment line as `KEY=value`, optionally replaces existing variables (`overwrite`), and optionally logs parsing details (`verbose`). Returns a `dotenv::err` code.
 
 **Example**:
-```flux
-#import <standard.fx>;
-#import "dotenv.fx";
+```IDEKA
+#import <standard.idk>;
+#import "dotenv.idk";
 
 extern { def !!getenv(byte* name) -> byte*; };
 
@@ -2794,22 +2794,22 @@ if ((u64)host != 0) { print(host); };
 
 ---
 
-### json.fx
+### json.idk
 
 **Purpose**: JSON parse, build, and serialize library
 
 **Namespace**: `json`
 
-**Guard macro**: `FLUX_JSON`
+**Guard macro**: `IDEKA_JSON`
 
-**Dependencies**: `standard.fx`, `allocators.fx` (uses `stdarena` for zero-copy parsing)
+**Dependencies**: `standard.idk`, `allocators.idk` (uses `stdarena` for zero-copy parsing)
 
 **Description**:  
 Provides four main types: `JSONArray`, `JSONObject`, `JSONNode`, and `JSONParser`. An arena-backed serializer (`serialize_arena`) supports zero-allocation output. Zero-copy string support: parsed string values are views into the source text buffer; call `as_string_view()` for these, and `as_string()` only for strings set via `set_string()`.
 
 #### Type Codes
 
-```flux
+```IDEKA
 json::JSON_NULL   = 0
 json::JSON_BOOL   = 1
 json::JSON_INT    = 2
@@ -2821,7 +2821,7 @@ json::JSON_OBJECT = 6
 
 #### JSONNode
 
-```flux
+```IDEKA
 object JSONNode
 {
     def __init() -> this,
@@ -2871,7 +2871,7 @@ object JSONNode
 
 #### JSONParser
 
-```flux
+```IDEKA
 object JSONParser
 {
     def __init(byte* text, int text_len, Arena* a) -> this,
@@ -2882,7 +2882,7 @@ object JSONParser
 
 #### Serialization
 
-```flux
+```IDEKA
 // Stack-allocated buffer serializer (caller supplies buffer)
 def json::serialize(JSONNode* node, byte* buf, int pos, int cap) -> int  // Returns end position
 
@@ -2892,13 +2892,13 @@ def json::serialize_arena(JSONNode* node, Arena* a, int init_cap) -> byte*  // R
 
 #### node_free
 
-```flux
+```IDEKA
 def json::node_free(void* p) -> void  // Free a heap-allocated JSONNode (avoids __exit self-ref)
 ```
 
 **Example**:
-```flux
-#import "json.fx";
+```IDEKA
+#import "json.idk";
 using json;
 
 Arena a;
@@ -2906,7 +2906,7 @@ arena_init(@a);
 JSONNode root;
 root.set_object_arena(@a);
 JSONNode* name = (JSONNode*)root.object_set_new_arena("name\0", @a);
-name.set_string_arena("Flux\0", @a);
+name.set_string_arena("IDEKA\0", @a);
 byte* out = serialize_arena(@root, @a, 128);
 print(out);
 arena_destroy(@a);
@@ -2914,19 +2914,19 @@ arena_destroy(@a);
 
 ---
 
-### matrices.fx
+### matrices.idk
 
 **Purpose**: 3×3, 4×4, and 5×5 matrix mathematics
 
 **Namespace**: `standard::matrices`
 
-**Guard macro**: `FLUX_STANDARD_MATRICES`
+**Guard macro**: `IDEKA_STANDARD_MATRICES`
 
-**Dependencies**: `types.fx`, `vectors.fx`
+**Dependencies**: `types.idk`, `vectors.idk`
 
 #### Structures
 
-```flux
+```IDEKA
 struct Mat3 { float m00..m22; };   // Row-major 3×3
 struct Mat4 { float m00..m33; };   // Row-major 4×4
 struct Mat5 { float m00..m44; };   // Row-major 5×5
@@ -2935,7 +2935,7 @@ struct Mat5 { float m00..m44; };   // Row-major 5×5
 #### Mat3 API
 
 **Construction**:
-```flux
+```IDEKA
 def mat3_zero() -> Mat3
 def mat3_identity() -> Mat3
 def mat3_from_rows(Vec3 r0, Vec3 r1, Vec3 r2) -> Mat3
@@ -2944,7 +2944,7 @@ def mat3_diagonal(Vec3 d) -> Mat3
 ```
 
 **Arithmetic**:
-```flux
+```IDEKA
 def mat3_add(Mat3 a, Mat3 b) -> Mat3
 def mat3_sub(Mat3 a, Mat3 b) -> Mat3
 def mat3_mul(Mat3 a, Mat3 b) -> Mat3
@@ -2953,7 +2953,7 @@ def mat3_mul_vec3(Mat3 m, Vec3 v) -> Vec3
 ```
 
 **Properties**:
-```flux
+```IDEKA
 def mat3_trace(Mat3 m) -> float
 def mat3_determinant(Mat3 m) -> float
 def mat3_transpose(Mat3 m) -> Mat3
@@ -2965,7 +2965,7 @@ def mat3_frobenius_norm(Mat3 m) -> float
 ```
 
 **Transforms**:
-```flux
+```IDEKA
 def mat3_scale_uniform(float s) -> Mat3
 def mat3_scale(Vec3 s) -> Mat3
 def mat3_rotation_x(float angle) -> Mat3
@@ -2978,7 +2978,7 @@ def mat3_rotation_axis_angle(Vec3 axis, float angle) -> Mat3
 
 Mirrors the Mat3 API with Vec4 variants, plus:
 
-```flux
+```IDEKA
 def mat4_submatrix(Mat4 m, i32 i, i32 j) -> Mat3
 def mat4_rotation_plane(i32 axis1, i32 axis2, float angle) -> Mat4
 def mat4_perspective(float fovy_rad, float aspect, float near_z, float far_z, Mat4* out) -> void
@@ -2991,21 +2991,21 @@ Mirrors Mat3/Mat4 for 5×5 matrices. Construction, arithmetic, trace, determinan
 
 ---
 
-### fourier.fx
+### fourier.idk
 
 **Purpose**: Discrete and Fast Fourier Transforms
 
 **Namespace**: `standard::math::fourier`
 
-**Guard macro**: `FLUX_FOURIER`
+**Guard macro**: `IDEKA_FOURIER`
 
-**Dependencies**: `types.fx`, `math.fx`, `memory.fx`
+**Dependencies**: `types.idk`, `math.idk`, `memory.idk`
 
-**Note**: Requires a `Complex` struct (re/im double fields) to be defined before use — typically provided by `math.fx` or the calling module.
+**Note**: Requires a `Complex` struct (re/im double fields) to be defined before use — typically provided by `math.idk` or the calling module.
 
 #### Complex Number Helpers
 
-```flux
+```IDEKA
 def complex_add(Complex* result, Complex* a, Complex* b) -> void
 def complex_sub(Complex* result, Complex* a, Complex* b) -> void
 def complex_mul(Complex* result, Complex* a, Complex* b) -> void
@@ -3016,7 +3016,7 @@ def complex_from_polar(Complex* result, double mag, double phase) -> void
 
 #### Transform Functions
 
-```flux
+```IDEKA
 // Naive O(N²) DFT
 def dft(Complex* out, Complex* xin, i32 n) -> void
 def idft(Complex* out, Complex* xin, i32 n) -> void   // Inverse DFT (unnormalized)
@@ -3028,7 +3028,7 @@ def ifft(Complex* buf, i32 n) -> void   // In-place, inverse (unnormalized)
 
 #### Utilities
 
-```flux
+```IDEKA
 def is_power_of_two(i32 n) -> bool
 def next_power_of_two(i32 n) -> i32
 def fft_alloc(i32 n) -> Complex*         // fmalloc n Complex structs
@@ -3037,8 +3037,8 @@ def fft_magnitude(double* mag, Complex* buf, i32 n) -> void
 ```
 
 **Example**:
-```flux
-#import "fourier.fx";
+```IDEKA
+#import "fourier.idk";
 using standard::math::fourier;
 
 i32 n = 512;
@@ -3052,21 +3052,21 @@ ffree((u64)buf);
 
 ---
 
-### physics.fx
+### physics.idk
 
 **Purpose**: Rigid body and soft body physics engine
 
 **Namespace**: `standard::physics`
 
-**Guard macro**: `FLUX_PHYSICS`
+**Guard macro**: `IDEKA_PHYSICS`
 
-**Dependencies**: `types.fx`, `math.fx`, `vectors.fx`, `matrices.fx`
+**Dependencies**: `types.idk`, `math.idk`, `vectors.idk`, `matrices.idk`
 
 #### Rigid Body
 
 ##### Structures
 
-```flux
+```IDEKA
 struct SphereCollider { Vec3 center; float radius; };
 struct AABBCollider   { Vec3 half_extents; };
 struct PlaneCollider  { Vec3 normal; float dist; };
@@ -3090,7 +3090,7 @@ struct Quat           { float x, y, z, w; };
 
 ##### Quaternion Math
 
-```flux
+```IDEKA
 def quat_identity() -> Quat
 def quat_mul(Quat a, Quat b) -> Quat
 def quat_integrate(Quat* q, Vec3 omega, float dt) -> void
@@ -3100,7 +3100,7 @@ def quat_to_mat3(Quat q) -> Mat3
 
 ##### Body Construction
 
-```flux
+```IDEKA
 def body_init_sphere(RigidBody* b, Vec3 pos, float radius, float mass) -> void
 def body_init_aabb(RigidBody* b, Vec3 pos, Vec3 half_extents, float mass) -> void
 def body_init_plane(RigidBody* b, Vec3 normal, float dist) -> void
@@ -3108,7 +3108,7 @@ def body_init_plane(RigidBody* b, Vec3 normal, float dist) -> void
 
 ##### World API
 
-```flux
+```IDEKA
 def world_init(PhysWorld* w, i32 body_cap, i32 contact_cap) -> void
 def world_destroy(PhysWorld* w) -> void
 def world_set_gravity(PhysWorld* w, Vec3 g) -> void
@@ -3127,7 +3127,7 @@ def world_step(PhysWorld* w, float dt, i32 iteration_count) -> void
 
 ##### Structures
 
-```flux
+```IDEKA
 struct SoftParticle { Vec3 pos, vel, force; float mass, inv_mass, damping; bool pinned; };
 struct SoftSpring   { i32 a, b, kind; float rest_len, stiffness, damping; };
 struct SoftBody     { SoftParticle* particles; SoftSpring* springs; i32 pcap, scap, pcount, scount; };
@@ -3140,7 +3140,7 @@ Spring kinds: `SOFT_SPRING_STRUCTURAL = 0`, `SOFT_SPRING_SHEAR = 1`, `SOFT_SPRIN
 
 ##### SoftBody API
 
-```flux
+```IDEKA
 def softbody_alloc(SoftBody* sb, i32 pcap, i32 scap) -> void
 def softbody_free(SoftBody* sb) -> void
 def sb_add_particle(SoftBody* sb, Vec3 pos, float mass, float damping) -> i32
@@ -3153,7 +3153,7 @@ def sb_resolve_sphere(SoftBody* sb, Vec3 sphere_pos, float radius, float restitu
 
 ##### SoftWorld API
 
-```flux
+```IDEKA
 def softworld_init(SoftWorld* sw, i32 body_cap) -> void
 def softworld_destroy(SoftWorld* sw) -> void
 def softworld_set_gravity(SoftWorld* sw, Vec3 g) -> void
@@ -3174,8 +3174,8 @@ def softworld_add_blob(SoftWorld* sw, ...) -> i32
 ```
 
 **Example**:
-```flux
-#import "physics.fx";
+```IDEKA
+#import "physics.idk";
 using standard::physics;
 
 PhysWorld pw;
@@ -3189,21 +3189,21 @@ world_destroy(@pw);
 
 ---
 
-### tensors.fx
+### tensors.idk
 
 **Purpose**: Generic N-dimensional tensor library
 
 **Namespace**: `standard::tensors`
 
-**Guard macro**: `FLUX_STANDARD_TENSORS`
+**Guard macro**: `IDEKA_STANDARD_TENSORS`
 
-**Dependencies**: `types.fx`, `memory.fx`, `math.fx`
+**Dependencies**: `types.idk`, `memory.idk`, `math.idk`
 
 **Maximum rank**: 8 (configurable via `TENSOR_MAX_RANK`)
 
 #### Structures
 
-```flux
+```IDEKA
 struct TensorShape { size_t dims[TENSOR_MAX_RANK]; size_t strides[TENSOR_MAX_RANK]; size_t rank; };
 
 object Tensor<T>     { /* owns heap-allocated element buffer */ };
@@ -3212,7 +3212,7 @@ object TensorView<T> { /* non-owning window into a Tensor */ };
 
 #### Construction
 
-```flux
+```IDEKA
 def tensor_make<T>(size_t* shape, size_t rank) -> Tensor<T>*          // Zero-filled
 def tensor_from_data<T>(T* data, size_t* shape, size_t rank) -> Tensor<T>*
 def tensor_scalar<T>(T value) -> Tensor<T>*                            // Rank-0
@@ -3222,7 +3222,7 @@ def tensor_matrix<T>(T* data, size_t rows, size_t cols) -> Tensor<T>* // Rank-2,
 
 #### Element Access
 
-```flux
+```IDEKA
 def tensor_get<T>(Tensor<T>* t, size_t* idx) -> T
 def tensor_set<T>(Tensor<T>* t, size_t* idx, T v) -> void
 def tensor_at<T>(Tensor<T>* t, size_t flat) -> T
@@ -3231,7 +3231,7 @@ def tensor_put<T>(Tensor<T>* t, size_t flat, T v) -> void
 
 #### Arithmetic (element-wise, broadcast-safe)
 
-```flux
+```IDEKA
 def tensor_add<T>(Tensor<T>* a, Tensor<T>* b) -> Tensor<T>*
 def tensor_sub<T>(Tensor<T>* a, Tensor<T>* b) -> Tensor<T>*
 def tensor_mul<T>(Tensor<T>* a, Tensor<T>* b) -> Tensor<T>*
@@ -3243,7 +3243,7 @@ def tensor_neg<T>(Tensor<T>* a) -> Tensor<T>*
 
 #### Reductions
 
-```flux
+```IDEKA
 def tensor_sum<T>(Tensor<T>* t) -> T
 def tensor_product<T>(Tensor<T>* t) -> T
 def tensor_min<T>(Tensor<T>* t) -> T
@@ -3254,7 +3254,7 @@ def tensor_mean_d(Tensor<double>* t) -> double
 
 #### Shape Manipulation
 
-```flux
+```IDEKA
 def tensor_reshape<T>(Tensor<T>* t, size_t* new_shape, size_t new_rank) -> Tensor<T>*
 def tensor_transpose<T>(Tensor<T>* t) -> Tensor<T>*
 def tensor_permute<T>(Tensor<T>* t, size_t* axes) -> Tensor<T>*
@@ -3265,7 +3265,7 @@ def tensor_expand_dims<T>(Tensor<T>* t, size_t axis) -> Tensor<T>*
 
 #### Linear Algebra
 
-```flux
+```IDEKA
 def tensor_matmul_f(Tensor<float>* a, Tensor<float>* b) -> Tensor<float>*
 def tensor_matmul_d(Tensor<double>* a, Tensor<double>* b) -> Tensor<double>*
 def tensor_dot_f(Tensor<float>* a, Tensor<float>* b) -> float
@@ -3276,7 +3276,7 @@ def tensor_outer_d(Tensor<double>* a, Tensor<double>* b) -> Tensor<double>*
 
 #### Utilities
 
-```flux
+```IDEKA
 def tensor_copy<T>(Tensor<T>* t) -> Tensor<T>*
 def tensor_fill<T>(Tensor<T>* t, T value) -> void
 def tensor_equal<T>(Tensor<T>* a, Tensor<T>* b) -> bool
@@ -3288,22 +3288,22 @@ def tensor_print_shape(Tensor<void>* t) -> void
 
 ---
 
-### autograd.fx
+### autograd.idk
 
 **Purpose**: Tape-based reverse-mode automatic differentiation
 
 **Namespace**: `standard` (operates on `Tensor<float>`)
 
-**Guard macro**: `FLUX_STANDARD_AUTOGRAD`
+**Guard macro**: `IDEKA_STANDARD_AUTOGRAD`
 
-**Dependencies**: `types.fx`, `memory.fx`, `math.fx`
+**Dependencies**: `types.idk`, `memory.idk`, `math.idk`
 
 **Description**:  
 Records every differentiable operation onto a `Tape` during the forward pass. Calling `backward(@tape, @loss)` walks the tape in reverse and accumulates gradients into each `GradTensor.grad` buffer. One `fmalloc` at `Tape` initialization; no per-op heap allocation.
 
 #### Key Constants
 
-```flux
+```IDEKA
 AG_MAX_INPUTS  = 2    // Max inputs per op node
 AG_NO_PRODUCER = -1   // Sentinel for leaf tensors
 
@@ -3315,7 +3315,7 @@ AG_OP_SCALE=9, AG_OP_NEG=10
 
 #### Structures
 
-```flux
+```IDEKA
 struct GradTensor
 {
     float* vals;   // Forward values (owned)
@@ -3343,7 +3343,7 @@ object Tape
 
 Each function records an op on the tape and returns a new `GradTensor`:
 
-```flux
+```IDEKA
 def gt_init(GradTensor* gt, Tape* tape, float* data, size_t rows, size_t cols) -> void
 def grad_add(Tape* tape, GradTensor* a, GradTensor* b) -> GradTensor
 def grad_sub(Tape* tape, GradTensor* a, GradTensor* b) -> GradTensor
@@ -3359,15 +3359,15 @@ def grad_neg(Tape* tape, GradTensor* x) -> GradTensor
 
 #### Backward Pass
 
-```flux
+```IDEKA
 def backward(Tape* tape, GradTensor* loss) -> void
 ```
 
 Walks the tape in reverse, calling each op's backward function to accumulate gradients. After `backward`, `a.grad` and `b.grad` contain `dL/dA` and `dL/dB` respectively.
 
 **Example**:
-```flux
-#import "autograd.fx";
+```IDEKA
+#import "autograd.idk";
 
 Tape tape((size_t)512);
 GradTensor a, b, c;
@@ -3381,19 +3381,19 @@ backward(@tape, @c);
 
 ---
 
-### raytracing.fx
+### raytracing.idk
 
 **Purpose**: Physically-based path tracer
 
 **Namespace**: `raytracer`
 
-**Guard macro**: `FLUX_RAYTRACING`
+**Guard macro**: `IDEKA_RAYTRACING`
 
-**Dependencies**: `types.fx`, `math.fx`, `vectors.fx`, `memory.fx`, `allocators.fx`, `random.fx`
+**Dependencies**: `types.idk`, `math.idk`, `vectors.idk`, `memory.idk`, `allocators.idk`, `random.idk`
 
 #### Material Types
 
-```flux
+```IDEKA
 RT_MAT_LAMBERTIAN = 0   // Diffuse
 RT_MAT_METAL      = 1   // Specular with fuzz
 RT_MAT_DIELECTRIC = 2   // Glass/refraction
@@ -3402,7 +3402,7 @@ RT_MAT_EMISSIVE   = 3   // Light source
 
 #### Primitive Types
 
-```flux
+```IDEKA
 RT_PRIM_SPHERE   = 0
 RT_PRIM_TRIANGLE = 1
 RT_PRIM_PLANE    = 2
@@ -3410,7 +3410,7 @@ RT_PRIM_PLANE    = 2
 
 #### Key Structures
 
-```flux
+```IDEKA
 struct RTMaterial { i32 kind; Vec3 albedo; float fuzz, ior, emission_strength; };
 struct RTRay      { Vec3 origin, direction; };
 struct RTHit      { Vec3 point, normal; float t; bool front_face; RTMaterial mat; };
@@ -3423,7 +3423,7 @@ struct RTCamera   { /* origin, lower_left, horizontal, vertical, lens */ };
 
 #### Material Constructors
 
-```flux
+```IDEKA
 def mat_lambertian(Vec3 albedo) -> RTMaterial
 def mat_metal(Vec3 albedo, float fuzz) -> RTMaterial
 def mat_dielectric(float ior) -> RTMaterial
@@ -3432,7 +3432,7 @@ def mat_emissive(Vec3 colour, float strength) -> RTMaterial
 
 #### Scene Building
 
-```flux
+```IDEKA
 def rt_scene_init(RTScene* s, i32 initial_cap) -> void
 def rt_scene_free(RTScene* s) -> void
 def rt_scene_add_sphere(RTScene* s, Vec3 center, float radius, RTMaterial mat) -> i32
@@ -3443,7 +3443,7 @@ def bvh_build(RTScene* s) -> void    // Build BVH after adding all geometry
 
 #### Camera
 
-```flux
+```IDEKA
 def rt_camera_init(RTCamera* cam, Vec3 lookfrom, Vec3 lookat, Vec3 up,
                    float vfov, float aspect, float aperture, float focus_dist) -> void
 def rt_camera_get_ray(RTCamera* cam, float s, float t, PCG32* rng) -> RTRay
@@ -3451,7 +3451,7 @@ def rt_camera_get_ray(RTCamera* cam, float s, float t, PCG32* rng) -> RTRay
 
 #### Rendering
 
-```flux
+```IDEKA
 // Render full image into caller-supplied u32 (0xAARRGGBB) pixel buffer
 def rt_render(RTScene* s, RTCamera* cam, u32* buf,
               i32 width, i32 height, i32 samples_per_pixel, i32 max_depth) -> void
@@ -3466,8 +3466,8 @@ def rt_write_ppm(u32* buf, i32 width, i32 height, byte* path) -> bool
 ```
 
 **Example**:
-```flux
-#import "raytracing.fx";
+```IDEKA
+#import "raytracing.idk";
 using raytracer;
 
 RTScene scene;
@@ -3486,39 +3486,39 @@ ffree((u64)buf);
 
 ---
 
-### raycasting.fx
+### raycasting.idk
 
 **Purpose**: 2.5D tile-based raycaster (Wolfenstein / DOOM style)
 
 **Namespace**: `raycaster`
 
-**Guard macro**: `FLUX_RAYCASTING`
+**Guard macro**: `IDEKA_RAYCASTING`
 
-**Dependencies**: `types.fx`, `math.fx`, `vectors.fx`, `memory.fx`, `allocators.fx`
+**Dependencies**: `types.idk`, `math.idk`, `vectors.idk`, `memory.idk`, `allocators.idk`
 
 **Coordinate system**: +X = East, +Y = North. Angle 0 = facing East, increases counter-clockwise.
 
 #### Tile Flags
 
-```flux
+```IDEKA
 RC_TILE_EMPTY = 0, RC_TILE_SOLID = 1, RC_TILE_DOOR = 2, RC_TILE_TRANS = 4
 ```
 
 #### Wall Face IDs
 
-```flux
+```IDEKA
 RC_FACE_NONE=0, RC_FACE_X_POS=1, RC_FACE_X_NEG=2, RC_FACE_Y_POS=3, RC_FACE_Y_NEG=4
 ```
 
 #### Render Pass Flags
 
-```flux
+```IDEKA
 RC_PASS_SKY=1, RC_PASS_WALLS=2, RC_PASS_FLOOR=4, RC_PASS_SPRITES=8, RC_PASS_ALL=15
 ```
 
 #### Key Structures
 
-```flux
+```IDEKA
 struct RCTile          { i32 type, tex_id; u32 tint; float alpha; };
 struct RCMap           { RCTile* cells; i32 width, height; RCTexturePalette* palette; };
 struct RCTexture       { u32* pixels; i32 width, height; };
@@ -3535,7 +3535,7 @@ struct RCScene         { RCMap* map; RCPlayer* player; RCCamera* cam;
 
 #### Map Management
 
-```flux
+```IDEKA
 def rc_map_init(RCMap* m, i32 width, i32 height) -> void
 def rc_map_free(RCMap* m) -> void
 def rc_map_get(RCMap* m, i32 x, i32 y) -> RCTile
@@ -3545,7 +3545,7 @@ def rc_map_set_solid(RCMap* m, i32 x, i32 y, i32 tex, u32 tint) -> void
 
 #### Player and Camera
 
-```flux
+```IDEKA
 def rc_player_init(RCPlayer* p, float x, float y, float angle) -> void
 def rc_camera_init(RCCamera* cam, float fov_deg, i32 sw, i32 sh, float view_dist) -> void
 def rc_camera_sync(RCCamera* cam, RCPlayer* p) -> void
@@ -3555,7 +3555,7 @@ def rc_player_turn(RCPlayer* p, float delta_rad) -> void
 
 #### Texture Palette
 
-```flux
+```IDEKA
 def rc_palette_init(RCTexturePalette* pal, i32 initial_cap) -> void
 def rc_palette_free(RCTexturePalette* pal) -> void
 def rc_palette_add(RCTexturePalette* pal, u32* pixels, i32 w, i32 h) -> i32
@@ -3564,7 +3564,7 @@ def rc_tex_sample(RCTexture* tex, float u, float v) -> u32
 
 #### Rendering
 
-```flux
+```IDEKA
 // Low-level passes (return depth buffer / fill buffer)
 def rc_cast_walls(RCMap* m, RCCamera* cam, float* depth_buf, RCWallHit* hit_buf) -> void
 def rc_cast_floor(RCMap* m, RCCamera* cam, float* depth_buf, u32* buf) -> void
@@ -3586,7 +3586,7 @@ def rc_scene_set_sprites(RCScene* scene, RCSprite* sprites, i32 count) -> void
 
 #### Color Utilities
 
-```flux
+```IDEKA
 def color_pack(float r, float g, float b) -> u32      // Pack [0,1] to 0xAARRGGBB
 def color_unpack(u32 argb, float* r, float* g, float* b) -> void
 def color_scale(u32 argb, float factor) -> u32
@@ -3596,8 +3596,8 @@ def fog_factor(float dist, float view_dist) -> float  // Linear fog [0,1]
 ```
 
 **Example**:
-```flux
-#import "raycasting.fx";
+```IDEKA
+#import "raycasting.idk";
 using raycaster;
 
 RCMap   map;    rc_map_init(@map, 24, 24);
@@ -3614,22 +3614,22 @@ ffree((u64)buf);
 
 ---
 
-### wasapi.fx
+### wasapi.idk
 
 **Purpose**: WASAPI loopback audio capture (Windows)
 
 **Platform**: Windows only
 
-**Guard macro**: `FLUX_WASAPI`
+**Guard macro**: `IDEKA_WASAPI`
 
-**Dependencies**: `types.fx`, `windows.fx`
+**Dependencies**: `types.idk`, `windows.idk`
 
 **Description**:  
 Captures system audio output as PCM float32 samples by calling COM vtable methods directly. No C++ headers required — vtable slot offsets are fixed by the Windows ABI. Supports both `WAVE_FORMAT_IEEE_FLOAT` and `WAVE_FORMAT_PCM` mix formats.
 
 #### Constants
 
-```flux
+```IDEKA
 AUDCLNT_SHAREMODE_SHARED    = 0u
 AUDCLNT_SHAREMODE_EXCLUSIVE = 1u
 AUDCLNT_STREAMFLAGS_LOOPBACK     = 0x00020000u
@@ -3642,7 +3642,7 @@ eRender = 0u, eCapture = 1u, eConsole = 0u
 
 #### Structures
 
-```flux
+```IDEKA
 struct GUID                 { u32 data1; u16 data2, data3; byte[8] data4; };
 struct WAVEFORMATEX         { u16 wFormatTag, nChannels; u32 nSamplesPerSec, nAvgBytesPerSec;
                               u16 nBlockAlign, wBitsPerSample, cbSize; };
@@ -3652,7 +3652,7 @@ struct WasapiCapture        { /* COM interface pointers, format, state */ };
 
 #### Public API
 
-```flux
+```IDEKA
 def wasapi_init_guids() -> void     // Must be called before wasapi_open
 def wasapi_open(WasapiCapture* ctx) -> bool
 def wasapi_close(WasapiCapture* ctx) -> void
@@ -3662,8 +3662,8 @@ def wasapi_read_samples(WasapiCapture* ctx, float* out_buf, u32 max_frames) -> u
 `wasapi_open` initializes COM, creates the `MMDeviceEnumerator`, activates the default render endpoint for loopback, and starts the stream. `wasapi_read_samples` drains available packet buffers and converts PCM to float32 if necessary. Returns the number of frames written to `out_buf`.
 
 **Example**:
-```flux
-#import "wasapi.fx";
+```IDEKA
+#import "wasapi.idk";
 
 WasapiCapture cap;
 wasapi_init_guids();
@@ -3675,20 +3675,20 @@ wasapi_close(@cap);
 
 ---
 
-### oglgraphing.fx
+### oglgraphing.idk
 
 **Purpose**: OpenGL-backed 2D and 3D graphing
 
 **Namespace**: `standard::oglgraphing`
 
-**Dependencies**: `opengl.fx`, `math.fx`
+**Dependencies**: `opengl.idk`, `math.idk`
 
 **Description**:  
-Mirrors the API of `graphing.fx` exactly, replacing `Canvas*` with implicit global GL state and DWORD colors with float RGB. Coordinates are mapped to NDC via an `OGLGraph` viewport descriptor.
+Mirrors the API of `graphing.idk` exactly, replacing `Canvas*` with implicit global GL state and DWORD colors with float RGB. Coordinates are mapped to NDC via an `OGLGraph` viewport descriptor.
 
 #### Structures
 
-```flux
+```IDEKA
 struct OGLGraph
 {
     i32   vp_x, vp_y, vp_w, vp_h;   // Viewport in pixels
@@ -3700,7 +3700,7 @@ struct OGLGraph3D { /* 3D axes + parametric data generators */ };
 
 #### 2D API
 
-```flux
+```IDEKA
 def ogl_begin_frame(OGLGraph* g) -> void
 def ogl_end_frame() -> void
 def draw_axes(OGLGraph* g, float r, float gv, float b, float line_width) -> void
@@ -3714,10 +3714,10 @@ def plot_bar(OGLGraph* g, float* xs, float* ys, i32 n,
 ```
 
 **Example**:
-```flux
-#import <standard.fx>;
-#import "opengl.fx";
-#import "oglgraphing.fx";
+```IDEKA
+#import <standard.idk>;
+#import "opengl.idk";
+#import "oglgraphing.idk";
 using standard::oglgraphing;
 
 // Inside render loop:
@@ -3733,16 +3733,16 @@ ogl_end_frame();
 
 ---
 
-### datautils.fx
+### datautils.idk
 
-**Purpose**: Low-level byte writer utilities (used internally by `detour.fx`)
+**Purpose**: Low-level byte writer utilities (used internally by `detour.idk`)
 
 **Description**:  
 Free functions for writing x86-64 JMP stubs and comparing/copying raw byte buffers. Not namespaced; intended for direct use by patching and instrumentation code.
 
 #### Functions
 
-```flux
+```IDEKA
 def write_jmp_indirect(ulong dst) -> void
     // Write a 6-byte RIP-relative indirect JMP (FF 25 00 00 00 00) at dst.
     // Caller must write the 8-byte absolute target at dst+6.
@@ -3762,22 +3762,22 @@ def fill_buf(byte* buf, int len, byte val) -> void
 
 ---
 
-### datetime.fx
+### datetime.idk
 
 **Purpose**: Calendar date and time library
 
 **Namespace**: `standard::datetime`
 
-**Guard macro**: `FLUX_DATETIME`
+**Guard macro**: `IDEKA_DATETIME`
 
-**Dependencies**: `types.fx`, `timing.fx`
+**Dependencies**: `types.idk`, `timing.idk`
 
 **Description**:  
 Provides calendar arithmetic, wall-clock access, epoch conversion, formatting, and ISO 8601 parsing. All allocation is on the caller's stack; no heap use. Cross-platform: uses `GetSystemTimeAsFileTime`/`GetLocalTime` on Windows and `clock_gettime` on Linux/macOS.
 
 #### Structures
 
-```flux
+```IDEKA
 struct DateTime
 {
     i32 year;
@@ -3796,14 +3796,14 @@ struct Duration  { i64 total_ms; };   // signed millisecond interval
 
 #### Wall-Clock Access
 
-```flux
+```IDEKA
 def dt_now_utc()   -> DateTime   // Current UTC time
 def dt_now_local() -> DateTime   // Current local time (platform TZ)
 ```
 
 #### Epoch Conversion (Unix epoch = 1970-01-01 00:00:00 UTC)
 
-```flux
+```IDEKA
 def dt_from_unix_ms(i64 ms)         -> DateTime
 def dt_to_unix_ms(DateTime* dt)     -> i64
 def dt_from_unix_sec(i64 s)         -> DateTime
@@ -3812,7 +3812,7 @@ def dt_to_unix_sec(DateTime* dt)    -> i64
 
 #### Arithmetic
 
-```flux
+```IDEKA
 def dt_add_ms(DateTime* dt, i64 ms)           -> DateTime
 def dt_add_days(DateTime* dt, i64 days)        -> DateTime
 def dt_diff_ms(DateTime* a, DateTime* b)       -> i64   // a - b
@@ -3821,7 +3821,7 @@ def dt_diff_days(DateTime* a, DateTime* b)     -> i64
 
 #### Predicates
 
-```flux
+```IDEKA
 def dt_is_leap(int year)                       -> bool
 def dt_day_of_week(DateTime* dt)               -> int   // 0=Sun .. 6=Sat
 def dt_day_of_year(DateTime* dt)               -> int   // 1..366
@@ -3830,7 +3830,7 @@ def dt_days_in_month(int year, int month)      -> int
 
 #### Comparison
 
-```flux
+```IDEKA
 def dt_cmp(DateTime* a, DateTime* b)  -> int    // <0 a<b, 0 equal, >0 a>b
 def dt_eq(DateTime* a, DateTime* b)   -> bool
 def dt_lt(DateTime* a, DateTime* b)   -> bool
@@ -3840,7 +3840,7 @@ def dt_lt(DateTime* a, DateTime* b)   -> bool
 
 All format functions write into a caller-supplied buffer and return the number of characters written (excluding the null terminator), or `0` if `cap` is insufficient.
 
-```flux
+```IDEKA
 def dt_format_iso(DateTime* dt, byte* buf, int cap)     -> int
     // "YYYY-MM-DDTHH:MM:SS.mmmZ"  — requires cap >= 25
 
@@ -3856,7 +3856,7 @@ def dt_format_rfc1123(DateTime* dt, byte* buf, int cap) -> int
 
 #### Parsing
 
-```flux
+```IDEKA
 def dt_parse_iso(byte* s, DateTime* out) -> bool
 ```
 
@@ -3871,7 +3871,7 @@ Returns `false` if the string is malformed or out-of-range.
 
 #### Duration Helpers
 
-```flux
+```IDEKA
 def dur_from_ms(i64 ms)       -> Duration
 def dur_seconds(Duration* d)  -> i64    // total seconds (truncated)
 def dur_minutes(Duration* d)  -> i64    // total minutes (truncated)
@@ -3886,9 +3886,9 @@ def dur_hr_part(Duration* d)  -> i64    // 0-23
 ```
 
 **Example**:
-```flux
-#import <standard.fx>;
-#import "datetime.fx";
+```IDEKA
+#import <standard.idk>;
+#import "datetime.idk";
 using standard::datetime;
 
 def main() -> int
@@ -3904,22 +3904,22 @@ def main() -> int
 
 ---
 
-### xml.fx
+### xml.idk
 
 **Purpose**: XML parse, build, and serialize library
 
 **Namespace**: `xml`
 
-**Guard macro**: `FLUX_XML`
+**Guard macro**: `IDEKA_XML`
 
-**Dependencies**: `standard.fx`, `allocators.fx`
+**Dependencies**: `standard.idk`, `allocators.idk`
 
 **Description**:  
 A recursive descent XML parser and serializer backed entirely by an `Arena` allocator. The caller owns one `Arena` and passes it into every API call; a single `arena_destroy()` releases the entire document tree. UTF-8 source is assumed; no BOM handling. Namespace prefixes are kept verbatim (no resolution).
 
 #### Node Type Constants
 
-```flux
+```IDEKA
 const int XML_ELEMENT = 0;   // Element node (has tag, attrs, children)
 const int XML_TEXT    = 1;   // Text content node
 const int XML_COMMENT = 2;   // <!-- ... --> comment
@@ -3931,7 +3931,7 @@ Maximum nesting depth: `XML_MAX_DEPTH` (default 256).
 
 #### Structures
 
-```flux
+```IDEKA
 struct XmlAttr
 {
     byte* name, value;
@@ -3962,7 +3962,7 @@ struct XmlNode
 
 #### Parsing
 
-```flux
+```IDEKA
 def xml_parse(byte* src, int len, Arena* a) -> XmlNode*
     // Parse src (len bytes of UTF-8 XML) using arena a.
     // Returns the root element, or null on parse error / OOM.
@@ -3973,7 +3973,7 @@ DTD declarations (`<!DOCTYPE ...`) are skipped.
 
 #### Node Accessors
 
-```flux
+```IDEKA
 def xml_child_count(XmlNode* n)               -> size_t
 def xml_child(XmlNode* n, size_t i)           -> XmlNode*
 def xml_attr_count(XmlNode* n)                -> size_t
@@ -3983,7 +3983,7 @@ def xml_first_child_tag(XmlNode* n, byte* tag) -> XmlNode* // null if not found
 
 #### Building
 
-```flux
+```IDEKA
 def xml_new_element(Arena* a, byte* tag)                        -> XmlNode*
 def xml_new_text(Arena* a, byte* text)                          -> XmlNode*
 def xml_new_comment(Arena* a, byte* text)                       -> XmlNode*
@@ -3995,7 +3995,7 @@ def xml_append_child(XmlNode* parent, Arena* a, XmlNode* child) -> bool
 
 #### Serialization
 
-```flux
+```IDEKA
 def xml_serialize(XmlNode* node, Arena* a, int init_cap) -> byte*
     // Serialize with "<?xml version="1.0" encoding="UTF-8"?>" declaration.
     // init_cap is the initial buffer guess in bytes (512 is a safe default).
@@ -4008,9 +4008,9 @@ def xml_serialize_fragment(XmlNode* node, Arena* a, int init_cap) -> byte*
 Output uses 2-space indentation. Attribute values and text content are XML-escaped (`<`, `>`, `&`, `"`, `'`). Elements with no children emit a self-closing tag (`/>`).
 
 **Example**:
-```flux
-#import <standard.fx>;
-#import <xml.fx>;
+```IDEKA
+#import <standard.idk>;
+#import <xml.idk>;
 
 using standard::io::console,
       xml;
@@ -4040,22 +4040,22 @@ def main() -> int
 
 ---
 
-### csv.fx
+### csv.idk
 
 **Purpose**: CSV parse and write library
 
 **Namespace**: `csv`
 
-**Guard macro**: `FLUX_CSV`
+**Guard macro**: `IDEKA_CSV`
 
-**Dependencies**: `standard.fx`, `ffifio.fx`, `allocators.fx`
+**Dependencies**: `standard.idk`, `ffifio.idk`, `allocators.idk`
 
 **Description**:  
 RFC 4180 compliant CSV parser and serializer. Supports configurable delimiters, quoted fields (double-quote escape `""`), and CRLF/LF/CR line endings. All field strings are individually heap-allocated (`fmalloc`); call `csv_free` when done.
 
 #### Structures
 
-```flux
+```IDEKA
 struct CsvRow
 {
     byte** fields;   // Array of null-terminated field strings (heap-owned)
@@ -4073,7 +4073,7 @@ struct CsvTable
 
 #### Parsing
 
-```flux
+```IDEKA
 def csv_parse_buf(byte* buf, int len, byte delim, CsvTable* out) -> bool
     // Parse a CSV buffer already in memory.
     // delim is typically ','.  Returns false on allocation failure.
@@ -4085,7 +4085,7 @@ def csv_parse_file(byte* path, byte delim, CsvTable* out) -> bool
 
 #### Field Access
 
-```flux
+```IDEKA
 def csv_field(CsvTable* t, int row, int col) -> byte*
     // Return the field at (row, col), both zero-based.
     // Returns a null pointer if either index is out of range.
@@ -4093,7 +4093,7 @@ def csv_field(CsvTable* t, int row, int col) -> byte*
 
 #### Writing
 
-```flux
+```IDEKA
 def csv_write_file(byte* path, CsvTable* t, byte delim) -> bool
     // Serialize the table back to a file.
     // Fields are automatically quoted when they contain the delimiter,
@@ -4102,16 +4102,16 @@ def csv_write_file(byte* path, CsvTable* t, byte delim) -> bool
 
 #### Cleanup
 
-```flux
+```IDEKA
 def csv_free(CsvTable* t) -> void
     // Release every field string, every CsvRow, and the row-pointer array.
     // Does not free the CsvTable struct itself (it may be stack-allocated).
 ```
 
 **Example**:
-```flux
-#import <standard.fx>;
-#import <csv.fx>;
+```IDEKA
+#import <standard.idk>;
+#import <csv.idk>;
 
 using standard::io::console,
       csv;
@@ -4146,22 +4146,22 @@ def main() -> int
 
 ---
 
-### encodings.fx
+### encodings.idk
 
 **Purpose**: Binary-to-text encoding and URL percent-encoding
 
 **Namespace**: `standard::encoding`
 
-**Guard macro**: `FLUX_STANDARD_ENCODING`
+**Guard macro**: `IDEKA_STANDARD_ENCODING`
 
-**Dependencies**: `types.fx`
+**Dependencies**: `types.idk`
 
 **Description**:  
 Stack-only (no heap allocation) encode/decode routines for Hex, Base32, Base58, Base64, Base64 URL-safe, and URL percent-encoding. All functions return the number of bytes written to `dst`, or `-1` if `dst_cap` is insufficient or the input is malformed. Use the `*_len` helpers to compute safe upper bounds before calling encode/decode.
 
 #### Hex
 
-```flux
+```IDEKA
 def hex_encode_len(int src_len) -> int
     // Returns 2 * src_len.
 
@@ -4177,7 +4177,7 @@ def hex_decode(byte* src, int src_len, byte* dst, int dst_cap) -> int
 
 #### Base32 (RFC 4648, alphabet A-Z 2-7)
 
-```flux
+```IDEKA
 def base32_encode_len(int src_len, bool pad) -> int
 def base32_decode_len(int src_len) -> int
 
@@ -4192,7 +4192,7 @@ def base32_decode(byte* src, int src_len, byte* dst, int dst_cap) -> int
 
 Alphabet: `123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz`
 
-```flux
+```IDEKA
 def base58_encode_len(int src_len) -> int
 
 def base58_encode(byte* src, int src_len, byte* dst, int dst_cap) -> int
@@ -4201,7 +4201,7 @@ def base58_decode(byte* src, int src_len, byte* dst, int dst_cap) -> int
 
 #### Base64 (RFC 4648 standard)
 
-```flux
+```IDEKA
 def base64_encode_len(int src_len, bool pad) -> int
 def base64_decode_len(int src_len) -> int
 
@@ -4216,7 +4216,7 @@ def base64_decode(byte* src, int src_len, byte* dst, int dst_cap) -> int
 
 Uses `-` instead of `+` and `_` instead of `/`.
 
-```flux
+```IDEKA
 def base64url_encode(byte* src, int src_len, byte* dst, int dst_cap, bool pad) -> int
 def base64url_decode(byte* src, int src_len, byte* dst, int dst_cap) -> int
 ```
@@ -4225,7 +4225,7 @@ def base64url_decode(byte* src, int src_len, byte* dst, int dst_cap) -> int
 
 Unreserved characters (`A-Z a-z 0-9 - _ . ~`) pass through unchanged. All other bytes are encoded as `%XX` (uppercase hex). `+` is **not** used for spaces; space encodes as `%20`.
 
-```flux
+```IDEKA
 def url_encode_len(byte* src, int src_len) -> int
     // Returns src_len * 3 (worst-case upper bound).
 
@@ -4236,8 +4236,8 @@ def url_decode(byte* src, int src_len, byte* dst, int dst_cap) -> int
 ```
 
 **Example**:
-```flux
-#import <standard.fx>, <encodings.fx>;
+```IDEKA
+#import <standard.idk>, <encodings.idk>;
 
 using standard::encoding;
 
@@ -4266,121 +4266,121 @@ def main() -> int
 
 To use the standard library:
 
-```flux
-#import <standard.fx>;
+```IDEKA
+#import <standard.idk>;
 ```
 
-This automatically imports via `runtime.fx`:
-- Type definitions (`types.fx`)
-- OS detection (`sys.fx`)
-- Memory management (`memory.fx`, `allocators.fx`)
-- I/O operations (`io.fx`)
-- File I/O via FFI (`ffifio.fx`)
-- String utilities (`string_utilities.fx`)
-- Raw builtins (`string_object_raw.fx`, `file_object_raw.fx`)
+This automatically imports via `runtime.idk`:
+- Type definitions (`types.idk`)
+- OS detection (`sys.idk`)
+- Memory management (`memory.idk`, `allocators.idk`)
+- I/O operations (`io.idk`)
+- File I/O via FFI (`ffifio.idk`)
+- String utilities (`string_utilities.idk`)
+- Raw builtins (`string_object_raw.idk`, `file_object_raw.idk`)
 
 ### Selective Imports
 
 Extended libraries must be imported explicitly:
 
-```flux
+```IDEKA
 // Types only
-#import <types.fx>;
+#import <types.idk>;
 
 // Math
-#import <math.fx>;
+#import <math.idk>;
 
 // Collections
-#import <collections.fx>;
+#import <collections.idk>;
 
 // Vectors
-#import <vectors.fx>;
+#import <vectors.idk>;
 
-// Threading (pulls in atomics.fx automatically)
-#import <threading.fx>;
+// Threading (pulls in atomics.idk automatically)
+#import <threading.idk>;
 
 // Timing
-#import <timing.fx>;
+#import <timing.idk>;
 
 // Networking (Windows)
-#import <net_windows.fx>;   // or: #import "socket_object_raw.fx";
+#import <net_windows.idk>;   // or: #import "socket_object_raw.idk";
 
 // Cryptography
-#import <cryptography.fx>;
+#import <cryptography.idk>;
 
 // CRC32
-#import <crc32.fx>;
+#import <crc32.idk>;
 
 // Arbitrary precision
-#import <decimal.fx>;  // also pulls in bigint.fx
+#import <decimal.idk>;  // also pulls in bigint.idk
 
 // TUI console control
-#import <console.fx>;
+#import <console.idk>;
 
 // ANSI text formatting
-#import <format.fx>;
+#import <format.idk>;
 
 // OpenGL (Windows)
-#import <opengl.fx>;
+#import <opengl.idk>;
 
 // OpenGL graphing
-#import <oglgraphing.fx>;
+#import <oglgraphing.idk>;
 
 // Win32 GUI
-#import <windows.fx>;
+#import <windows.idk>;
 
 // WASAPI audio capture (Windows)
-#import <wasapi.fx>;
+#import <wasapi.idk>;
 
 // Inline hooking (Windows x86-64)
-#import <detour.fx>;
+#import <detour.idk>;
 
 // .env file loader
-#import <dotenv.fx>;
+#import <dotenv.idk>;
 
 // JSON
-#import <json.fx>;
+#import <json.idk>;
 
 // Matrix math (Mat3/Mat4/Mat5)
-#import <matrices.fx>;
+#import <matrices.idk>;
 
 // Fourier (DFT/FFT)
-#import <fourier.fx>;
+#import <fourier.idk>;
 
 // Physics engine
-#import <physics.fx>;
+#import <physics.idk>;
 
 // Tensors
-#import <tensors.fx>;
+#import <tensors.idk>;
 
 // Automatic differentiation
-#import <autograd.fx>;
+#import <autograd.idk>;
 
 // Path tracer
-#import <raytracing.fx>;
+#import <raytracing.idk>;
 
 // 2.5D raycaster
-#import <raycasting.fx>;
+#import <raycasting.idk>;
 
 // DateTime / calendar
-#import <datetime.fx>;
+#import <datetime.idk>;
 
 // XML (arena-backed)
-#import <xml.fx>;
+#import <xml.idk>;
 
 // CSV (RFC 4180)
-#import <csv.fx>;
+#import <csv.idk>;
 
 // Binary-to-text encodings
-#import <encodings.fx>;
+#import <encodings.idk>;
 ```
 
 ### Namespace Usage
 
 After importing, use namespaces explicitly or with `using`:
 
-```flux
-#import <standard.fx>;
+```IDEKA
+#import <standard.idk>;
 
 // Explicit namespace
 int result = standard::math::abs(-42);
@@ -4390,26 +4390,26 @@ using standard::math;
 int result = abs(-42);
 
 // Collections
-#import <collections.fx>;
+#import <collections.idk>;
 using standard::collections;
 Array myArray;
 
 // Vectors
-#import <vectors.fx>;
+#import <vectors.idk>;
 using standard::vectors;
 Vec3 position = vec3(1.0, 2.0, 3.0);
 ```
 
 ### Conditional Compilation
 
-```flux
+```IDEKA
 // Disable runtime
-#def FLUX_RUNTIME 0;
-#import <standard.fx>;
+#def IDEKA_RUNTIME 0;
+#import <standard.idk>;
 
 // Guard against double imports
-#ifndef FLUX_STANDARD_MEMORY
-#import <memory.fx>;
+#ifndef IDEKA_STANDARD_MEMORY
+#import <memory.idk>;
 #endif;
 ```
 
@@ -4417,23 +4417,23 @@ Vec3 position = vec3(1.0, 2.0, 3.0);
 
 ## Security
 
-### shadowstack.fx
+### shadowstack.idk
 
 **Purpose**: Opt-in per-function shadow stack protection against stack smashing attacks
 
 **Namespace**: `standard::runtime::shadow_stack`
 
-**Guard macro**: `FLUX_SHADOW_STACK_IMPL`
+**Guard macro**: `IDEKA_SHADOW_STACK_IMPL`
 
 **Platform**: Windows x86-64 only (current)
 
 #### Activation
 
-Define `FLUX_SHADOW_STACK` before importing `standard.fx`. The runtime will automatically initialize the shadow stack page on startup and tear it down on exit.
+Define `IDEKA_SHADOW_STACK` before importing `standard.idk`. The runtime will automatically initialize the shadow stack page on startup and tear it down on exit.
 
-```flux
-#def FLUX_SHADOW_STACK 1;
-#import <standard.fx>;
+```IDEKA
+#def IDEKA_SHADOW_STACK 1;
+#import <standard.idk>;
 ```
 
 #### Design
@@ -4444,7 +4444,7 @@ The canary is seeded at startup from two hardware entropy sources (RDTSC and `Qu
 
 #### FSSFrame
 
-```flux
+```IDEKA
 struct FSSFrame
 {
     u64 canary,     // Random canary XOR'd with the saved return address
@@ -4464,32 +4464,32 @@ struct FSSFrame
 
 #### Core API
 
-```flux
+```IDEKA
 def fss_init() -> bool
 ```
 Allocates the shadow page via `VirtualAlloc` and seeds `FSS_CANARY`. Called automatically by `FRTStartup`. Returns `false` if allocation fails.
 
-```flux
+```IDEKA
 def fss_push(u64 ra, u64 rsp) -> u64
 ```
 Pushes a frame. `ra` is stored XOR'd with `FSS_CANARY`. Returns the slot index.
 
-```flux
+```IDEKA
 def fss_verify(u64 slot, u64 ra, u64 rsp) -> bool
 ```
 Verifies a previously pushed frame. Checks the canary field, decodes and compares the return address, and validates `rsp`. Returns `false` if any check fails.
 
-```flux
+```IDEKA
 def fss_pop() -> void
 ```
 Pops and zeroes the top frame so it cannot be replayed.
 
-```flux
+```IDEKA
 def fss_abort() -> void
 ```
 Prints a fatal diagnostic and terminates immediately via `ExitProcess(1)`. Declared `noreturn`.
 
-```flux
+```IDEKA
 def fss_teardown() -> void
 ```
 Frees the shadow page. Called automatically by `FRTStartup` on exit.
@@ -4498,7 +4498,7 @@ Frees the shadow page. Called automatically by `FRTStartup` on exit.
 
 The primary programmer interface. Apply to any function handling untrusted input or performing buffer manipulation.
 
-```flux
+```IDEKA
 def vulnerable(byte* buf, int len) -> void : FSS_Protect_Frame
 {
     // ...
@@ -4530,9 +4530,9 @@ Because `FSS_Protect_Frame` is a pre-contract, `__fss_canary_local` is declared 
 
 #### Example
 
-```flux
-#def FLUX_SHADOW_STACK 1;
-#import <standard.fx>;
+```IDEKA
+#def IDEKA_SHADOW_STACK 1;
+#import <standard.idk>;
 using standard::io::console;
 
 def parse_input(byte* buf, int len) -> bool : FSS_Protect_Frame
@@ -4551,7 +4551,7 @@ def main() -> int
 
 #### Notes
 
-- `FLUX_SHADOW_STACK` must be defined before `#import <standard.fx>`
+- `IDEKA_SHADOW_STACK` must be defined before `#import <standard.idk>`
 - The shadow page holds up to 170 frames; deeply recursive protected functions will hit this limit
 - Windows x86-64 only; requires a frame pointer (`%rbp`) to be present
 - `FSS_CANARY` is a process-lifetime global — direct writes to it from any code path are also detected
@@ -4574,7 +4574,7 @@ def main() -> int
 
 Preprocessor definitions set automatically at compile time:
 
-```flux
+```IDEKA
 #ifdef __WINDOWS__
     // Windows-specific code
 #endif;
@@ -4608,7 +4608,7 @@ Preprocessor definitions set automatically at compile time:
 - File I/O through both Windows API and C FFI
 - Supports wide character handling (`wchar`)
 - Command-line arguments parsed from `GetCommandLineW()`
-- Exclusive home of: `net_windows.fx`, `console.fx`, `opengl.fx`, `windows.fx`, `detour.fx`, `sharedmemory.fx`
+- Exclusive home of: `net_windows.idk`, `console.idk`, `opengl.idk`, `windows.idk`, `detour.idk`, `sharedmemory.idk`
 - Entry point: `FRTStartup()`
 
 #### Linux
@@ -4631,15 +4631,15 @@ Preprocessor definitions set automatically at compile time:
 
 ### Memory Management
 
-1. **Prefer `fmalloc`/`ffree` for Flux programs** — the standard heap allocator is more efficient than `malloc`/`free` in most cases:
-   ```flux
+1. **Prefer `fmalloc`/`ffree` for IDEKA programs** — the standard heap allocator is more efficient than `malloc`/`free` in most cases:
+   ```IDEKA
    byte* buf = (byte*)fmalloc(256);
    // ... use buf ...
    ffree((u64)buf);
    ```
 
 2. **Check allocation results**:
-   ```flux
+   ```IDEKA
    void* buffer = malloc(1024);
    if (buffer == NULL)
    {
@@ -4654,18 +4654,18 @@ Preprocessor definitions set automatically at compile time:
 ### String Handling
 
 1. **Always null-terminate strings** — the compiler does not do this automatically:
-   ```flux
+   ```IDEKA
    print("Hello, World!\0");
    ```
 
 2. **Use appropriate buffer sizes**:
-   ```flux
+   ```IDEKA
    byte[32] buffer;
    i32str(value, @buffer[0]);
    ```
 
 3. **Free dynamically allocated strings**:
-   ```flux
+   ```IDEKA
    byte* result = concat(s1, s2);
    print(result);
    free(result);
@@ -4674,7 +4674,7 @@ Preprocessor definitions set automatically at compile time:
 ### File I/O
 
 1. **Always check file handles**:
-   ```flux
+   ```IDEKA
    i64 fd = open_read("file.txt\0");
    if (fd == INVALID_FD)
    {
@@ -4683,14 +4683,14 @@ Preprocessor definitions set automatically at compile time:
    ```
 
 2. **Close files when done**:
-   ```flux
+   ```IDEKA
    close(fd);
    ```
 
 ### Error Handling
 
 1. **Check return values**:
-   ```flux
+   ```IDEKA
    int result = write_file("data.txt\0", buffer, size);
    if (result < 0)
    {
@@ -4700,7 +4700,7 @@ Preprocessor definitions set automatically at compile time:
    ```
 
 2. **Use try-catch for critical sections**:
-   ```flux
+   ```IDEKA
    try
    {
        // Risky operation
@@ -4716,30 +4716,30 @@ Preprocessor definitions set automatically at compile time:
 ## Version History
 
 **Version 2.3** (June 2026)
-- `datetime.fx` added: calendar date/time, duration arithmetic, wall-clock access, ISO 8601 / RFC 1123 formatting and parsing (`standard::datetime`)
-- `xml.fx` added: arena-backed recursive descent XML parser, builder, and serializer with entity decoding and pretty-print output (`xml` namespace)
-- `csv.fx` added: RFC 4180 CSV parser and writer with configurable delimiter, quoted-field support, and `csv_free` cleanup (`csv` namespace)
-- `encodings.fx` added: stack-only Hex, Base32, Base58, Base64, Base64URL, and URL percent-encoding routines (`standard::encoding`)
+- `datetime.idk` added: calendar date/time, duration arithmetic, wall-clock access, ISO 8601 / RFC 1123 formatting and parsing (`standard::datetime`)
+- `xml.idk` added: arena-backed recursive descent XML parser, builder, and serializer with entity decoding and pretty-print output (`xml` namespace)
+- `csv.idk` added: RFC 4180 CSV parser and writer with configurable delimiter, quoted-field support, and `csv_free` cleanup (`csv` namespace)
+- `encodings.idk` added: stack-only Hex, Base32, Base58, Base64, Base64URL, and URL percent-encoding routines (`standard::encoding`)
 
 **Version 2.2** (June 2026)
-- `shadowstack.fx` added: opt-in per-function shadow stack protection for Windows x86-64
+- `shadowstack.idk` added: opt-in per-function shadow stack protection for Windows x86-64
 
 **Version 2.1** (May 2026)
 - Documentation updated to better reflect library contents
-- `net_windows.fx` clarified: full networking now lives in `socket_object_raw.fx` under `standard::sockets`; `net_windows.fx` is a thin glue file
-- `allocators.fx` expanded: now documents `stdstack`, `stdpool`, `stdarena`, and `stdring` in addition to `stdheap`
-- `collections.fx` expanded: `HashMapInt`, `Deque`, `RingBuffer`, `HashSet`, `HashSetInt`, and `MinHeap` added
-- New library sections added: `crc32.fx`, `dotenv.fx`, `json.fx`, `matrices.fx`, `fourier.fx`, `physics.fx`, `tensors.fx`, `autograd.fx`, `raytracing.fx`, `raycasting.fx`, `wasapi.fx`, `oglgraphing.fx`, `datautils.fx`
+- `net_windows.idk` clarified: full networking now lives in `socket_object_raw.idk` under `standard::sockets`; `net_windows.idk` is a thin glue file
+- `allocators.idk` expanded: now documents `stdstack`, `stdpool`, `stdarena`, and `stdring` in addition to `stdheap`
+- `collections.idk` expanded: `HashMapInt`, `Deque`, `RingBuffer`, `HashSet`, `HashSetInt`, and `MinHeap` added
+- New library sections added: `crc32.idk`, `dotenv.idk`, `json.idk`, `matrices.idk`, `fourier.idk`, `physics.idk`, `tensors.idk`, `autograd.idk`, `raytracing.idk`, `raycasting.idk`, `wasapi.idk`, `oglgraphing.idk`, `datautils.idk`
 
 **Version 2.0** (March 2026)
 - `red` prefix removed from all library filenames
-- `redstandard.fx` retired; `standard.fx` now directly imports `runtime.fx`
-- `red_string_utilities.fx` renamed to `string_utilities.fx`
-- `memory.fx` expanded: native Linux/macOS `malloc`/`free` via `mmap`; `standard::memory` namespace with utilities, aligned allocation, reference counting, and byte manipulation helpers
-- `allocators.fx` promoted to primary heap allocator (`fmalloc`/`ffree`/`frealloc`); initialized by `FRTStartup()`
-- `sys.fx` formalized with `standard::system` namespace and `CURRENT_OS` detection
-- `ntoh`/`hton` helpers in `types.fx` marked deprecated
-- New libraries added: `atomics.fx`, `threading.fx`, `timing.fx`, `random.fx`, `cryptography.fx`, `bigint.fx`, `decimal.fx`, `net_windows.fx`, `uuid.fx`, `sharedmemory.fx`, `format.fx`, `console.fx`, `graphing.fx`, `opengl.fx`, `windows.fx`, `detour.fx`, `operators.fx`
+- `redstandard.idk` retired; `standard.idk` now directly imports `runtime.idk`
+- `red_string_utilities.idk` renamed to `string_utilities.idk`
+- `memory.idk` expanded: native Linux/macOS `malloc`/`free` via `mmap`; `standard::memory` namespace with utilities, aligned allocation, reference counting, and byte manipulation helpers
+- `allocators.idk` promoted to primary heap allocator (`fmalloc`/`ffree`/`frealloc`); initialized by `FRTStartup()`
+- `sys.idk` formalized with `standard::system` namespace and `CURRENT_OS` detection
+- `ntoh`/`hton` helpers in `types.idk` marked deprecated
+- New libraries added: `atomics.idk`, `threading.idk`, `timing.idk`, `random.idk`, `cryptography.idk`, `bigint.idk`, `decimal.idk`, `net_windows.idk`, `uuid.idk`, `sharedmemory.idk`, `format.idk`, `console.idk`, `graphing.idk`, `opengl.idk`, `windows.idk`, `detour.idk`, `operators.idk`
 
 **Version 1.0** (February 2026)
 - Initial reduced specification implementation
@@ -4753,14 +4753,14 @@ Preprocessor definitions set automatically at compile time:
 
 ## Contributing
 
-The Flux Standard Library is part of the Flux language project. For contributions, bug reports, or questions, please visit the [Flux Discord server](https://discord.gg/RAHjbYuNUc).
+The IDEKA Standard Library is part of the IDEKA language project. For contributions, bug reports, or questions, please visit the [IDEKA Discord server](https://discord.gg/RAHjbYuNUc).
 
 ---
 
 ## License
 
-This documentation describes the Flux Standard Library as part of the Flux programming language project.
+This documentation describes the IDEKA Standard Library as part of the IDEKA programming language project.
 
 ---
 
-*This documentation reflects the Flux standard library as of v2.3, June 2026. For the most up-to-date information, refer to the official Flux language repository and Discord community.*
+*This documentation reflects the IDEKA standard library as of v2.3, June 2026. For the most up-to-date information, refer to the official IDEKA language repository and Discord community.*

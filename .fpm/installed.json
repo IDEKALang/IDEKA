@@ -1,18 +1,18 @@
 {
   "test-pack": {
     "version": "0.0.1",
-    "entry": "test_pack.fx",
-    "file": "C:\\Users\\kvthw\\Flux\\.fpm\\packages\\test-pack\\test_pack.fx",
+    "entry": "test_pack.idk",
+    "file": "C:\\Users\\kvthw\\IDEKA\\.fpm\\packages\\test-pack\\test_pack.idk",
     "files": [
-      "C:\\Users\\kvthw\\Flux\\.fpm\\packages\\test-pack\\test_pack.fx"
+      "C:\\Users\\kvthw\\IDEKA\\.fpm\\packages\\test-pack\\test_pack.idk"
     ],
     "source": "remote"
   },
-  "flux-hotpatch-framework": {
+  "IDEKA-hotpatch-framework": {
     "version": "1.0.0",
-    "entry": "fhf.fx",
+    "entry": "fhf.idk",
     "files": [
-      "C:\\Users\\kvthw\\Flux\\.fpm\\packages\\fhf\\fhf.fx"
+      "C:\\Users\\kvthw\\IDEKA\\.fpm\\packages\\fhf\\fhf.idk"
     ],
     "source": "local"
   }

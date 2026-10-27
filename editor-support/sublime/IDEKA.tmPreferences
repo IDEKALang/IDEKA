@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>name</key>
+    <string>IDEKA Indentation</string>
+    <key>scope</key>
+    <string>source.IDEKA</string>
+    <key>settings</key>
+    <dict>        
+        <!-- Smart typing: when you type { and press enter, } stays at same level -->
+        <key>smartIndent</key>
+        <false/>
+    </dict>
+</dict>
+</plist>

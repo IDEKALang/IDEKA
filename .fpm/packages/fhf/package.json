@@ -1,31 +1,31 @@
 {
   "packages": {
-    "flux-hotpatch-framework": {
+    "IDEKA-hotpatch-framework": {
       "version": "1.0.0",
       "description": "Runtime hotpatching and detouring, function hooking, network support.",
       "path": "",
       "author": "Karac V. Thweatt",
-      "license": "https://github.com/kvthweatt/Flux/blob/main/LICENSE",
+      "license": "https://github.com/kvthweatt/IDEKA/blob/main/LICENSE",
       "entries": {
-        "entry": "fhf.fx",
-        "PatchBundleFormat": "fhf_bundle.fx",
-        "TrampolineManager": "fhf_tramp.fx",
-        "PatchEngine": "fhf_engine.fx",
-        "ThreadSuspensionLayer": "fhf_threads.fx",
-        "CLI-Tooling": "fhf_cli.fx",
-        "RemotePatchingLayer": "fhf_remote.fx",
-        "HotpatchRuntime": "fhf_runtime.fx",
-        "HotpatchCryptography": "fhf_crypto.fx",
-        "SymbolResolver": "fhf_sym.fx",
-        "HotpatchTypes": "fhf_types.fx"
+        "entry": "fhf.idk",
+        "PatchBundleFormat": "fhf_bundle.idk",
+        "TrampolineManager": "fhf_tramp.idk",
+        "PatchEngine": "fhf_engine.idk",
+        "ThreadSuspensionLayer": "fhf_threads.idk",
+        "CLI-Tooling": "fhf_cli.idk",
+        "RemotePatchingLayer": "fhf_remote.idk",
+        "HotpatchRuntime": "fhf_runtime.idk",
+        "HotpatchCryptography": "fhf_crypto.idk",
+        "SymbolResolver": "fhf_sym.idk",
+        "HotpatchTypes": "fhf_types.idk"
       },
       "dependencies": {
-        "flux-atomics": ">=1.0.0",
-        "flux-cryptography": ">=1.0.0",
-        "flux-memory": ">=1.0.2",
-        "flux-net-windows": ">=1.0.1",
-        "flux-standard": ">=1.0.0",
-        "flux-types": ">=1.0.0"
+        "IDEKA-atomics": ">=1.0.0",
+        "IDEKA-cryptography": ">=1.0.0",
+        "IDEKA-memory": ">=1.0.2",
+        "IDEKA-net-windows": ">=1.0.1",
+        "IDEKA-standard": ">=1.0.0",
+        "IDEKA-types": ">=1.0.0"
       }
     }
   }

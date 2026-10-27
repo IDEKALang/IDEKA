@@ -1,21 +1,21 @@
 # Installation
 Open Sublime Text. At the top navigation bar, locate **Preferences** and select **Browse Packages**.
 
-Create a new folder called **Flux**. Copy all files from `FluxLang/editor-support/sublime/` into the new **Flux** folder you just created in your Sublime Packages parent folder.
+Create a new folder called **IDEKA**. Copy all files from `IDEKALang/editor-support/sublime/` into the new **IDEKA** folder you just created in your Sublime Packages parent folder.
 
 ## Usage
-Open any Flux source file (`.fx` extension) and Sublime should do the rest!
+Open any IDEKA source file (`.idk` extension) and Sublime should do the rest!
 
 ----
 
-## Configuring builds with `Flux.sublime-build`
+## Configuring builds with `IDEKA.sublime-build`
 You will need to modify this file to make use of Sublime's built-in `CTRL+B` to compile feature.  
 Here's how to set it up:
 ```
 {
-    "shell_cmd": "python \"__YOUR_PATH_TO_FLUX_HERE__\" \"$file\"",
-    "working_dir": "__YOUR_PATH_TO_FLUX_HERE__",
-    "selector": "source.fx",
+    "shell_cmd": "python \"__YOUR_PATH_TO_IDEKA_HERE__\" \"$file\"",
+    "working_dir": "__YOUR_PATH_TO_IDEKA_HERE__",
+    "selector": "source.idk",
     
     "target": "exec",
     "quiet": false,
@@ -28,9 +28,9 @@ Here's how to set it up:
     },
     
     "windows": {
-        "shell_cmd": "chcp 65001 >nul && python \"__YOUR_PATH_TO_FLUX_HERE__\" \"$file\" 2>&1"
+        "shell_cmd": "chcp 65001 >nul && python \"__YOUR_PATH_TO_IDEKA_HERE__\" \"$file\" 2>&1"
     }
 }
 ```
 
-Simply replace all occurances of `__YOUR_PATH_TO_FLUX_HERE__`.
+Simply replace all occurances of `__YOUR_PATH_TO_IDEKA_HERE__`.

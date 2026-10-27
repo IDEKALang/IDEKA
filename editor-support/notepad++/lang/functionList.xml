@@ -1,6 +1,6 @@
-<association id= "flux.function" userDefinedLangName="Flux" ext=".fx" />
+<association id= "IDEKA.function" userDefinedLangName="IDEKA" ext=".idk" />
 <parsers>
-    <parser id="flux_function" displayName="Flux">
+    <parser id="IDEKA_function" displayName="IDEKA">
         <function
             mainExpr="^\s*def\s+[a-zA-Z_][a-zA-Z0-9_]*\s*\([^\)]*\)\s*-&gt;\s*[a-zA-Z_][a-zA-Z0-9_]*"
             displayMode="$functionName">

@@ -2,7 +2,7 @@
   "auto_complete_triggers": [
     {
       "characters": "{",
-      "selector": "source.flux"
+      "selector": "source.IDEKA"
     }
   ],
   "auto_match_enabled": true,
@@ -14,7 +14,7 @@
   "match_brackets_square": false,
   "match_brackets": true,
   
-  // Custom bracket matching for Flux
+  // Custom bracket matching for IDEKA
   "bracket_indent": true,
   "bracket_indent_next_line_pattern": ""
 }

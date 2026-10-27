@@ -1,8 +1,8 @@
-# Flux Borrow Checker (FBC) — Complete Reference
+# IDEKA Borrow Checker (FBC) — Complete Reference
 
 **Source file:** `fbc.py`  
 **Copyright:** 2026 Karac V. Thweatt  
-**Role:** Static pointer safety analysis for the Flux programming language.
+**Role:** Static pointer safety analysis for the IDEKA programming language.
 
 ---
 
@@ -35,7 +35,7 @@
 
 ## 1. Overview
 
-The Flux Borrow Checker (`fbc.py`) is a standalone static analysis tool that performs pointer safety checks on Flux (`.fx`) source files. It is not part of the compiler's hot path — it is run separately, either by a developer or in CI, to catch memory safety bugs before they reach runtime.
+The IDEKA Borrow Checker (`fbc.py`) is a standalone static analysis tool that performs pointer safety checks on IDEKA (`.idk`) source files. It is not part of the compiler's hot path — it is run separately, either by a developer or in CI, to catch memory safety bugs before they reach runtime.
 
 **What it checks (by default):**
 
@@ -66,10 +66,10 @@ The Flux Borrow Checker (`fbc.py`) is a standalone static analysis tool that per
     │
     ▼
 collect_fx_files()
-    │  one or more .fx paths
+    │  one or more .idk paths
     ▼
 parse_file()  ──────────────────────────────────────────────────────────┐
-    │  FXPreprocessor → FluxLexer → FluxParser → fast.Program           │
+    │  FXPreprocessor → IDEKALexer → IDEKAParser → fast.Program           │
     │                                                                   │
     ▼                                                              line_map[]
 CallGraph.collect()
@@ -111,12 +111,12 @@ BorrowChecker.run()
 
 ### Installation requirements
 
-`fbc.py` must be run from the project root alongside `fxc.py`. It discovers the compiler modules automatically:
+`fbc.py` must be run from the project root alongside `idkc.py`. It discovers the compiler modules automatically:
 
 ```
 <project_root>/
   fbc.py
-  fxc.py
+  idkc.py
   src/compiler/       ← preferred location
     fparser.py
     flexer.py
@@ -138,10 +138,10 @@ python fbc.py <file_or_directory> [options]
 
 **Check a single file:**
 ```
-python fbc.py src/main.fx
+python fbc.py src/main.idk
 ```
 
-**Check all .fx files in a directory:**
+**Check all .idk files in a directory:**
 ```
 python fbc.py src/
 ```
@@ -170,7 +170,7 @@ The FBC makes a single forward pass through the call graph starting from the ent
 
 **Pass ordering:**
 
-1. **Parse** -- all `.fx` files are preprocessed and parsed into ASTs.
+1. **Parse** -- all `.idk` files are preprocessed and parsed into ASTs.
 2. **Collect** -- the call graph is built by indexing all `FunctionDef` nodes.
 3. **Check** -- `BorrowChecker.run()` starts at the entry point and recursively visits every reachable function. Each function may be analysed multiple times if it is called with different argument site combinations (call contexts); it is only re-analysed when a new distinct context is seen.
 4. **Report** -- accumulated violations are line-remapped and printed.
@@ -211,7 +211,7 @@ Walks the top-level `fast.Program` and registers every non-prototype `FunctionDe
 
 ### Name mangling scheme
 
-FBC uses the same name mangling as the Flux compiler:
+FBC uses the same name mangling as the IDEKA compiler:
 
 | Source location | Mangled name |
 |---|---|
@@ -528,7 +528,7 @@ This module contains three classes: `PtrInfo`, `ScopeFrame`, and `AliasMap`, plu
 ```python
 @dataclass
 class PtrInfo:
-    var_name:    str   # the Flux variable name
+    var_name:    str   # the IDEKA variable name
     site:        str   # allocation site identity string
     mutable:     bool  # whether this is a mutable view of the site
     scope_depth: int   # depth of the scope frame where this pointer was declared
@@ -555,9 +555,9 @@ class Violation:
 
 ```
 [FBC] mutable_alias
-  src/main.fx:42  mutable alias violation on site 'heap:foo:17'
-  'p' -> heap:foo:17 (mutable) at src/main.fx:42
-  'q' -> heap:foo:17 (mutable) at src/main.fx:38
+  src/main.idk:42  mutable alias violation on site 'heap:foo:17'
+  'p' -> heap:foo:17 (mutable) at src/main.idk:42
+  'q' -> heap:foo:17 (mutable) at src/main.idk:38
 ```
 
 **Violation kinds:**
@@ -694,9 +694,9 @@ Prints all violations. When the list is empty, returns immediately without print
 
 ```
 [FBC error] mutable_alias
-  src/main.fx:42  mutable alias violation on site 'heap:foo:17'
-  'p' -> heap:foo:17 (mutable) at src/main.fx:42
-  'q' -> heap:foo:17 (mutable) at src/main.fx:38
+  src/main.idk:42  mutable alias violation on site 'heap:foo:17'
+  'p' -> heap:foo:17 (mutable) at src/main.idk:42
+  'q' -> heap:foo:17 (mutable) at src/main.idk:38
 ```
 
 Line 1 uses bold for `[FBC error]` or `[FBC warning]` and colours the kind string via `KIND_COLOR`. Line 2 uses cyan for the `file:line` location. Detail lines are dimmed. A blank line separates each violation.
@@ -708,11 +708,11 @@ Line 1 uses bold for `[FBC error]` or `[FBC warning]` and colours the kind strin
   {
     "kind":    "mutable_alias",
     "message": "mutable alias violation on site 'heap:foo:17'",
-    "file":    "src/main.fx",
+    "file":    "src/main.idk",
     "line":    42,
     "detail":  [
-      "'p' -> heap:foo:17 (mutable) at src/main.fx:42",
-      "'q' -> heap:foo:17 (mutable) at src/main.fx:38"
+      "'p' -> heap:foo:17 (mutable) at src/main.idk:42",
+      "'q' -> heap:foo:17 (mutable) at src/main.idk:38"
     ],
     "level":   "error"
   }
@@ -762,17 +762,17 @@ In `--json` mode, `print_summary` returns immediately without printing anything 
 
 ### `parse_file(path: str) -> (fast.Program, line_map)`
 
-Parses a single `.fx` file through the full compiler front-end pipeline:
+Parses a single `.idk` file through the full compiler front-end pipeline:
 
 1. **`FXPreprocessor`** — expands `#include`, `#def`, `#ifdef`, etc., producing a merged source string and a `line_map`.
-2. **`FluxLexer`** — tokenises the merged source.
-3. **`FluxParser`** — parses tokens into a `fast.Program` AST.
+2. **`IDEKALexer`** — tokenises the merged source.
+3. **`IDEKAParser`** — parses tokens into a `fast.Program` AST.
 
 `build_compiler_macros()` is called before preprocessing to populate platform detection macros (equivalent to what the compiler itself uses).
 
 ### `collect_fx_files(path: str) -> list[str]`
 
-If `path` is a file, returns `[path]`. If it is a directory, recursively finds all `*.fx` files with `rglob` and returns them sorted.
+If `path` is a file, returns `[path]`. If it is a directory, recursively finds all `*.idk` files with `rglob` and returns them sorted.
 
 ---
 
@@ -786,7 +786,7 @@ python fbc.py <target> [options]
 
 | Argument | Description |
 |---|---|
-| `target` | Path to a `.fx` file or a directory. If a directory, all `.fx` files found recursively are checked. |
+| `target` | Path to a `.idk` file or a directory. If a directory, all `.idk` files found recursively are checked. |
 
 ### Options
 
@@ -813,7 +813,7 @@ Informational lines (file count, function count) are written to stdout in normal
 |---|---|
 | `0` | No violations found, or `--warn` mode was used (violations may exist but are not errors). |
 | `1` | One or more violations found in default (error) mode. |
-| `2` | Invocation error: no `.fx` files found, no files could be parsed, or compiler modules could not be imported. |
+| `2` | Invocation error: no `.idk` files found, no files could be parsed, or compiler modules could not be imported. |
 
 ---
 
@@ -894,7 +894,7 @@ The thread spawn detector is heuristic-based (substring match on function name).
 
 ### Single merged line map
 
-When multiple `.fx` files are parsed, each goes through its own preprocessor and produces its own `line_map`. The FBC currently only uses the `line_map` from the first file. For multi-file projects where the second or later file's violations need accurate line remapping, the host should concatenate or merge the line maps appropriately before constructing `BorrowChecker`.
+When multiple `.idk` files are parsed, each goes through its own preprocessor and produces its own `line_map`. The FBC currently only uses the `line_map` from the first file. For multi-file projects where the second or later file's violations need accurate line remapping, the host should concatenate or merge the line maps appropriately before constructing `BorrowChecker`.
 
 ### Cycle prevention
 

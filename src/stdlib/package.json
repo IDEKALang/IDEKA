@@ -1,530 +1,530 @@
 {
-  "pack": "flux-stdlib",
+  "pack": "IDEKA-stdlib",
   "version": "1.0.0",
   "author": "Karac V. Thweatt",
   "license": "MIT",
-  "repository": "https://github.com/kvthweatt/Flux",
-  "base_url": "https://raw.githubusercontent.com/kvthweatt/Flux/main/src/stdlib",
+  "repository": "https://github.com/kvthweatt/IDEKA",
+  "base_url": "https://raw.githubusercontent.com/kvthweatt/IDEKA/main/src/stdlib",
   "packages": {
-    "flux-bigint": {
+    "IDEKA-bigint": {
       "version": "1.0.1",
-      "entry": "bigint.fx",
+      "entry": "bigint.idk",
       "path": "",
       "description": "Arbitrary precision integer arithmetic",
       "dependencies": {
-        "flux-math": ">=1.0.5"
+        "IDEKA-math": ">=1.0.5"
       }
     },
-    "flux-collections": {
+    "IDEKA-collections": {
       "version": "1.0.3",
-      "entry": "collections.fx",
+      "entry": "collections.idk",
       "path": "",
       "description": "Generic collections: lists, maps, sets, queues, stacks",
       "dependencies": {
-        "flux-memory": ">=1.0.2",
-        "flux-types": ">=1.0.0"
+        "IDEKA-memory": ">=1.0.2",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-console": {
+    "IDEKA-console": {
       "version": "1.0.0",
-      "entry": "console.fx",
+      "entry": "console.idk",
       "path": "",
       "description": "Console graphics utilties for TUI environments",
       "dependencies": {
-        "flux-types": ">=1.0.0"
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-cryptography": {
+    "IDEKA-cryptography": {
       "version": "1.0.1",
-      "entry": "cryptography.fx",
+      "entry": "cryptography.idk",
       "path": "",
       "description": "Cryptographic algorithms",
       "dependencies": {
-        "flux-bigint": ">=1.0.1",
-        "flux-types": ">=1.0.0"
+        "IDEKA-bigint": ">=1.0.1",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-csv": {
+    "IDEKA-csv": {
       "version": "1.0.0",
-      "entry": "csv.fx",
+      "entry": "csv.idk",
       "path": "",
       "description": "CSV parsing and utilities",
       "dependencies": {
-        "flux-allocators": ">=1.0.7",
-        "flux-ffifio": ">=1.0.0",
-        "flux-standard": ">=1.0.0"
+        "IDEKA-allocators": ">=1.0.7",
+        "IDEKA-ffifio": ">=1.0.0",
+        "IDEKA-standard": ">=1.0.0"
       }
     },
-    "flux-datetime": {
+    "IDEKA-datetime": {
       "version": "1.0.0",
-      "entry": "datetime.fx",
+      "entry": "datetime.idk",
       "path": "",
       "description": "Date and time formatting and utilities",
       "dependencies": {
-        "flux-timing": ">=1.0.2",
-        "flux-types": ">=1.0.0"
+        "IDEKA-timing": ">=1.0.2",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-decimal": {
+    "IDEKA-decimal": {
       "version": "1.0.1",
-      "entry": "decimal.fx",
+      "entry": "decimal.idk",
       "path": "",
       "description": "Arbitrary precision floating point arithmetic",
       "dependencies": {
-        "flux-bigint": ">=1.0.1"
+        "IDEKA-bigint": ">=1.0.1"
       }
     },
-    "flux-detour": {
+    "IDEKA-detour": {
       "version": "1.0.0",
-      "entry": "detour.fx",
+      "entry": "detour.idk",
       "path": "",
       "description": "Runtime function hooking and detouring",
       "dependencies": {
-        "flux-datautils": ">=1.0.0",
-        "flux-types": ">=1.0.0"
+        "IDEKA-datautils": ">=1.0.0",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-dotenv": {
+    "IDEKA-dotenv": {
       "version": "1.0.1",
-      "entry": "dotenv.fx",
+      "entry": "dotenv.idk",
       "path": "",
       "description": "Environment variable loading from .env files",
       "dependencies": {
-        "flux-standard": ">=1.0.0",
-        "flux-string-utilities": ">=1.0.3"
+        "IDEKA-standard": ">=1.0.0",
+        "IDEKA-string-utilities": ">=1.0.3"
       }
     },
-    "flux-format": {
+    "IDEKA-format": {
       "version": "1.0.0",
-      "entry": "format.fx",
+      "entry": "format.idk",
       "path": "",
       "description": "String formatting utilities",
       "dependencies": {
-        "flux-types": ">=1.0.0"
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-fourier": {
+    "IDEKA-fourier": {
       "version": "1.0.0",
-      "entry": "fourier.fx",
+      "entry": "fourier.idk",
       "path": "",
       "description": "Fast Fourier Transform",
       "dependencies": {
-        "flux-math": ">=1.0.5",
-        "flux-memory": ">=1.0.2",
-        "flux-types": ">=1.0.0"
+        "IDEKA-math": ">=1.0.5",
+        "IDEKA-memory": ">=1.0.2",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-graphing": {
+    "IDEKA-graphing": {
       "version": "1.0.0",
-      "entry": "graphing.fx",
+      "entry": "graphing.idk",
       "path": "",
       "description": "Graph data structures and algorithms",
       "dependencies": {
-        "flux-math": ">=1.0.5",
-        "flux-windows": ">=1.0.1"
+        "IDEKA-math": ">=1.0.5",
+        "IDEKA-windows": ">=1.0.1"
       }
     },
-    "flux-io": {
+    "IDEKA-io": {
       "version": "1.0.2",
-      "entry": "io.fx",
+      "entry": "io.idk",
       "path": "",
       "description": "ASM universal I/O (console, file)",
       "dependencies": {
-        "flux-sys": ">=1.0.0",
-        "flux-types": ">=1.0.0"
+        "IDEKA-sys": ">=1.0.0",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-json": {
+    "IDEKA-json": {
       "version": "1.0.1",
-      "entry": "json.fx",
+      "entry": "json.idk",
       "path": "",
       "description": "JSON parsing and serialization",
       "dependencies": {
-        "flux-allocators": ">=1.0.7",
-        "flux-standard": ">=1.0.0"
+        "IDEKA-allocators": ">=1.0.7",
+        "IDEKA-standard": ">=1.0.0"
       }
     },
-    "flux-linux": {
+    "IDEKA-linux": {
       "version": "1.0.0",
-      "entry": "linux.fx",
+      "entry": "linux.idk",
       "path": "",
       "description": "Linux platform bindings",
       "dependencies": {
-        "flux-types": ">=1.0.0"
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-math": {
+    "IDEKA-math": {
       "version": "1.0.5",
-      "entry": "math.fx",
+      "entry": "math.idk",
       "path": "",
       "description": "Math functions and constants, including complex numbers",
       "dependencies": {
-        "flux-types": ">=1.0.0"
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-matrices": {
+    "IDEKA-matrices": {
       "version": "1.0.0",
-      "entry": "matrices.fx",
+      "entry": "matrices.idk",
       "path": "",
       "description": "3D, 4D, and 5D matrix library",
       "dependencies": {
-        "flux-types": ">=1.0.0",
-        "flux-vectors": ">=1.0.1"
+        "IDEKA-types": ">=1.0.0",
+        "IDEKA-vectors": ">=1.0.1"
       }
     },
-    "flux-tensors": {
+    "IDEKA-tensors": {
       "version": "1.0.0",
-      "entry": "tensors.fx",
+      "entry": "tensors.idk",
       "path": "",
       "description": "N order tensor library",
       "dependencies": {
-        "flux-math": ">=1.0.5",
-        "flux-memory": ">=1.0.2",
-        "flux-types": ">=1.0.0"
+        "IDEKA-math": ">=1.0.5",
+        "IDEKA-memory": ">=1.0.2",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-net-linux": {
+    "IDEKA-net-linux": {
       "version": "1.0.0",
-      "entry": "net_linux.fx",
+      "entry": "net_linux.idk",
       "path": "",
       "description": "Networking for Linux",
       "dependencies": {
-        "flux-linux": ">=1.0.0",
-        "flux-memory": ">=1.0.2",
-        "flux-types": ">=1.0.0"
+        "IDEKA-linux": ">=1.0.0",
+        "IDEKA-memory": ">=1.0.2",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-net-windows": {
+    "IDEKA-net-windows": {
       "version": "1.0.1",
-      "entry": "net_windows.fx",
+      "entry": "net_windows.idk",
       "path": "",
       "description": "Networking for Windows",
       "dependencies": {
-        "flux-memory": ">=1.0.2",
-        "flux-sockets": ">=1.0.1",
-        "flux-types": ">=1.0.0"
+        "IDEKA-memory": ">=1.0.2",
+        "IDEKA-sockets": ">=1.0.1",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-opengl": {
+    "IDEKA-opengl": {
       "version": "1.0.1",
-      "entry": "opengl.fx",
+      "entry": "opengl.idk",
       "path": "",
       "description": "OpenGL bindings",
       "dependencies": {
-        "flux-matrices": ">=1.0.0",
-        "flux-windows": ">=1.0.1"
+        "IDEKA-matrices": ">=1.0.0",
+        "IDEKA-windows": ">=1.0.1"
       }
     },
-    "flux-physics": {
+    "IDEKA-physics": {
       "version": "1.0.1",
-      "entry": "physics.fx",
+      "entry": "physics.idk",
       "path": "",
       "description": "Rigid and soft body physics simulation",
       "dependencies": {
-        "flux-math": ">=1.0.5",
-        "flux-matrices": ">=1.0.0",
-        "flux-types": ">=1.0.0",
-        "flux-vectors": ">=1.0.1"
+        "IDEKA-math": ">=1.0.5",
+        "IDEKA-matrices": ">=1.0.0",
+        "IDEKA-types": ">=1.0.0",
+        "IDEKA-vectors": ">=1.0.1"
       }
     },
-    "flux-random": {
+    "IDEKA-random": {
       "version": "1.0.0",
-      "entry": "random.fx",
+      "entry": "random.idk",
       "path": "",
       "description": "Random number generation",
       "dependencies": {
-        "flux-types": ">=1.0.0"
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-raycasting": {
+    "IDEKA-raycasting": {
       "version": "1.0.0",
-      "entry": "raycasting.fx",
+      "entry": "raycasting.idk",
       "path": "",
       "description": "Raycasting primitives and utilities",
       "dependencies": {
-        "flux-allocators": ">=1.0.7",
-        "flux-math": ">=1.0.5",
-        "flux-matrices": ">=1.0.0",
-        "flux-memory": ">=1.0.2",
-        "flux-sys": ">=1.0.0",
-        "flux-threading": ">=1.0.0",
-        "flux-types": ">=1.0.0",
-        "flux-vectors": ">=1.0.1"
+        "IDEKA-allocators": ">=1.0.7",
+        "IDEKA-math": ">=1.0.5",
+        "IDEKA-matrices": ">=1.0.0",
+        "IDEKA-memory": ">=1.0.2",
+        "IDEKA-sys": ">=1.0.0",
+        "IDEKA-threading": ">=1.0.0",
+        "IDEKA-types": ">=1.0.0",
+        "IDEKA-vectors": ">=1.0.1"
       }
     },
-    "flux-raytracing": {
+    "IDEKA-raytracing": {
       "version": "1.0.0",
-      "entry": "raytracing.fx",
+      "entry": "raytracing.idk",
       "path": "",
       "description": "Raytracing primitives and utilities",
       "dependencies": {
-        "flux-allocators": ">=1.0.7",
-        "flux-math": ">=1.0.5",
-        "flux-memory": ">=1.0.2",
-        "flux-random": ">=1.0.0",
-        "flux-types": ">=1.0.0",
-        "flux-vectors": ">=1.0.1"
+        "IDEKA-allocators": ">=1.0.7",
+        "IDEKA-math": ">=1.0.5",
+        "IDEKA-memory": ">=1.0.2",
+        "IDEKA-random": ">=1.0.0",
+        "IDEKA-types": ">=1.0.0",
+        "IDEKA-vectors": ">=1.0.1"
       }
     },
-    "flux-rle": {
+    "IDEKA-rle": {
       "version": "1.0.0",
-      "entry": "rle.fx",
+      "entry": "rle.idk",
       "path": "",
       "description": "Run-length encoding compression",
       "dependencies": {
-        "flux-memory": ">=1.0.2",
-        "flux-types": ">=1.0.0"
+        "IDEKA-memory": ">=1.0.2",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-standard": {
+    "IDEKA-standard": {
       "version": "1.0.0",
-      "entry": "standard.fx",
+      "entry": "standard.idk",
       "path": "",
-      "description": "Standard import for any Flux program",
+      "description": "Standard import for any IDEKA program",
       "dependencies": {
-        "flux-runtime": ">=1.0.2"
+        "IDEKA-runtime": ">=1.0.2"
       }
     },
-    "flux-sys": {
+    "IDEKA-sys": {
       "version": "1.0.0",
-      "entry": "sys.fx",
+      "entry": "sys.idk",
       "path": "",
       "description": "Centralized system-specific API and ABI",
       "dependencies": {}
     },
-    "flux-tls": {
+    "IDEKA-tls": {
       "version": "1.3.0",
-      "entry": "tls.fx",
+      "entry": "tls.idk",
       "path": "",
       "description": "TLS 1.3",
       "dependencies": {
-        "flux-memory": ">=1.0.2",
-        "flux-sockets": ">=1.0.1",
-        "flux-types": ">=1.0.0"
+        "IDEKA-memory": ">=1.0.2",
+        "IDEKA-sockets": ">=1.0.1",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-types": {
+    "IDEKA-types": {
       "version": "1.0.0",
-      "entry": "types.fx",
+      "entry": "types.idk",
       "path": "",
       "description": "Common type definitions and aliases",
       "dependencies": {}
     },
-    "flux-uuid": {
+    "IDEKA-uuid": {
       "version": "1.0.0",
-      "entry": "uuid.fx",
+      "entry": "uuid.idk",
       "path": "",
       "description": "UUID generation",
       "dependencies": {
-        "flux-random": ">=1.0.0",
-        "flux-types": ">=1.0.0"
+        "IDEKA-random": ">=1.0.0",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-vectors": {
+    "IDEKA-vectors": {
       "version": "1.0.1",
-      "entry": "vectors.fx",
+      "entry": "vectors.idk",
       "path": "",
       "description": "Vector math (2D, 3D, 4D)",
       "dependencies": {
-        "flux-math": ">=1.0.5",
-        "flux-types": ">=1.0.0"
+        "IDEKA-math": ">=1.0.5",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-wasapi": {
+    "IDEKA-wasapi": {
       "version": "1.0.0",
-      "entry": "wasapi.fx",
+      "entry": "wasapi.idk",
       "path": "",
       "description": "Windows Audio Session API bindings",
       "dependencies": {
-        "flux-types": ">=1.0.0",
-        "flux-windows": ">=1.0.1"
+        "IDEKA-types": ">=1.0.0",
+        "IDEKA-windows": ">=1.0.1"
       }
     },
-    "flux-windows": {
+    "IDEKA-windows": {
       "version": "1.0.1",
-      "entry": "windows.fx",
+      "entry": "windows.idk",
       "path": "",
       "description": "Windows platform bindings",
       "dependencies": {
-        "flux-math": ">=1.0.5",
-        "flux-types": ">=1.0.0"
+        "IDEKA-math": ">=1.0.5",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-file": {
+    "IDEKA-file": {
       "version": "1.0.1",
-      "entry": "file_object_raw.fx",
+      "entry": "file_object_raw.idk",
       "path": "builtins",
       "description": "Raw file object",
       "dependencies": {
-        "flux-ffifio": ">=1.0.0",
-        "flux-types": ">=1.0.0"
+        "IDEKA-ffifio": ">=1.0.0",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-sockets": {
+    "IDEKA-sockets": {
       "version": "1.0.1",
-      "entry": "socket_object_raw.fx",
+      "entry": "socket_object_raw.idk",
       "path": "builtins",
       "description": "Raw socket object",
       "dependencies": {
-        "flux-io": ">=1.0.1",
-        "flux-net-windows": ">=1.0.1"
+        "IDEKA-io": ">=1.0.1",
+        "IDEKA-net-windows": ">=1.0.1"
       }
     },
-    "flux-string": {
+    "IDEKA-string": {
       "version": "1.0.4",
-      "entry": "string_object_raw.fx",
+      "entry": "string_object_raw.idk",
       "path": "builtins",
       "description": "Raw string object",
       "dependencies": {
-        "flux-io": ">=1.0.1",
-        "flux-string-utilities": ">=1.0.3"
+        "IDEKA-io": ">=1.0.1",
+        "IDEKA-string-utilities": ">=1.0.3"
       }
     },
-    "flux-allocators": {
+    "IDEKA-allocators": {
       "version": "1.0.8",
-      "entry": "allocators.fx",
+      "entry": "allocators.idk",
       "path": "runtime",
       "description": "Standard memory allocators",
       "dependencies": {
-        "flux-types": ">=1.0.0"
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-atomics": {
+    "IDEKA-atomics": {
       "version": "1.0.0",
-      "entry": "atomics.fx",
+      "entry": "atomics.idk",
       "path": "runtime",
       "description": "Atomic operations",
       "dependencies": {
-        "flux-types": ">=1.0.0"
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-ffifio": {
+    "IDEKA-ffifio": {
       "version": "1.0.0",
-      "entry": "ffifio.fx",
+      "entry": "ffifio.idk",
       "path": "runtime",
       "description": "FFI-based file I/O",
       "dependencies": {
-        "flux-io": ">=1.0.1",
-        "flux-types": ">=1.0.0"
+        "IDEKA-io": ">=1.0.1",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-memory": {
+    "IDEKA-memory": {
       "version": "1.0.3",
-      "entry": "memory.fx",
+      "entry": "memory.idk",
       "path": "runtime",
       "description": "Memory management primitives",
       "dependencies": {
-        "flux-allocators": ">=1.0.7",
-        "flux-types": ">=1.0.0"
+        "IDEKA-allocators": ">=1.0.7",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-operators": {
+    "IDEKA-operators": {
       "version": "1.0.0",
-      "entry": "operators.fx",
+      "entry": "operators.idk",
       "path": "runtime",
       "description": "Standard operators",
       "dependencies": {
-        "flux-types": ">=1.0.0"
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-runtime": {
+    "IDEKA-runtime": {
       "version": "1.0.2",
-      "entry": "runtime.fx",
+      "entry": "runtime.idk",
       "path": "runtime",
-      "description": "Flux runtime core",
+      "description": "IDEKA runtime core",
       "dependencies": {
-        "flux-file": ">=1.0.1",
-        "flux-string": ">=1.0.4",
-        "flux-exceptions": ">=1.0.0",
-        "flux-ffifio": ">=1.0.0",
-        "flux-io": ">=1.0.1",
-        "flux-memory": ">=1.0.2",
-        "flux-shadowstack": ">=1.0.0",
-        "flux-sys": ">=1.0.0",
-        "flux-timing": ">=1.0.2",
-        "flux-types": ">=1.0.0",
-        "flux-string-utilities": ">=1.0.3"
+        "IDEKA-file": ">=1.0.1",
+        "IDEKA-string": ">=1.0.4",
+        "IDEKA-exceptions": ">=1.0.0",
+        "IDEKA-ffifio": ">=1.0.0",
+        "IDEKA-io": ">=1.0.1",
+        "IDEKA-memory": ">=1.0.2",
+        "IDEKA-shadowstack": ">=1.0.0",
+        "IDEKA-sys": ">=1.0.0",
+        "IDEKA-timing": ">=1.0.2",
+        "IDEKA-types": ">=1.0.0",
+        "IDEKA-string-utilities": ">=1.0.3"
       }
     },
-    "flux-shadowstack": {
+    "IDEKA-shadowstack": {
       "version": "1.0.0",
-      "entry": "shadowstack.fx",
+      "entry": "shadowstack.idk",
       "path": "runtime",
       "description": "Stack protection",
       "dependencies": {
-        "flux-memory": ">=1.0.2",
-        "flux-types": ">=1.0.0"
+        "IDEKA-memory": ">=1.0.2",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-encodings": {
+    "IDEKA-encodings": {
       "version": "1.0.0",
-      "entry": "encodings.fx",
+      "entry": "encodings.idk",
       "path": "",
       "description": "Base 32/58/64, hex, and url encoding/decoding",
       "dependencies": {
-        "flux-types": ">=1.0.0"
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-exceptions": {
+    "IDEKA-exceptions": {
       "version": "1.0.0",
-      "entry": "exceptions.fx",
+      "entry": "exceptions.idk",
       "path": "runtime",
-      "description": "Flux runtime exceptions library",
+      "description": "IDEKA runtime exceptions library",
       "dependencies": {
-        "flux-types": ">=1.0.0"
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-sharedmemory": {
+    "IDEKA-sharedmemory": {
       "version": "1.0.0",
-      "entry": "sharedmemory.fx",
+      "entry": "sharedmemory.idk",
       "path": "runtime",
       "description": "Shared memory module for IPC",
       "dependencies": {
-        "flux-types": ">=1.0.0"
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-threading": {
+    "IDEKA-threading": {
       "version": "1.0.0",
-      "entry": "threading.fx",
+      "entry": "threading.idk",
       "path": "runtime",
       "description": "Thread creation and synchronization",
       "dependencies": {
-        "flux-atomics": ">=1.0.0",
-        "flux-types": ">=1.0.0"
+        "IDEKA-atomics": ">=1.0.0",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-timing": {
+    "IDEKA-timing": {
       "version": "1.0.2",
-      "entry": "timing.fx",
+      "entry": "timing.idk",
       "path": "runtime",
       "description": "High-resolution timers and sleep",
       "dependencies": {
-        "flux-sys": ">=1.0.0",
-        "flux-types": ">=1.0.0"
+        "IDEKA-sys": ">=1.0.0",
+        "IDEKA-types": ">=1.0.0"
       }
     },
-    "flux-datautils": {
+    "IDEKA-datautils": {
       "version": "1.0.0",
-      "entry": "datautils.fx",
+      "entry": "datautils.idk",
       "path": "utility",
       "description": "Data manipulation utilities",
       "dependencies": {}
     },
-    "flux-string-utilities": {
+    "IDEKA-string-utilities": {
       "version": "1.0.4",
-      "entry": "string_utilities.fx",
+      "entry": "string_utilities.idk",
       "path": "utility",
       "description": "String manipulation utilities",
       "dependencies": {}
     },
-    "flux-xml": {
+    "IDEKA-xml": {
       "version": "1.0.1",
-      "entry": "xml.fx",
+      "entry": "xml.idk",
       "path": "",
       "description": "XML parsing and utilities",
       "dependencies": {
-        "flux-allocators": ">=1.0.7",
-        "flux-standard": ">=1.0.0"
+        "IDEKA-allocators": ">=1.0.7",
+        "IDEKA-standard": ">=1.0.0"
       }
     }
   }

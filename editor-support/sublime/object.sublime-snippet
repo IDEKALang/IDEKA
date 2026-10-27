@@ -14,6 +14,6 @@
     ${4};
 };]]></content>
   <tabTrigger>object</tabTrigger>
-  <scope>source.flux</scope>
+  <scope>source.IDEKA</scope>
   <description>Define an object.</description>
 </snippet>

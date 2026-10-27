@@ -1,6 +1,6 @@
-# Flux Keyword Reference
+# IDEKA Keyword Reference
 
-Flux keywords are reserved, and cnanot be used as identifiers.  
+IDEKA keywords are reserved, and cnanot be used as identifiers.  
 This means you cannot do `int data;`, this is illegal.
 
 The goal of this document is to be like an old school language help, which provides a unique example usage of each keyword.  
@@ -12,7 +12,7 @@ Not all keywords have examples just yet.
 **`alignof`**
 Returns the alignment requirement of a type in bits.
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -42,7 +42,7 @@ Chopping a tree! 65 left!
 **`and`**
 Logical AND operator. Equivalent to `&`.
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -93,7 +93,7 @@ unsigned data{32} as u32;
 ---
 
 **`asm`**
-Inline assembly block. Use `volatile` to instruct the compiler to not touch your assembly or attempt to optimize it. Flux uses AT&T style ASM and blocks are followed by `inputs : outputs : clobbers`, 
+Inline assembly block. Use `volatile` to instruct the compiler to not touch your assembly or attempt to optimize it. IDEKA uses AT&T style ASM and blocks are followed by `inputs : outputs : clobbers`, 
 ```
 #ifdef __ARCH_ARM64__
             def mac_print(byte* msg, int x) -> void
@@ -192,16 +192,16 @@ char c = 'H';
 
 **`comptime`**  
 Compile-time programming is done in `comptime` blocks.  
-Everything inside is evaluated by the Flux Virtual Machine (FVM).  
+Everything inside is evaluated by the IDEKA Virtual Machine (FVM).  
 
-You can write any Flux code inside a `comptime` block. There are no restrictions on I/O. You may even perform networking if you really wished.  
+You can write any IDEKA code inside a `comptime` block. There are no restrictions on I/O. You may even perform networking if you really wished.  
 FFI is also possible, as well as inline ASM execution supported by [Keystone Engine](https://github.com/keystone-engine/keystone) (x86-64 only for now). 
 
-The FVM has its own pseudo assembly language. All Flux inside turns into FVM assembly, which it then executes.  You can dump your `comptime` assembly to a file using `compiler.fvm.dump("path/to/yourdump.fvm);`  
+The FVM has its own pseudo assembly language. All IDEKA inside turns into FVM assembly, which it then executes.  You can dump your `comptime` assembly to a file using `compiler.fvm.dump("path/to/yourdump.fvm);`  
 It is plaintext, not bytecode, so you can read and inspect it.  
 It can then independently be ran with `fvm.py yourdump.fvm`
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -231,7 +231,7 @@ comptime
         TAG   = tags[idx];
         FIELD = fields[idx];
 
-        emitflux
+        emitideka
         {
             def ~$f"wrap_{T}"(~$f"{T}" x) -> Any
             {
@@ -269,7 +269,7 @@ def main() -> int
 
 ```
 
-You can also use FVM assembly directly inside `comptime` blocks with `fluxvm {}`.
+You can also use FVM assembly directly inside `comptime` blocks with `idkvm {}`.
 
 `comptime` blocks can also be named, and jumped to with `goto` like a `label`, allowing for loop behavior:
 ```
@@ -376,10 +376,10 @@ if (x > 0) { ... } else { ... };
 
 ---
 
-**`emitflux`**  
-Emit Flux source code at the scope of the `comptime` block this `emitflux` is found in.  
+**`emitideka`**  
+Emit IDEKA source code at the scope of the `comptime` block this `emitideka` is found in.  
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -391,7 +391,7 @@ comptime
     int[] trans_to   = [1, 2, 1, 3];
     int   tcount     = 4;
 
-    emitflux
+    emitideka
     {
         def state_name(int s) -> byte*
         {
@@ -405,11 +405,11 @@ comptime
 
     for (int tidx = 0; tidx < tcount; tidx++)
     {
-        emitflux
+        emitideka
         {
             comptime
             {
-                emitflux
+                emitideka
                 {
                     def ~$i"can_trans_{}_{}":{trans_from[tidx];trans_to[tidx];}() -> bool { return true; };
                 };
@@ -417,7 +417,7 @@ comptime
         };
     };
 
-    emitflux
+    emitideka
     {
         def transition(int fx, int to) -> int
         {
@@ -542,14 +542,14 @@ float x = 3.14159;
 
 ---
 
-**`fluxvm`**  
-Inline Flux VM assembly can be done at `comptime` and can be exported for standalone execution (so long as any code isn't platform specific).
+**`idkvm`**  
+Inline IDEKA VM assembly can be done at `comptime` and can be exported for standalone execution (so long as any code isn't platform specific).
 ```
 comptime
 {
     int x = 5;
 
-    fluxvm
+    idkvm
     {
         LOCAL_GET x
         PUSH 10
@@ -557,12 +557,12 @@ comptime
         LOCAL_SET x
     };
 
-    compiler.io.console.print(f"FluxVM modified int x = {x}\n");
+    compiler.io.console.print(f"IDEKAVM modified int x = {x}\n");
 };
 ```
 Result:
 ```
-FluxVM modified int x = 15
+IDEKAVM modified int x = 15
 ```
 
 ---
@@ -702,7 +702,7 @@ long x = 1000000000000;
 **`macro`**
 Macros are named and parameterized expressions that replace themselves with their body in place.  
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -800,7 +800,7 @@ def __expr() -> byte*
 Define a custom infix operator. Can use symbols or an identifier as the operator.  
 To overload a built-in operator, one of the operands **must not** be a built-in type, ie `int`, `float`, `byte`, etc.
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 

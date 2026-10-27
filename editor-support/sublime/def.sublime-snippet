@@ -5,6 +5,6 @@
     return (${3:return_type})${5:value};
 };]]></content>
   <tabTrigger>def</tabTrigger>
-  <scope>source.flux</scope>
+  <scope>source.IDEKA</scope>
   <description>Define a function. Press tab for fast prototyping.</description>
 </snippet>

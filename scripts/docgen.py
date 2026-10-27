@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-Flux Documentation Site Generator
-Converts .md doc files into a static HTML site matching the fluxspl.org design system.
+IDEKA Documentation Site Generator
+Converts .md doc files into a static HTML site matching the IDEKAspl.org design system.
 
 Usage:
-    python3 flux_docgen.py <input_dir> <output_dir>
+    python3 IDEKA_docgen.py <input_dir> <output_dir>
 
     input_dir  : folder containing .md files
     output_dir : where to write the HTML site
 
 Each .md file becomes a page. An index.html is generated listing all docs.
-The nav, footer, and visual style match fluxspl.org exactly.
+The nav, footer, and visual style match IDEKAspl.org exactly.
 """
 
 import sys
@@ -77,7 +77,7 @@ def md_to_html(md: str) -> tuple[str, list[tuple[str, str]]]:
                 code_lines.append(lines[i])
                 i += 1
             code_content = html.escape('\n'.join(code_lines))
-            lang_label = lang if lang else 'flux'
+            lang_label = lang if lang else 'IDEKA'
             out.append(f'''<div class="doc-code-wrap">
   <div class="doc-code-bar">
     <div class="code-dot code-dot-r"></div>
@@ -191,13 +191,13 @@ def md_to_html(md: str) -> tuple[str, list[tuple[str, str]]]:
     return '\n'.join(out), toc
 
 # ---------------------------------------------------------------------------
-# Syntax highlighting for Flux code blocks
+# Syntax highlighting for IDEKA code blocks
 # ---------------------------------------------------------------------------
 
-FLUX_KEYWORDS = {
+IDEKA_KEYWORDS = {
     'def','return','if','elif','else','while','for','in','break','continue',
     'struct','object','namespace','using','extern','export','import','from',
-    'comptime','emitflux','macro','template','contract','trait','interface',
+    'comptime','emitideka','macro','template','contract','trait','interface',
     'typeof','sizeof','alignof','endianof','data','singinit','defer','try',
     'throw','catch','assert','escape','enum','union','switch','case','default',
     'not','and','or','true','false','void','nullptr','new','delete',
@@ -205,7 +205,7 @@ FLUX_KEYWORDS = {
     'noreturn','deprecated','has','module','break',
 }
 
-FLUX_TYPES = {
+IDEKA_TYPES = {
     'int','uint','long','ulong','short','ushort','byte','ubyte','char',
     'float','double','bool','size_t','void',
     'i8','i16','i32','i64','i128',
@@ -213,8 +213,8 @@ FLUX_TYPES = {
     'f32','f64',
 }
 
-def highlight_flux(code: str) -> str:
-    """Simple token-based Flux syntax highlighter producing HTML spans."""
+def highlight_IDEKA(code: str) -> str:
+    """Simple token-based IDEKA syntax highlighter producing HTML spans."""
     result = []
     i = 0
 
@@ -273,9 +273,9 @@ def highlight_flux(code: str) -> str:
             while j < len(code) and (code[j].isalnum() or code[j] == '_'):
                 j += 1
             word = code[i:j]
-            if word in FLUX_KEYWORDS:
+            if word in IDEKA_KEYWORDS:
                 result.append(f'<span class="ck-kw">{html.escape(word)}</span>')
-            elif word in FLUX_TYPES:
+            elif word in IDEKA_TYPES:
                 result.append(f'<span class="ck-ty">{html.escape(word)}</span>')
             else:
                 result.append(html.escape(word))
@@ -298,10 +298,10 @@ def highlight_flux(code: str) -> str:
     return ''.join(result)
 
 def apply_highlighting(body: str) -> str:
-    """Post-process HTML to apply Flux highlighting to code blocks."""
+    """Post-process HTML to apply IDEKA highlighting to code blocks."""
     def replace_block(m):
         code = html.unescape(m.group(1))
-        highlighted = highlight_flux(code)
+        highlighted = highlight_IDEKA(code)
         return f'<pre class="doc-pre"><code>{highlighted}</code></pre>'
     return re.sub(r'<pre class="doc-pre"><code>(.*?)</code></pre>',
                   replace_block, body, flags=re.DOTALL)
@@ -317,16 +317,16 @@ NAV_HTML = '''<nav>
       <polygon points="14,8 21,21 7,21" fill="none" stroke="#00aaff" stroke-width="0.8" opacity="0.45"/>
       <circle cx="14" cy="14" r="1.5" fill="#00aaff"/>
     </svg>
-    <span class="nav-logo-text">Flux</span>
+    <span class="nav-logo-text">IDEKA</span>
   </a>
   <ul class="nav-links">
     <li><a href="/">Home</a></li>
     <li><a href="/docs/">Docs</a></li>
     <li><a href="https://discord.gg/RAHjbYuNUc" target="_blank">Discord</a></li>
-    <li><a href="https://fluxspl.org/ide" target="_blank">Try Online</a></li>
+    <li><a href="https://IDEKAspl.org/ide" target="_blank">Try Online</a></li>
   </ul>
   <div class="nav-spacer"></div>
-  <a href="https://github.com/kvthweatt/FluxLang" target="_blank" class="nav-cta">GitHub</a>
+  <a href="https://github.com/kvthweatt/IDEKALang" target="_blank" class="nav-cta">GitHub</a>
   <button class="nav-hamburger" id="nav-hamburger" aria-label="Menu" aria-expanded="false">
     <span></span><span></span><span></span>
   </button>
@@ -335,8 +335,8 @@ NAV_HTML = '''<nav>
   <a href="/" class="nav-mobile-link">Home</a>
   <a href="/docs/" class="nav-mobile-link">Docs</a>
   <a href="https://discord.gg/RAHjbYuNUc" target="_blank" class="nav-mobile-link">Discord</a>
-  <a href="https://fluxspl.org/ide" target="_blank" class="nav-mobile-link">Try Online</a>
-  <a href="https://github.com/kvthweatt/FluxLang" target="_blank" class="nav-mobile-link cta">GitHub &rarr;</a>
+  <a href="https://IDEKAspl.org/ide" target="_blank" class="nav-mobile-link">Try Online</a>
+  <a href="https://github.com/kvthweatt/IDEKALang" target="_blank" class="nav-mobile-link cta">GitHub &rarr;</a>
 </div>'''
 
 FOOTER_HTML = '''<footer>
@@ -348,12 +348,12 @@ FOOTER_HTML = '''<footer>
           <polygon points="14,8 21,21 7,21" fill="none" stroke="#00aaff" stroke-width="0.8" opacity="0.45"/>
           <circle cx="14" cy="14" r="1.5" fill="#00aaff"/>
         </svg>
-        <span class="nav-logo-text">Flux</span>
+        <span class="nav-logo-text">IDEKA</span>
       </a>
       <div class="footer-sep"></div>
       <span class="footer-copy">&copy; Karac Von Thweatt. All rights reserved.</span>
       <div class="footer-links">
-        <a href="https://github.com/kvthweatt/FluxLang" target="_blank">GitHub</a>
+        <a href="https://github.com/kvthweatt/IDEKALang" target="_blank">GitHub</a>
         <a href="https://discord.gg/RAHjbYuNUc" target="_blank">Discord</a>
       </div>
     </div>
@@ -699,8 +699,8 @@ def page_template(title: str, body: str, toc_html: str, breadcrumb: str = '') ->
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{html.escape(title)} - Flux Documentation</title>
-<meta name="description" content="Flux programming language documentation: {html.escape(title)}">
+<title>{html.escape(title)} - IDEKA Documentation</title>
+<meta name="description" content="IDEKA programming language documentation: {html.escape(title)}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400..800&display=swap" rel="stylesheet">
@@ -914,8 +914,8 @@ def index_template(cards_html: str) -> str:
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Flux Documentation</title>
-<meta name="description" content="Official documentation for the Flux programming language.">
+<title>IDEKA Documentation</title>
+<meta name="description" content="Official documentation for the IDEKA programming language.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400..800&display=swap" rel="stylesheet">
@@ -995,8 +995,8 @@ footer{{border-top:1px solid var(--border);padding:28px 0;background:var(--dark)
 <div class="container">
   <div class="doc-index-hero">
     <div class="doc-index-label">Documentation</div>
-    <h1 class="doc-index-title">Flux Reference</h1>
-    <p class="doc-index-desc">Complete language specification, standard library reference, and guides for the Flux programming language.</p>
+    <h1 class="doc-index-title">IDEKA Reference</h1>
+    <p class="doc-index-desc">Complete language specification, standard library reference, and guides for the IDEKA programming language.</p>
   </div>
   <div class="doc-index-grid">
     {cards_html}
@@ -1035,11 +1035,11 @@ footer{{border-top:1px solid var(--border);padding:28px 0;background:var(--dark)
 DOC_META = {
     'language_specification': {
         'label': 'Language Reference',
-        'desc': 'Complete specification of the Flux language: syntax, types, memory model, operators, templates, comptime, and more.',
+        'desc': 'Complete specification of the IDEKA language: syntax, types, memory model, operators, templates, comptime, and more.',
     },
     'standard': {
         'label': 'Standard Library',
-        'desc': 'The Flux standard library: I/O, string utilities, collections, math, and system interfaces.',
+        'desc': 'The IDEKA standard library: I/O, string utilities, collections, math, and system interfaces.',
     },
 }
 
@@ -1049,7 +1049,7 @@ def get_meta(stem: str) -> dict:
             return meta
     return {
         'label': 'Documentation',
-        'desc': f'Flux documentation: {stem.replace("_", " ").title()}.',
+        'desc': f'IDEKA documentation: {stem.replace("_", " ").title()}.',
     }
 
 def nice_title(stem: str) -> str:
@@ -1108,15 +1108,15 @@ def generate_site(input_dir: str, output_dir: str):
 
 def main():
     if len(sys.argv) < 3:
-        print('Usage: python3 flux_docgen.py <input_dir> <output_dir>')
-        print('Example: python3 flux_docgen.py ./docs ./site')
+        print('Usage: python3 IDEKA_docgen.py <input_dir> <output_dir>')
+        print('Example: python3 IDEKA_docgen.py ./docs ./site')
         sys.exit(1)
     input_dir = sys.argv[1]
     output_dir = sys.argv[2]
     if not os.path.isdir(input_dir):
         print(f'Error: input directory not found: {input_dir}')
         sys.exit(1)
-    print(f'Flux Doc Generator')
+    print(f'IDEKA Doc Generator')
     print(f'  Input:  {input_dir}')
     print(f'  Output: {output_dir}')
     generate_site(input_dir, output_dir)

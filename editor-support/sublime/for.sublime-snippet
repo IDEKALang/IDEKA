@@ -4,6 +4,6 @@
     ${4};
 };]]></content>
   <tabTrigger>for</tabTrigger>
-  <scope>source.flux</scope>
+  <scope>source.IDEKA</scope>
   <description>Loop while condition is true.</description>
 </snippet>

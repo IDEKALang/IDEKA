@@ -1,4 +1,4 @@
-# Flux Type Algebra - Relational Constraints
+# IDEKA Type Algebra - Relational Constraints
 
 Type algebra relations are the operators used inside `constraint` blocks and inline `:{...}` constraint sets on template functions. Each operator defines an independent dimension of type behavior - a pair of types can satisfy constraints on one dimension while being restricted on another.
 

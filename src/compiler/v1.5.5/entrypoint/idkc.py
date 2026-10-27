@@ -11,7 +11,7 @@ Contributors:
 
 
 USAGE:
-    python ic.py filename.idk
+    python idkc.py filename.idk
     
     Includes the standard library into the available paths.
     
@@ -31,7 +31,7 @@ from pathlib import Path
 # Resolve compiler root: prefer IDEKA_SRCDIR env var, fall back to script location
 IDEKA_SRCDIR = Path(os.environ.get("IDEKA_SRCDIR", str(Path(__file__).resolve().parent)))
 
-# Write it back so ic.py and iconfig.py see the same root when they're imported
+# Write it back so idkc.py and iconfig.py see the same root when they're imported
 os.environ["IDEKA_SRCDIR"] = str(IDEKA_SRCDIR)
 
 # Add src/compiler and src/stdlib to Python path
@@ -201,15 +201,15 @@ def main():
                 logger_config['component_filter'] = components
                 i += 2
             elif arg == "--mcpu" and i + 1 < len(args):
-                # TODO Implement in ic.py
+                # TODO Implement in idkc.py
                 llc_config['mcpu'] = args[i + 1]
                 i += 2
             elif arg == "--march" and i + 1 < len(args):
-                # TODO Implement in ic.py
+                # TODO Implement in idkc.py
                 llc_config['march'] = args[i + 1]
                 i += 2
             elif arg == "--mattr" and i + 1 < len(args):
-                # TODO Implement in ic.py
+                # TODO Implement in idkc.py
                 llc_config['mattr'] = args[i + 1]
                 i += 2
             elif arg == "--borrowcheck":

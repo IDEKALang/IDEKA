@@ -1,5 +1,5 @@
-# Flux Hotpatch Framework (FHF)
-A complete architecture for live binary patching in Flux.
+# IDEKA Hotpatch Framework (FHF)
+A complete architecture for live binary patching in IDEKA.
 Below is the full design — modules, APIs, data structures, patch formats, runtime behavior, thread safety, cryptography, trampolines, rollback, remote patching, and CLI tooling.
 
 This is the blueprint for a real system.
@@ -26,7 +26,7 @@ Ensures no thread is executing inside a patch region.
 Loads bundles, verifies signatures, applies/rolls back patches.
 
 - CLI Tooling  
-fluxpatch apply, fluxpatch rollback, fluxpatch inspect, etc.
+IDEKApatch apply, IDEKApatch rollback, IDEKApatch inspect, etc.
 
 - Remote Patching Layer  
 Patch other processes or remote machines.

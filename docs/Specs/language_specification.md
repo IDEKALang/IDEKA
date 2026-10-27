@@ -1,7 +1,7 @@
 <a id="IDEKA"></a>
 # IDEKA
 
-IDEKA is a compiled, general purpose programming language formerly known as Flux.
+IDEKA is a compiled, general purpose programming language formerly known as IDEKA.
 
 It's easy to write as it does not require to use its higher level constructs. The learning curve is low, but the skill ceiling is high.  
 
@@ -107,10 +107,10 @@ IDEKA was designed primarily for reverse engineering and secondarily for general
 - [Codification](#codification)
 - [The Ditto Operator](#the-ditto-operator)
 - [Compile Time Execution with `comptime`](#compile-time-execution-with-comptime)
-- [Emitting code back into your source file with `emitflux`](#emitflux)
+- [Emitting code back into your source file with `emitideka`](#emitideka)
 - [Async Functions](#async-functions)
 - [Modules and Build Blocks](#modules-and-build-blocks)
-- [The Effect System - Algebraic Effect Tracking](#flux-effect-system)
+- [The Effect System - Algebraic Effect Tracking](#IDEKA-effect-system)
 - [Keyword list](#keyword-list)
 - [Operator list](#operator-list)
 - [Operator Precedence and Associativity](#operator-precedence-and-associativity)
@@ -206,7 +206,7 @@ default thing.
 Variadics in IDEKA are very straightforward, and use the `...` elipse operator.  
 You can index the elipse operator to yield the arguments passed, example:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -242,7 +242,7 @@ Result:
 
 IDEKA supports dual return-type functions, the most common use case is in error returns.
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -374,7 +374,7 @@ def "??foo@"()->void;
 Using `export` will cause a function to be marked as external for linkage.  
 Use this when writing libraries, or to allow a function to be "seen".
 ```
-#import "types.fx";
+#import "types.idk";
 
 export
 {
@@ -382,9 +382,9 @@ export
 };
 ```
 This is a valid library and will compile if you do:
-`python fxc.py tests\testlib.fx --library -o mylib.dll` on Windows,
+`python idkc.py tests\testlib.idk --library -o mylib.dll` on Windows,
 and
-`python3 fxc.py tests/testlib.fx --library -o testlib.so` on Linux.
+`python3 idkc.py tests/testlib.idk --library -o testlib.so` on Linux.
 
 ---
 
@@ -394,21 +394,21 @@ and
 Any file you import will take the place of the import statement.
 
 ```
-#import <standard.fx>;  // <> means stdlib, "" means local to source file
-#import "mylib.fx", "foobar.fx";  // Multi-line imports are processed from left to right in the order they appear.
+#import <standard.idk>;  // <> means stdlib, "" means local to source file
+#import "mylib.idk", "foobar.idk";  // Multi-line imports are processed from left to right in the order they appear.
 ```
 
 Example:  
-**`somefile.fx`**
+**`somefile.idk`**
 
 ```
 int myVar = 10;
 ```
 
-**`main.fx`**
+**`main.idk`**
 
 ```
-#import "somefile.fx";  // int myVar = 10;
+#import "somefile.idk";  // int myVar = 10;
 
 def main() -> int
 {
@@ -427,9 +427,9 @@ Packages are imported from the compiler's local FPM registry located inside `.fp
 
 To import a package, use the package name directly:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
-#package super-types, flux-boost;  // these don't exist, yet..
+#package super-types, IDEKA-boost;  // these don't exist, yet..
 ```
 
 You still need to perform `using` statements unless the package self-uses, meaning it has the `using` statements inside of it near the end of entrypoint file.
@@ -441,7 +441,7 @@ Packages and FPM are still in development and should not be used for now.
 <a id="the-preprocessor"></a>
 ### The Preprocessor
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 #ifdef __WINDOWS__
 #def DEFAULT_CONFIG_FLAG 0x4000;
@@ -466,7 +466,7 @@ To achieve C macro-like behavior, you can use `#psub`.
 
 Example:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -510,7 +510,7 @@ def main() -> int
 
 You can also perform conditional logic with `#ifpsub` and `#ifnpsub`:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -624,7 +624,7 @@ struct BMP : Header, InfoHeader
 ```
 
 ## Block assignment
-Below is an example snippet from the standard library in `runtime\allocators.fx` around line 415. If the object[at this index] is a struct, you can do block assignment instead of writing `new_tbl[rm_hole]` 4 times.
+Below is an example snippet from the standard library in `runtime\allocators.idk` around line 415. If the object[at this index] is a struct, you can do block assignment instead of writing `new_tbl[rm_hole]` 4 times.
 ```
 new_tbl[rm_hole]
 {
@@ -710,7 +710,7 @@ __expr()       -> any
 
 If an object's `__init` method takes **only one parameter**, you may instance it like sO:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -745,7 +745,7 @@ It is syntactic sugar for `SomeObj sobj(5);`
 Deferred statements execute in LIFO order.  
 Deferred calls execute after post-contract code, immediately before the function returns.
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -776,7 +776,7 @@ def main() -> int
 
 ### You can also `defer` in blocks:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -812,7 +812,7 @@ Inheritance syntax is: `object B : A`, which means B inherits from A.
 
 Here's an example:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -1150,7 +1150,7 @@ object Obj2
 
 **f-string Example**
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console,
       standard::strings;
@@ -1170,7 +1170,7 @@ Result:
 The brackets are replaced with the results of the statements in order respective to the statements' position in the statement array in i-strings.  
 This allows you to write clean interpolated strings without strange formatting. It keeps code out of the string making them easier to read.  
 ```
-#import <standard.fx>; // imports types.fx
+#import <standard.idk>; // imports types.idk
 
 using standard::io::console;
 
@@ -1364,7 +1364,7 @@ int y = x if (x > 5) else noinit;
 
 You can also use `if` expressions in the following manner:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -1384,7 +1384,7 @@ main() -> int
 ```
 You may also use groups of statements in a block before an if:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -1407,7 +1407,7 @@ main() -> int
 
 Ternary logic with the standard ternary `?:`:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -1428,7 +1428,7 @@ main() -> int
 
 Ternary assignment `?=` (if LHS is null):
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -1448,7 +1448,7 @@ main() -> int
 
 Null coalesce `??` operator (result is RHS if LHS is null):
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -1469,7 +1469,7 @@ main() -> int
 
 Not null `!?` operator (boolean unary postfix - is LHS not null):
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -1659,7 +1659,7 @@ the source and target type pair:
 ## Direct type conversion:
 You can do function-like conversion only with built-in types like `int`, `long`, `double`, `bool`, etc.
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -1753,7 +1753,7 @@ int[20] events = [x for (int x= 1; x <= 20; x++) if (x % 2 == 0)];
 
 **Static array comprehension using a dynamic type**
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::collections; // For the dynamic array 'Array'
 
@@ -1909,7 +1909,7 @@ if (pair in nums) { ... };             // true - contiguous sub-sequence
 <a id="singleinitialized-variables-with-singinit"></a>
 ## **Single-initialized variables with `singinit`**
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -1955,7 +1955,7 @@ def rsub(int x, int y) -> int
 ## Strict Recursion with `<~`:
 Functions that have the recurse return operator will always return to themselves. Their stack frame never grows because they become tail calls, and get optimized as such.
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -2154,7 +2154,7 @@ def main() -> int
 <a id="tagged-unions"></a>
 ## **Tagged unions**
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -2330,7 +2330,7 @@ not using some::specific::namespace;
 <a id="deprecation-with-deprecate"></a>
 ## **Deprecation with `deprecate`**
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 namespace test1
 {
@@ -2362,7 +2362,7 @@ Function call test1__test2__foo()
 `assert` automatically performs `throw` if the condition is false if it's inside a try/catch block,
 otherwise it writes the message to standard error output and aborts the program.
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -2445,7 +2445,7 @@ Each `#"` produces an independent evaluation of the repeated expression - it is 
 Using `#"` on its own line will repeat the statement previous to it.  
 Here's a simple example that should be straightforward enough to understand in all applications. Try not to invent edge cases, they don't exist. If the parser would error, it's not an edge case, it's an error.
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -2509,7 +2509,7 @@ foo(#", #", #"); // prints "1 2 3"
 
 Example program:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -2630,7 +2630,7 @@ int s = 5\2;   // 7
 
 **How this actually works under the hood:**
 
-A symbol that isn't already one of Flux's built-in operators (anything not found in the
+A symbol that isn't already one of IDEKA's built-in operators (anything not found in the
 "Operator list") is registered as a **new piece of grammar**. From that point on, the parser
 recognizes that exact token sequence anywhere an expression is expected and rewrites it directly
 into a call to the operator's generated function. This rewrite happens at one single, fixed
@@ -2703,11 +2703,11 @@ The operator count follows from the other three values: operator count = paramet
 
 Here's an example of a variadic operator:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
-// varop.fx - Variadic Operator example
+// varop.idk - Variadic Operator example
 
 operator(...) [##] -> void
 {
@@ -2746,7 +2746,7 @@ Currently post-contracts insert before all return points, including error return
 Contracts are not specifically `assert`-only, they can contain any statement.
 They are similar to macros and expand before type checking and semantic analysis.
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -2917,7 +2917,7 @@ required vs. what was found.
 <a id="contracts-on-operators"></a>
 ## Contracts on operators:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -2948,7 +2948,7 @@ Result at runtime:
 <a id="expressionbased-macros-with-macro"></a>
 ## **Expression-based macros with `macro`**
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -3042,7 +3042,7 @@ struct.my_struct_func() -> struct
 
 To forbid a type from having functions, you can declare it with `data!` like so:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -3072,7 +3072,7 @@ Templates can be applied to functions, structs, objects, and custom operator def
 
 Here's an example of using a template:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 
 def foo<T>(T x) -> T
@@ -3096,7 +3096,7 @@ def main() -> int
 
 The compiler can also infer templates at call sites, so you don't end up with a mess of angle brackets:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -3139,18 +3139,18 @@ The syntax is `Param: type (| type)*` comma separated.
 
 Here's an example:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
  
 using standard::io::console;
 
-"".fx<T: "", U: "">(T x, U y) -> ""
+"".idk<T: "", U: "">(T x, U y) -> ""
 {
     return _ + f"{x} {y}";
 };
 
 def main() -> int
 {
-    byte* new = "Hello".fx(",", "World!");
+    byte* new = "Hello".idk(",", "World!");
     println(new);
     return 0;
 };
@@ -3180,18 +3180,18 @@ To use type relationships expressions, they must be constrained in a set.
 
 Here's the same example using `~=`, the "must be compatible" operator, and the `:{}` set constraint.
 ```
-#import <standard.fx>;
+#import <standard.idk>;
  
 using standard::io::console;
 
-"".fx<T: "", U: "", :{T ~= U}>(T x, U y) -> ""
+"".idk<T: "", U: "", :{T ~= U}>(T x, U y) -> ""
 {
     return _ + f"{x} {y}";
 };
 
 def main() -> int
 {
-    byte* new = "Hello".fx(",", "World!");
+    byte* new = "Hello".idk(",", "World!");
     println(new);
     return 0;
 };
@@ -3199,18 +3199,18 @@ def main() -> int
 
 You can separate expressions with a comma like:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
  
 using standard::io::console;
 
-"".fx<T: "", U: "", :{T ~= U, T !`< U}>(T x, U y) -> ""
+"".idk<T: "", U: "", :{T ~= U, T !`< U}>(T x, U y) -> ""
 {
     return _ + f"{x} {y}";
 };
 
 def main() -> int
 {
-    byte* new = "Hello".fx(",", "World!");
+    byte* new = "Hello".idk(",", "World!");
     println(new);
     return 0;
 };
@@ -3242,7 +3242,7 @@ Just place the relationship in an open position.
 No one wants to see that long expression in their template definition, that's why `constraint` exists.  
 `constraint` creates named, generic and parameterized relational expression sets that can be used with a template like so:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
  
 using standard::io::console;
 
@@ -3373,7 +3373,7 @@ operator<T, K>(T t, K k)[+] -> int
 <a id="combining-templates-contracts-and-operators"></a>
 ## Combining templates, contracts, and operators:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -3456,7 +3456,7 @@ int* offset = base + 5;
 <a id="pointer-to-integer-conversions"></a>
 ### Pointer to integer conversions
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -3618,7 +3618,7 @@ the full width of a native integer type (8 through 64 bits).
 
 Bit slices are distinct from array slices: `x[a:b]` selects elements of an array by index, while `` x[a``b] `` selects bits of a value.
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -3640,7 +3640,7 @@ Bit slicing structs can cross member boundaries, because structs members are pac
 If a type inside the struct has an alignment greater than its width, there will be padding in the struct.  
 Padding from alignment is filled with zeros.
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -3661,7 +3661,7 @@ main() -> int
 <a id="bit-slices-of-bit-slices"></a>
 ### ***Bit slices of bit slices***
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -3698,7 +3698,7 @@ constants.
 Let's say you want to mess with individual bits without storing it in a new 1 bit type variable.  
 Bit indexing lets you target a specific bit of a value, or even a struct!
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -3717,7 +3717,7 @@ main() -> int
 ### **Bit Iteration**
 To iterate over the bits of a value or struct, use bitwise iteration. Here's what that looks like:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -3774,7 +3774,7 @@ You may take arbitrary width slices as well, stored in your arbitrarily sized ty
 <a id="function-pointers"></a>
 ## **Function Pointers**
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -3802,7 +3802,7 @@ def main() -> int
 ## **Callbacks**
 One of a few ways you can set up callbacks:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -3828,7 +3828,7 @@ def main() -> int
 <a id="raw-bytecode-functions"></a>
 ## **Raw bytecode functions**
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -3856,7 +3856,7 @@ A function returning a tied type cannot return to a variable of non-tied type.
 Similarly, you cannot pass a non-tied variable to a tied parameter.
 
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 def foo(~int z) -> void  // accepts a tied parameter
 {
@@ -4157,7 +4157,7 @@ vectorcall{}* someSIMDfunc() -> u64*;
 <a id="stringification-with"></a>
 ## Stringification with `$`:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -4176,7 +4176,7 @@ Result:
 ## Codification:
 Codification is the inverse of stringification, using the codify operator `~$`
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -4207,7 +4207,7 @@ To perform compile time code execution in IDEKA, wrap code in a `comptime` block
 Compile-time code has no main function, the start of execution is at the first statement.  
 Here's an example of programming at compile time:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 comptime
 {
@@ -4227,7 +4227,7 @@ This program will do nothing, because `foo()` was not called.
 The compiler will not automatically call a function that it sees, simply call it afterwards.
 
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 comptime
 {
@@ -4267,7 +4267,7 @@ Hello from compile time!
 
 You can spread functions across `comptime` blocks like so:
 ```
-#import <standard.fx>;
+#import <standard.idk>;
  
 using standard::io::console;
 
@@ -4317,10 +4317,10 @@ Yes, you may write an infinite loop at compile time.
 
 ---
 
-<a id="emitflux"></a>
-# `emitflux` - Compile-Time Code Generation
+<a id="emitideka"></a>
+# `emitideka` - Compile-Time Code Generation
 
-`emitflux` is used inside a `comptime` block to inject IDEKA source code into the surrounding scope. The emitted definitions are deferred and finalized during **Pass 4** ("Re-emitting pending bodies"), so they do not need to be written contiguously - you can build up a single logical definition across multiple `emitflux` calls within one or more `comptime` blocks.
+`emitideka` is used inside a `comptime` block to inject IDEKA source code into the surrounding scope. The emitted definitions are deferred and finalized during **Pass 4** ("Re-emitting pending bodies"), so they do not need to be written contiguously - you can build up a single logical definition across multiple `emitideka` calls within one or more `comptime` blocks.
 
 Basic usage:
 ```
@@ -4328,7 +4328,7 @@ comptime
 {
     int x = 42;
 
-    emitflux
+    emitideka
     {
         def get_x() -> int { return ~$f"{x}"; };
     };
@@ -4341,21 +4341,21 @@ def main() -> int
 };
 ```
 
-`~$f"..."` and `~$i"..."` expand comptime variables into identifiers or expressions inside an `emitflux` block.
+`~$f"..."` and `~$i"..."` expand comptime variables into identifiers or expressions inside an `emitideka` block.
 
 ---
 
 ## Splice terminators
 
-By default the closing `};` of an `emitflux` block ends emission and returns control to the surrounding `comptime` context. Two special terminators allow you to interleave comptime logic with emitted code - splicing a single logical construct across multiple `emitflux` calls:
+By default the closing `};` of an `emitideka` block ends emission and returns control to the surrounding `comptime` context. Two special terminators allow you to interleave comptime logic with emitted code - splicing a single logical construct across multiple `emitideka` calls:
 
-### `}#;` - exit emitflux, stay in comptime
+### `}#;` - exit emitideka, stay in comptime
 
-`}#;` terminates the current `emitflux` block and returns to the surrounding `comptime` context, leaving the emitted construct open. This lets you run arbitrary comptime code (loops, conditionals, I/O) between emitted chunks.
+`}#;` terminates the current `emitideka` block and returns to the surrounding `comptime` context, leaving the emitted construct open. This lets you run arbitrary comptime code (loops, conditionals, I/O) between emitted chunks.
 
-### `#};` - close a brace inside emitflux without ending it
+### `#};` - close a brace inside emitideka without ending it
 
-`#};` emits a closing brace into the generated IDEKA source without being interpreted as the closing brace of the `emitflux` block itself. Use this to close `switch`, `if`, function bodies, or any other braced construct inside emitted code when the bare `}` would prematurely end the `emitflux`.
+`#};` emits a closing brace into the generated IDEKA source without being interpreted as the closing brace of the `emitideka` block itself. Use this to close `switch`, `if`, function bodies, or any other braced construct inside emitted code when the bare `}` would prematurely end the `emitideka`.
 
 ### How to tell them apart
 
@@ -4363,10 +4363,10 @@ Both terminators are the same two characters in a different order. The position 
 
 ```
 #};   // # is on the inside: it closes an inner brace of the emitted code (do not end the splice yet)
-}#;   // # is on the outside: it attaches to the `{` of the emitflux block itself, leaving the emitted construct open
+}#;   // # is on the outside: it attaches to the `{` of the emitideka block itself, leaving the emitted construct open
 ```
 
-Braces opened in one `emitflux` fragment are closed by `#};` in a later fragment, so the spliced construct is balanced across the whole splice even though no single fragment is balanced on its own.
+Braces opened in one `emitideka` fragment are closed by `#};` in a later fragment, so the spliced construct is balanced across the whole splice even though no single fragment is balanced on its own.
 
 ---
 
@@ -4381,8 +4381,8 @@ comptime
 {
     byte*[NUM_OPS] op_names = ["add", "sub", "mul", "div"];
 
-    // Step 1: open the function and switch, then exit emitflux with }#;
-    emitflux
+    // Step 1: open the function and switch, then exit emitideka with }#;
+    emitideka
     {
         def dispatch(int id, int a, int b) -> int
         {
@@ -4397,7 +4397,7 @@ comptime
         byte* nm = op_names[i];
         int   iv = i;
 
-        emitflux
+        emitideka
         {
                 case (~$i"{}":{iv;}) { return ~$i"op_{}":{nm;} (a, b); }
         };
@@ -4405,8 +4405,8 @@ comptime
         i++;
     };
 
-    // Step 3: close switch and function using #}; to avoid ending emitflux
-    emitflux
+    // Step 3: close switch and function using #}; to avoid ending emitideka
+    emitideka
     {
                 default { return -1; };
            #};   // closes switch body
@@ -4423,8 +4423,8 @@ Pass 4 collects all of the emitted fragments in order and finalizes `dispatch` a
 
 | Pass | What happens |
 |---|---|
-| Pass 3 | `comptime` blocks execute; `emitflux` fragments are collected |
-| Pass 4 | All collected `emitflux` fragments are finalized into the surrounding scope |
+| Pass 3 | `comptime` blocks execute; `emitideka` fragments are collected |
+| Pass 4 | All collected `emitideka` fragments are finalized into the surrounding scope |
 
 This means emitted definitions are always available to runtime code, but are not visible to other `comptime` blocks that execute before Pass 4.
 
@@ -4480,10 +4480,10 @@ Joins at block end are emitted through `defer`, so they run in reverse order of 
 Async lowering uses the threading library and the heap runtime, so the program must import it:
 
 ```
-#import <standard.fx>, <atomics.fx>, <threading.fx>;
+#import <standard.idk>, <atomics.idk>, <threading.idk>;
 ```
 
-Without it the compiler reports: `[ASYNC] error: async lowering needs the threading library; add #import <threading.fx>;`
+Without it the compiler reports: `[ASYNC] error: async lowering needs the threading library; add #import <threading.idk>;`
 
 ## Async tags
 
@@ -4609,8 +4609,8 @@ module Name
 ## Referencing a module with `from`
 
 ```
-module TargetName from "target_source.fx";   // module from a file
-module TargetName from <target_source.fx>;   // module from the standard library
+module TargetName from "target_source.idk";   // module from a file
+module TargetName from <target_source.idk>;   // module from the standard library
 ```
 
 This declares `TargetName` as the module of that name found in the given source.  
@@ -4624,8 +4624,8 @@ A referenced module is not part of a build until a module lists it in `#[require
 `#[requires] = {M1, M2, M3, ...}` lists the modules a module uses. Each name must be a module defined in the same file or declared with `module ... from`.
 
 ```
-module Logging from "logging.fx";
-module Net     from <net.fx>;
+module Logging from "logging.idk";
+module Net     from <net.idk>;
 
 module App
 {
@@ -4722,7 +4722,7 @@ When a file builds several programs the last line is `Compilation successful: bu
 
 ---
 
-<a id="flux-effect-system">
+<a id="IDEKA-effect-system">
 # The Effect System - Algebraic Effect Tracking
 
 See [IDEKA Effect System](https://github.com/kvthweatt/IDEKALang/blob/main/docs/effects_system.md) for a more thorough explanation of effects.
@@ -5190,7 +5190,7 @@ system proves, which feeds optimizer signals like `Pure` and `!Alloc`.
 ```
 and, as, asm, assert, async, auto, bool, break, byte, case, catch,
 cdecl, char, comptime, const, constraint, continue, contract, data, def, default, defer,
-deprecate, dict, do, double, effect, elif, else, emitflux, enum, error, escape, export, extern,
+deprecate, dict, do, double, effect, elif, else, emitideka, enum, error, escape, export, extern,
 false, fastcall, float, for, from, global, goto, has, heap, if, in, inline, int, interface, is,  
 jump, label, local, long, macro, module (contextual, top level only), namespace, noinit, noreturn, not, object,
 operator, or, private, public, register, return, signed, singinit,

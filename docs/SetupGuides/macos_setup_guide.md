@@ -1,6 +1,6 @@
-# Flux on macOS - Setup Guide
+# IDEKA on macOS - Setup Guide
 
-Flux on macOS needs Python, LLVM from Homebrew (it supplies `llc`), and the Xcode command line tools (Apple's `clang` is used as the linker). The steps are the same on Apple Silicon and Intel.
+IDEKA on macOS needs Python, LLVM from Homebrew (it supplies `llc`), and the Xcode command line tools (Apple's `clang` is used as the linker). The steps are the same on Apple Silicon and Intel.
 
 ## Toolchain
 
@@ -27,8 +27,8 @@ brew install python llvm git
 echo 'export PATH="$(brew --prefix llvm)/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 
-git clone https://github.com/kvthweatt/Flux
-cd Flux
+git clone https://github.com/kvthweatt/IDEKA
+cd IDEKA
 
 python3 -m venv .venv && source .venv/bin/activate
 pip install "llvmlite>=0.43.0"
@@ -38,11 +38,11 @@ cp src/compiler/v1.5.4/core/* src/compiler/
 cp src/compiler/v1.5.4/entrypoint/* .
 
 # Bootstrap the compiler
-python fxc.py fxc.fx
+python idkc.py idkc.idk
 
 # From here on, use the native compiler
-export FLUXC_SRCDIR="$PWD"
-./build/fxc/fxc examples/helloworld.fx
+export IDEKA_SRCDIR="$PWD"
+./build/idkc/idkc examples/helloworld.idk
 ./build/helloworld/helloworld
 ```
 
@@ -54,7 +54,7 @@ The installer prints any PATH lines you need to add. Homebrew lives in `/opt/hom
 
 ### LLVM
 
-Homebrew's `llvm` is keg-only, so it is not linked into the default PATH. The `export PATH=...` line above fixes that. The Flux compiler looks up `llc` on the PATH and uses Apple's `clang` to link, so you do not need Homebrew's `clang` to win over Apple's.
+Homebrew's `llvm` is keg-only, so it is not linked into the default PATH. The `export PATH=...` line above fixes that. The IDEKA compiler looks up `llc` on the PATH and uses Apple's `clang` to link, so you do not need Homebrew's `clang` to win over Apple's.
 
 ### Python dependency
 
@@ -62,45 +62,45 @@ With a virtual environment (shown above) or with `uv`, which uses the repo's `py
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
-cd Flux
+cd IDEKA
 uv sync
-uv run python fxc.py examples/helloworld.fx
+uv run python idkc.py examples/helloworld.idk
 ```
 
 Homebrew's Python is externally managed, so avoid a bare `pip install`.
 
 ## Bootstrap the Compiler
 
-Flux compiles itself. Version 2.0.8 does not ship the Python compiler, so copy it in from the bundled v1.5.4 sources first:
+IDEKA compiles itself. Version 2.0.8 does not ship the Python compiler, so copy it in from the bundled v1.5.4 sources first:
 
 ```bash
 cp src/compiler/v1.5.4/core/* src/compiler/
 cp src/compiler/v1.5.4/entrypoint/* .
 ```
 
-Then bootstrap. The Python compiler builds the Flux-written compiler (`fxc.fx`) into a native binary:
+Then bootstrap. The Python compiler builds the IDEKA-written compiler (`idkc.idk`) into a native binary:
 
 ```bash
-python fxc.py fxc.fx
+python idkc.py idkc.idk
 ```
 
-This takes a few minutes and produces `build/fxc/fxc`. The same command works on every platform.
+This takes a few minutes and produces `build/idkc/idkc`. The same command works on every platform.
 
-**Use the native compiler from now on.** It is much faster than the Python compiler. It finds the standard library through `FLUXC_SRCDIR`, so set that to the repo root:
+**Use the native compiler from now on.** It is much faster than the Python compiler. It finds the standard library through `IDEKA_SRCDIR`, so set that to the repo root:
 
 ```bash
-export FLUXC_SRCDIR=~/Flux          # add to ~/.zshrc to keep it
-./build/fxc/fxc examples/helloworld.fx
+export IDEKA_SRCDIR=~/IDEKA          # add to ~/.zshrc to keep it
+./build/idkc/idkc examples/helloworld.idk
 ./build/helloworld/helloworld
 ```
 
 To check the result, recompile the compiler with itself:
 
 ```bash
-./build/fxc/fxc fxc.fx -o fxc2
+./build/idkc/idkc idkc.idk -o idkc2
 ```
 
-If you only want the native compiler, the Python files you copied in can be deleted afterwards, and only those files: the ones from `core/` and `entrypoint/`. Other Python files in the repo are still needed. Rebuild stage 1 with `python fxc.py fxc.fx` whenever the compiler sources need newer compiler features than your native binary has.
+If you only want the native compiler, the Python files you copied in can be deleted afterwards, and only those files: the ones from `core/` and `entrypoint/`. Other Python files in the repo are still needed. Rebuild stage 1 with `python idkc.py idkc.idk` whenever the compiler sources need newer compiler features than your native binary has.
 
 ## Verification Steps
 
@@ -111,7 +111,7 @@ python3 -c "import llvmlite; print(llvmlite.__version__)"
 which llc && llc --version                      # should be under $(brew --prefix llvm)/bin
 clang --version                                 # Apple clang is fine, it is the linker
 git --version
-python fxc.py tests/test.fx --log-level 3       # should produce build/test/test
+python idkc.py tests/test.idk --log-level 3       # should produce build/test/test
 ```
 
 ## Editor Support
@@ -122,20 +122,20 @@ Syntax definitions live in `editor-support/` (`sublime/`, `vscode/`, `notepad++/
 
 **`llc: command not found`** - Homebrew's LLVM is not on your PATH. Re-run the `export PATH=...` line, then `source ~/.zshrc`, and check `which llc`.
 
-**`ModuleNotFoundError: llvmlite`** - the `python` running `fxc.py` is not the one pip installed into. Activate the virtual environment, or use `uv run`.
+**`ModuleNotFoundError: llvmlite`** - the `python` running `idkc.py` is not the one pip installed into. Activate the virtual environment, or use `uv run`.
 
 **`xcrun: error` or missing SDK** - run `xcode-select --install`. If it already is installed and the error persists, `sudo xcode-select --reset`.
 
 **Linker errors about the platform or architecture** - make sure Homebrew's LLVM matches your machine (`/opt/homebrew` on Apple Silicon). Do not mix an Intel Homebrew under Rosetta with a native Python.
 
-**Permission errors in `build/`** - `sudo chown -R $USER ~/Flux`.
+**Permission errors in `build/`** - `sudo chown -R $USER ~/IDEKA`.
 
 ## Build Output
 
 Everything for a program `name` goes in `build/name/`: the IR (`.ll`), the object file (`.o`) and the executable `name` (no extension).
 
 ```bash
-python fxc.py program.fx --log-level 4 --log-timestamp
+python idkc.py program.idk --log-level 4 --log-timestamp
 ```
 
 ## Compilation Process
@@ -148,7 +148,7 @@ python fxc.py program.fx --log-level 4 --log-timestamp
 
 ## Next Steps
 
-- `docs/learn_flux_intro.md`, then `docs/learn_flux_adept.md`
+- `docs/learn_IDEKA_intro.md`, then `docs/learn_IDEKA_adept.md`
 - `docs/Specs/language_specification.md`
 - Examples in `examples/`, tests in `tests/`, standard library in `src/stdlib/`
-- [Discord](https://discord.gg/wVAm2E6ymf), [GitHub](https://github.com/kvthweatt/Flux)
+- [Discord](https://discord.gg/wVAm2E6ymf), [GitHub](https://github.com/kvthweatt/IDEKA)

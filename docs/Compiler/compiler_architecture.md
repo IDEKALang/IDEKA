@@ -1,15 +1,15 @@
-# Flux Compiler Architecture
+# IDEKA Compiler Architecture
 
 ## Compilation Pipeline
 
 Generally,
 ```
-.fx source → Preprocessor → Lexer → Parser → AST → IR Generator → .ll → Clang → .o → Linker → Binary
+.idk source → Preprocessor → Lexer → Parser → AST → IR Generator → .ll → Clang → .o → Linker → Binary
 ```
 
 Target in future post-bootstrap:
 ```
-.fx source → Preprocessor → Lexer → Parser → AST → .o → Linker → Binary
+.idk source → Preprocessor → Lexer → Parser → AST → .o → Linker → Binary
 ```
 
 ---
@@ -21,7 +21,7 @@ Target in future post-bootstrap:
 - Resolves `#import`, `#dir`, `#ifdef`, `#ifndef`, `#else`, `#endif`, `#warn`, `#stop`
 - Expands `#def` macros (value 0 = undefined)
 - Searches: relative path, `src/stdlib`
-- Output: `build/tmp.fx`
+- Output: `build/tmp.idk`
 - `#dir "path\\to\\fx\\libraries";` adds a path to the preprocesor, allowing imports from that directory.
 
 
@@ -41,7 +41,7 @@ Target in future post-bootstrap:
 - Node types: declarations, statements, expressions, type annotations
 - Type system (`ftypesys.py`): resolution, validation, bit-precise types, pointers, arrays
 
-### IR Generator (`fc.py` - `FluxCompiler`)
+### IR Generator (`fc.py` - `IDEKACompiler`)
 
 **Methods:**
 - `compile_file()` → native executable
@@ -87,14 +87,14 @@ lib /OUT:program.lib build/program.o   # Windows
 
 ```
 build/
-  tmp.fx                 # Preprocessor output
+  tmp.idk                 # Preprocessor output
   <program>/
     <program>.ll         # LLVM IR
     <program>.o          # Object file
     <program>            # Binary (Windows .exe appended)
 
 config/
-  flux_configuration.cfg # INI format
+  IDEKA_configuration.cfg # INI format
 
 src/
   compiler/
@@ -112,14 +112,14 @@ src/
     builtins/
     functions/
 
-fxc.py                    # Entrypoint at language root
+idkc.py                    # Entrypoint at language root
 ```
 
 ---
 
 ## Configuration
 
-### File (`config/flux_configuration.cfg`)
+### File (`config/IDEKA_configuration.cfg`)
 
 ```ini
 [compiler]
@@ -140,7 +140,7 @@ timestamp = false
 ### CLI
 
 ```bash
-python fxc.py <input.fx> [options]
+python idkc.py <input.idk> [options]
 
 -o <name>                # Output name
 -v <0-5>                 # Legacy verbosity
@@ -157,11 +157,11 @@ python fxc.py <input.fx> [options]
 
 ### Environment Variables
 
-- `FLUX_LOG_LEVEL`
-- `FLUX_LOG_FILE`
-- `FLUX_LOG_TIMESTAMP`
-- `FLUX_LOG_NO_COLOR`
-- `FLUX_LOG_COMPONENTS`
+- `IDEKA_LOG_LEVEL`
+- `IDEKA_LOG_FILE`
+- `IDEKA_LOG_TIMESTAMP`
+- `IDEKA_LOG_NO_COLOR`
+- `IDEKA_LOG_COMPONENTS`
 
 ---
 
@@ -180,7 +180,7 @@ python fxc.py <input.fx> [options]
 
 **Format:**
 ```
-[INFO] Compiling program.fx
+[INFO] Compiling program.idk
 [2026-02-03 14:32:15] [DEBUG] Lexer: 1523 tokens
 ```
 

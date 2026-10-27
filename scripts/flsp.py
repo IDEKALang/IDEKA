@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Flux Language Server (flsp.py)
-Full-featured LSP server for the Flux programming language.
+IDEKA Language Server (flsp.py)
+Full-featured LSP server for the IDEKA programming language.
 
 Features:
     - Diagnostics (parse errors and warnings underlined in editor)
@@ -27,26 +27,26 @@ Usage:
     python flsp.py --tcp    # TCP mode on port 2087 (for debugging)
 
 Environment variables:
-    FLUXC_SRCDIR   Path to Flux compiler source directory (default: same dir as this script)
-    FLUX_STDLIB    Path to Flux stdlib directory for #import completions
+    IDEKA_SRCDIR   Path to IDEKA compiler source directory (default: same dir as this script)
+    IDEKA_STDLIB    Path to IDEKA stdlib directory for #import completions
 
 Editor config examples
 ----------------------
 Neovim (init.lua):
     vim.lsp.start({
-        name = "flux",
+        name = "IDEKA",
         cmd  = { "python3", "/path/to/flsp.py" },
-        filetypes = { "flux" },
+        filetypes = { "IDEKA" },
         root_dir = vim.fn.getcwd(),
     })
 
 Helix (languages.toml):
     [[language]]
-    name = "flux"
-    language-servers = ["flux-lsp"]
+    name = "IDEKA"
+    language-servers = ["IDEKA-lsp"]
     file-types = ["fx"]
 
-    [language-server.flux-lsp]
+    [language-server.IDEKA-lsp]
     command = "python3"
     args    = ["/path/to/flsp.py"]
 """
@@ -65,11 +65,11 @@ from urllib.parse import unquote, urlparse
 from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
-# Make the Flux compiler modules importable
+# Make the IDEKA compiler modules importable
 # ---------------------------------------------------------------------------
-_FLUXC_SRCDIR = os.environ.get("FLUXC_SRCDIR", str(Path(__file__).parent.resolve()))
-if _FLUXC_SRCDIR not in sys.path:
-    sys.path.insert(0, _FLUXC_SRCDIR)
+_IDEKA_SRCDIR = os.environ.get("IDEKA_SRCDIR", str(Path(__file__).parent.resolve()))
+if _IDEKA_SRCDIR not in sys.path:
+    sys.path.insert(0, _IDEKA_SRCDIR)
 
 # ---------------------------------------------------------------------------
 # pygls / lsprotocol imports
@@ -86,11 +86,11 @@ except Exception as e:
     sys.exit(1)
 
 # ---------------------------------------------------------------------------
-# Flux compiler imports
+# IDEKA compiler imports
 # ---------------------------------------------------------------------------
-_flux_import_error: Optional[str] = None
+_IDEKA_import_error: Optional[str] = None
 try:
-    from fparser import FluxParser, ParseError
+    from fparser import IDEKAParser, ParseError
     from fmacros import build_compiler_macros
     from fast import (
         Program, StructDefStatement, ObjectDefStatement,
@@ -100,11 +100,11 @@ try:
     )
     from ftypesys import SymbolKind, SymbolTable
 except Exception as exc:
-    _flux_import_error = (
-        f"Could not import Flux compiler modules: {exc}\n"
-        f"Make sure FLUXC_SRCDIR points to the Flux repo root, or run this\n"
+    _IDEKA_import_error = (
+        f"Could not import IDEKA compiler modules: {exc}\n"
+        f"Make sure IDEKA_SRCDIR points to the IDEKA repo root, or run this\n"
         f"script from that directory.\n"
-        f"FLUXC_SRCDIR = {_FLUXC_SRCDIR}"
+        f"IDEKA_SRCDIR = {_IDEKA_SRCDIR}"
     )
 
 # ---------------------------------------------------------------------------
@@ -113,9 +113,9 @@ except Exception as exc:
 logging.basicConfig(
     stream=sys.stderr,
     level=logging.DEBUG,
-    format="%(asctime)s [flux-lsp] %(levelname)s  %(message)s",
+    format="%(asctime)s [IDEKA-lsp] %(levelname)s  %(message)s",
 )
-log = logging.getLogger("flux-lsp")
+log = logging.getLogger("IDEKA-lsp")
 
 import builtins
 _real_print = builtins.print
@@ -127,10 +127,10 @@ builtins.print = _silent_print
 # ---------------------------------------------------------------------------
 # Server instance
 # ---------------------------------------------------------------------------
-SERVER_NAME    = "flux-lsp"
+SERVER_NAME    = "IDEKA-lsp"
 SERVER_VERSION = "2.0.0"
 
-flux_server = LanguageServer(SERVER_NAME, SERVER_VERSION)
+IDEKA_server = LanguageServer(SERVER_NAME, SERVER_VERSION)
 
 # ---------------------------------------------------------------------------
 # Document store and parse cache
@@ -358,7 +358,7 @@ def _word_before_dot(text: str, position: lsp.Position) -> str:
 # Keyword / snippet completions (always offered)
 # ---------------------------------------------------------------------------
 
-_FLUX_SNIPPETS = [
+_IDEKA_SNIPPETS = [
     # (label, insert_text, detail)
     ("cdecl",      "cdecl ${1:name}(${2:params}) -> ${3:void}\n{\n    $0\n};",  "function declaration"),
     ("struct",     "struct ${1:Name}\n{\n    $0\n};",                           "struct definition"),
@@ -370,10 +370,10 @@ _FLUX_SNIPPETS = [
     ("interface",  "interface ${1:Name}\n{\n    $0\n};",                        "interface definition"),
     ("trait",      "trait ${1:Name}\n{\n    $0\n};",                            "trait definition"),
     ("comptime",   "comptime\n{\n    $0\n};",                                   "compile-time block"),
-    ("emitflux",   "emitflux\n{\n    $0\n};",                                   "inline Flux IR"),
+    ("emitideka",   "emitideka\n{\n    $0\n};",                                   "inline IDEKA IR"),
     ("extern",     "extern\n{\n    $0\n};",                                     "extern block"),
     ("heap",       "heap ${1:Type} ${2:name};",                                 "heap allocation"),
-    ("#import",    "#import <${1:file.fx}>;",                                   "import"),
+    ("#import",    "#import <${1:file.idk}>;",                                   "import"),
     ("#def",       "#def ${1:NAME} ${2:value};",                                "macro constant"),
     ("#ifdef",     "#ifdef ${1:NAME};",                                         "conditional compilation"),
     ("#ifndef",    "#ifndef ${1:NAME};",                                        "conditional compilation"),
@@ -391,7 +391,7 @@ _FLUX_SNIPPETS = [
     ("continue",   "continue;",                                                 "continue"),
 ]
 
-_FLUX_KEYWORDS = [
+_IDEKA_KEYWORDS = [
     "void", "int", "uint", "long", "ulong", "byte", "bool", "float", "double",
     "i8", "u8", "i16", "u16", "true", "false", "null",
     "signed", "unsigned", "const", "volatile", "static", "inline",
@@ -402,7 +402,7 @@ _FLUX_KEYWORDS = [
 
 def _keyword_completions() -> List[lsp.CompletionItem]:
     items = []
-    for label, snippet, detail in _FLUX_SNIPPETS:
+    for label, snippet, detail in _IDEKA_SNIPPETS:
         items.append(lsp.CompletionItem(
             label=label,
             kind=lsp.CompletionItemKind.Keyword,
@@ -410,7 +410,7 @@ def _keyword_completions() -> List[lsp.CompletionItem]:
             insert_text=snippet,
             insert_text_format=lsp.InsertTextFormat.Snippet,
         ))
-    for kw in _FLUX_KEYWORDS:
+    for kw in _IDEKA_KEYWORDS:
         items.append(lsp.CompletionItem(
             label=kw,
             kind=lsp.CompletionItemKind.Keyword,
@@ -432,7 +432,7 @@ def _get_keyword_completions() -> List[lsp.CompletionItem]:
 # ---------------------------------------------------------------------------
 
 def _parse_text(text: str, original_path: str) -> _ParseResult:
-    """Parse Flux source text. Returns last good Program if parse fails."""
+    """Parse IDEKA source text. Returns last good Program if parse fails."""
     import ferrors as _ferrors
     prev_cwd = os.getcwd()
     tmp_path = None
@@ -451,21 +451,21 @@ def _parse_text(text: str, original_path: str) -> _ParseResult:
             ),
             message=message,
             severity=lsp.DiagnosticSeverity.Warning,
-            source='flux-lsp',
+            source='IDEKA-lsp',
         ))
 
     with _warn_patch_lock:
         _ferrors.emit_warning = _capturing_emit
         try:
-            os.chdir(_FLUXC_SRCDIR)
-            suffix = Path(original_path).suffix or ".fx"
+            os.chdir(_IDEKA_SRCDIR)
+            suffix = Path(original_path).suffix or ".idk"
             with tempfile.NamedTemporaryFile(
                 suffix=suffix, mode='w', delete=False, encoding='utf-8',
                 dir=str(Path(original_path).parent)
             ) as f:
                 f.write(text)
                 tmp_path = f.name
-            parser  = FluxParser.from_file(tmp_path, compiler_macros=build_compiler_macros())
+            parser  = IDEKAParser.from_file(tmp_path, compiler_macros=build_compiler_macros())
             program = parser.parse()
             program._line_map  = parser._line_map
             program._constras  = dict(getattr(parser, '_constras', {}))
@@ -529,8 +529,8 @@ def _register_toplevel_symbols(program: Program) -> None:
 
 
 async def _validate_async(ls: LanguageServer, uri: str) -> None:
-    if _flux_import_error:
-        ls.publish_diagnostics(uri, [_generic_diag(_flux_import_error)])
+    if _IDEKA_import_error:
+        ls.publish_diagnostics(uri, [_generic_diag(_IDEKA_import_error)])
         return
 
     text = _doc_store.get(uri, "")
@@ -812,16 +812,16 @@ def _member_completions(program: Program, var_name: str) -> List[lsp.CompletionI
 # LSP lifecycle
 # ---------------------------------------------------------------------------
 
-@flux_server.feature(lsp.INITIALIZE)
+@IDEKA_server.feature(lsp.INITIALIZE)
 def on_initialize(ls: LanguageServer, params: lsp.InitializeParams):
-    log.info("Flux LSP initializing (client: %s)", getattr(params, "client_info", "unknown"))
-    if _flux_import_error:
-        log.error(_flux_import_error)
+    log.info("IDEKA LSP initializing (client: %s)", getattr(params, "client_info", "unknown"))
+    if _IDEKA_import_error:
+        log.error(_IDEKA_import_error)
 
 
-@flux_server.feature(lsp.INITIALIZED)
+@IDEKA_server.feature(lsp.INITIALIZED)
 def on_initialized(ls: LanguageServer, params: lsp.InitializedParams):
-    log.info("Flux LSP ready.")
+    log.info("IDEKA LSP ready.")
     # Inject semantic tokens legend now that server capabilities are finalized.
     try:
         caps = ls.server_capabilities
@@ -849,13 +849,13 @@ def _schedule_validate(ls: LanguageServer, uri: str) -> None:
     log.debug("debounce: scheduled parse in %.1fs for %s", _DEBOUNCE_DELAY, uri.split('/')[-1])
 
 
-@flux_server.feature(lsp.TEXT_DOCUMENT_DID_OPEN)
+@IDEKA_server.feature(lsp.TEXT_DOCUMENT_DID_OPEN)
 def did_open(ls: LanguageServer, params: lsp.DidOpenTextDocumentParams):
     _doc_store[params.text_document.uri] = params.text_document.text
     _schedule_validate(ls, params.text_document.uri)
 
 
-@flux_server.feature(lsp.TEXT_DOCUMENT_DID_CHANGE)
+@IDEKA_server.feature(lsp.TEXT_DOCUMENT_DID_CHANGE)
 def did_change(ls: LanguageServer, params: lsp.DidChangeTextDocumentParams):
     uri = params.text_document.uri
     for change in params.content_changes:
@@ -882,12 +882,12 @@ def did_change(ls: LanguageServer, params: lsp.DidChangeTextDocumentParams):
     _schedule_validate(ls, uri)
 
 
-@flux_server.feature(lsp.TEXT_DOCUMENT_DID_SAVE)
+@IDEKA_server.feature(lsp.TEXT_DOCUMENT_DID_SAVE)
 def did_save(ls: LanguageServer, params: lsp.DidSaveTextDocumentParams):
     _schedule_validate(ls, params.text_document.uri)
 
 
-@flux_server.feature(lsp.TEXT_DOCUMENT_DID_CLOSE)
+@IDEKA_server.feature(lsp.TEXT_DOCUMENT_DID_CLOSE)
 def did_close(ls: LanguageServer, params: lsp.DidCloseTextDocumentParams):
     uri = params.text_document.uri
     handle = _debounce_handles.pop(uri, None)
@@ -902,7 +902,7 @@ def did_close(ls: LanguageServer, params: lsp.DidCloseTextDocumentParams):
 # Completion
 # ---------------------------------------------------------------------------
 
-@flux_server.feature(
+@IDEKA_server.feature(
     lsp.TEXT_DOCUMENT_COMPLETION,
     lsp.CompletionOptions(trigger_characters=[".", ":"])
 )
@@ -934,13 +934,13 @@ def completion(ls: LanguageServer, params: lsp.CompletionParams):
     if stripped.startswith('#import') and '<' in stripped and '>' not in stripped:
         return lsp.CompletionList(is_incomplete=False, items=_import_completions())
 
-    # Detect #import "" context -- offer local .fx files relative to document
+    # Detect #import "" context -- offer local .idk files relative to document
     if stripped.startswith('#import') and '"' in stripped and stripped.count('"') % 2 == 1:
         doc_dir = str(Path(_uri_to_path(uri)).parent)
         local_items = []
         if os.path.isdir(doc_dir):
             for fname in sorted(os.listdir(doc_dir)):
-                if fname.endswith('.fx'):
+                if fname.endswith('.idk'):
                     local_items.append(lsp.CompletionItem(
                         label=fname,
                         kind=lsp.CompletionItemKind.File,
@@ -1293,7 +1293,7 @@ def _symbol_origin_file(program, func_def, current_uri_path: str) -> str:
     return current_uri_path
 
 
-@flux_server.feature(lsp.TEXT_DOCUMENT_HOVER)
+@IDEKA_server.feature(lsp.TEXT_DOCUMENT_HOVER)
 def hover(ls: LanguageServer, params: lsp.HoverParams):
     uri     = params.text_document.uri
     program = _parse_cache.get(uri)
@@ -1653,7 +1653,7 @@ def _build_type_index(program: Program) -> Dict[str, object]:
     return index
 
 
-@flux_server.feature(
+@IDEKA_server.feature(
     lsp.TEXT_DOCUMENT_SIGNATURE_HELP,
     lsp.SignatureHelpOptions(trigger_characters=["(", ","])
 )
@@ -1745,7 +1745,7 @@ def signature_help(ls: LanguageServer, params: lsp.SignatureHelpParams):
 
 
 
-@flux_server.feature(lsp.TEXT_DOCUMENT_DEFINITION)
+@IDEKA_server.feature(lsp.TEXT_DOCUMENT_DEFINITION)
 def definition(ls: LanguageServer, params: lsp.DefinitionParams):
     uri     = params.text_document.uri
     program = _parse_cache.get(uri)
@@ -1897,7 +1897,7 @@ def _sym_range(defn) -> lsp.Range:
     )
 
 
-@flux_server.feature(lsp.TEXT_DOCUMENT_DOCUMENT_SYMBOL)
+@IDEKA_server.feature(lsp.TEXT_DOCUMENT_DOCUMENT_SYMBOL)
 def document_symbol(ls: LanguageServer, params: lsp.DocumentSymbolParams):
     uri     = params.text_document.uri
     program = _parse_cache.get(uri)
@@ -1939,18 +1939,18 @@ def document_symbol(ls: LanguageServer, params: lsp.DocumentSymbolParams):
 # ---------------------------------------------------------------------------
 
 _STDLIB_FX_FILES = [
-    "standard.fx", "windows.fx", "opengl.fx", "socket.fx", "threading.fx",
-    "collections.fx", "vectors.fx", "decimal.fx", "cryptography.fx",
-    "console.fx", "networking.fx", "math.fx", "atomic.fx",
+    "standard.idk", "windows.idk", "opengl.idk", "socket.idk", "threading.idk",
+    "collections.idk", "vectors.idk", "decimal.idk", "cryptography.idk",
+    "console.idk", "networking.idk", "math.idk", "atomic.idk",
 ]
 
 def _import_completions() -> List[lsp.CompletionItem]:
-    """Offer known stdlib .fx filenames for #import <> completion."""
-    stdlib_dir = os.environ.get("FLUX_STDLIB", "")
+    """Offer known stdlib .idk filenames for #import <> completion."""
+    stdlib_dir = os.environ.get("IDEKA_STDLIB", "")
     names = list(_STDLIB_FX_FILES)
     if stdlib_dir and os.path.isdir(stdlib_dir):
         for f in os.listdir(stdlib_dir):
-            if f.endswith('.fx') and f not in names:
+            if f.endswith('.idk') and f not in names:
                 names.append(f)
     return [
         lsp.CompletionItem(
@@ -1965,7 +1965,7 @@ def _import_completions() -> List[lsp.CompletionItem]:
 # Workspace symbols
 # ---------------------------------------------------------------------------
 
-@flux_server.feature(lsp.WORKSPACE_SYMBOL)
+@IDEKA_server.feature(lsp.WORKSPACE_SYMBOL)
 def workspace_symbol(ls: LanguageServer, params):
     query = (params.query or "").lower()
     results = []
@@ -2036,7 +2036,7 @@ def _find_references_in_text(text: str, word: str) -> List[lsp.Range]:
     return ranges
 
 
-@flux_server.feature(lsp.TEXT_DOCUMENT_REFERENCES)
+@IDEKA_server.feature(lsp.TEXT_DOCUMENT_REFERENCES)
 def references(ls: LanguageServer, params):
     uri  = params.text_document.uri
     text = _doc_store.get(uri, "")
@@ -2055,7 +2055,7 @@ def references(ls: LanguageServer, params):
 # Rename symbol
 # ---------------------------------------------------------------------------
 
-@flux_server.feature(lsp.TEXT_DOCUMENT_PREPARE_RENAME)
+@IDEKA_server.feature(lsp.TEXT_DOCUMENT_PREPARE_RENAME)
 def prepare_rename(ls: LanguageServer, params):
     text = _doc_store.get(params.text_document.uri, "")
     word = _word_at_position(text, params.position)
@@ -2064,7 +2064,7 @@ def prepare_rename(ls: LanguageServer, params):
     return _word_range_at_position(text, params.position)
 
 
-@flux_server.feature(lsp.TEXT_DOCUMENT_RENAME)
+@IDEKA_server.feature(lsp.TEXT_DOCUMENT_RENAME)
 def rename(ls: LanguageServer, params):
     uri      = params.text_document.uri
     text     = _doc_store.get(uri, "")
@@ -2093,7 +2093,7 @@ def rename(ls: LanguageServer, params):
 # Code actions
 # ---------------------------------------------------------------------------
 
-@flux_server.feature(lsp.TEXT_DOCUMENT_CODE_ACTION)
+@IDEKA_server.feature(lsp.TEXT_DOCUMENT_CODE_ACTION)
 def code_action(ls: LanguageServer, params):
     uri     = params.text_document.uri
     program = _parse_cache.get(uri)
@@ -2145,7 +2145,7 @@ def code_action(ls: LanguageServer, params):
 # Inlay hints
 # ---------------------------------------------------------------------------
 
-@flux_server.feature(lsp.TEXT_DOCUMENT_INLAY_HINT)
+@IDEKA_server.feature(lsp.TEXT_DOCUMENT_INLAY_HINT)
 def inlay_hint(ls: LanguageServer, params):
     uri     = params.text_document.uri
     program = _parse_cache.get(uri)
@@ -2353,7 +2353,7 @@ def _collect_semantic_tokens(program: Program, text: str) -> List[tuple]:
     return tokens
 
 
-@flux_server.feature(lsp.TEXT_DOCUMENT_SEMANTIC_TOKENS_FULL)
+@IDEKA_server.feature(lsp.TEXT_DOCUMENT_SEMANTIC_TOKENS_FULL)
 def semantic_tokens_full(ls: LanguageServer, params: lsp.SemanticTokensParams):
     uri     = params.text_document.uri
     program = _parse_cache.get(uri)
@@ -2370,7 +2370,7 @@ def semantic_tokens_full(ls: LanguageServer, params: lsp.SemanticTokensParams):
 
 def main():
     import argparse
-    ap = argparse.ArgumentParser(description="Flux Language Server")
+    ap = argparse.ArgumentParser(description="IDEKA Language Server")
     ap.add_argument("--tcp",  action="store_true", help="TCP mode on port 2087")
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=2087)
@@ -2378,10 +2378,10 @@ def main():
 
     if args.tcp:
         log.info("Starting in TCP mode on %s:%d", args.host, args.port)
-        flux_server.start_tcp(args.host, args.port)
+        IDEKA_server.start_tcp(args.host, args.port)
     else:
         log.info("Starting in stdio mode")
-        flux_server.start_io()
+        IDEKA_server.start_io()
 
 
 if __name__ == "__main__":

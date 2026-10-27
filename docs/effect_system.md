@@ -1,4 +1,4 @@
-# Flux Effect System — In-Depth Reference
+# IDEKA Effect System — In-Depth Reference
 
 ## What Effects Actually Are
 
@@ -181,7 +181,7 @@ Causes label X to travel upward through the call graph. Every caller of this
 function inherits X in its transitive label set. Every caller's caller inherits
 it too. Indefinitely.
 
-```flux
+```IDEKA
 def write_socket(byte* data) -> void # effect {*IO.Socket};
 ```
 
@@ -194,7 +194,7 @@ X must not appear in the transitive label set of this function. If the compiler
 finds X anywhere reachable from here, it is a violation. This is what turns
 labels into enforcement.
 
-```flux
+```IDEKA
 def rt_handler() -> void # effect {!Alloc & !IO};
 ```
 
@@ -232,7 +232,7 @@ operator is the difference, not anything special about the label name.
 
 Suppresses X even if something else in the expression would imply it.
 
-```flux
+```IDEKA
 effect SafeDetour { *Hook.Detour & ^Alloc };
 ```
 
@@ -317,7 +317,7 @@ User-defined effects are named operator expressions. They let you give a name
 to a behavioral profile -- a combination of labels and operators -- then use
 that name as a label in other expressions.
 
-```flux
+```IDEKA
 effect RealTime { !Alloc & !IO & !Throw };
 ```
 
@@ -325,7 +325,7 @@ effect RealTime { !Alloc & !IO & !Throw };
 under that name contains three `!` operators. When the enforcement pass expands
 `RealTime`, those operators take effect.
 
-```flux
+```IDEKA
 effect MemoryScanner
 {
     *Mem.Read.Process &
@@ -349,7 +349,7 @@ The compiler builds a call graph, seeds each function with its own declared
 labels, and propagates them upward through fixed-point iteration. Unannotated
 intermediate functions are transparent -- labels pass through them.
 
-```flux
+```IDEKA
 // No annotation. Labels pass through.
 def mid() -> void* { -> heap_alloc(); };
 
@@ -370,7 +370,7 @@ The violation is at the `mid()` call site. That is where the label enters
 further. It makes a containment guarantee: the listed labels do not escape
 this function's interface to callers.
 
-```flux
+```IDEKA
 def log_event(byte* msg) -> void # attenuate {IO};
 def log_event(byte* msg) -> void
 {
@@ -436,28 +436,28 @@ annotated. These are seeded from the source itself.
 **`# effect {}`** -- declares labels this function introduces. Goes on the
 prototype. Definitions inherit it.
 
-```flux
+```IDEKA
 def hook_fn(void* target) -> void # effect {*Hook.Detour};
 def hook_fn(void* target) -> void { ... };
 ```
 
 **`# attenuate {}`** -- declares labels stopped at this function's boundary.
 
-```flux
+```IDEKA
 def buffered_write(byte* msg) -> void # attenuate {IO};
 def buffered_write(byte* msg) -> void { ... };
 ```
 
 Both may appear on the same function in any order, after contracts:
 
-```flux
+```IDEKA
 def foo() -> void : Contract # effect {*Alloc.Heap} # attenuate {IO};
 def foo() -> void { ... };
 ```
 
 Tags work in multi-prototype lists:
 
-```flux
+```IDEKA
 def read_mem(void* addr) -> byte # effect {*Mem.Read.Process},
     write_mem(void* addr, byte v) -> void # effect {*Mem.Write.Process};
 ```
@@ -470,7 +470,7 @@ def read_mem(void* addr) -> byte # effect {*Mem.Read.Process},
 transitive label set of any function using that effect. Without those operators,
 having multiple labels present is never a conflict -- labels coexist silently.
 
-```flux
+```IDEKA
 effect ExclusiveIO { IO.Console ^| IO.File };
 
 // Conflict: both IO.Console and IO.File present.

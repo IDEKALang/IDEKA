@@ -8,6 +8,6 @@
     default {${4};};
 };]]></content>
   <tabTrigger>switch</tabTrigger>
-  <scope>source.flux</scope>
+  <scope>source.IDEKA</scope>
   <description>Switch on value, creates jump table.</description>
 </snippet>

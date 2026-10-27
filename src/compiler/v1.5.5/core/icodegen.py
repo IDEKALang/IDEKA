@@ -1279,29 +1279,39 @@ class CodegenVisitor:
         return ir.Constant(ir.IntType(32), 0)
 
     def visit_TypeOf(self, node, builder, module):
+        type_name = self._typeof_type_name(node, builder, module)
+        return self._typeof_const_str(type_name, module)
+
+    def _typeof_type_name(self, node, builder, module) -> str:
+        """The type name typeof(expr) stands for. It is known at compile time."""
         from iast import Identifier, Literal
         from itypesys import TypeSystem as _TS
         expr = node.expression
         if isinstance(expr, _TS):
-            type_name = self._typeof_name_from_typespec(expr, module)
-            return self._typeof_const_str(type_name, module)
+            return self._typeof_name_from_typespec(expr, module)
         if isinstance(expr, Identifier):
             type_name = self._typeof_resolve_identifier_name(expr.name, module)
             if type_name is not None:
-                return self._typeof_const_str(type_name, module)
+                return type_name
         if isinstance(expr, Literal):
-            type_name = self._typeof_name_from_datatype(expr.type)
-            return self._typeof_const_str(type_name, module)
+            return self._typeof_name_from_datatype(expr.type)
         val = self.visit(expr, builder, module)
         spec = getattr(val, '_IDEKA_type_spec', None)
         if spec is not None:
             if isinstance(spec, _TS):
-                type_name = self._typeof_name_from_typespec(spec, module)
-            else:
-                type_name = self._typeof_name_from_datatype(spec)
-            return self._typeof_const_str(type_name, module)
-        type_name = self._typeof_name_from_llvm_type(val.type, module)
-        return self._typeof_const_str(type_name, module)
+                return self._typeof_name_from_typespec(spec, module)
+            return self._typeof_name_from_datatype(spec)
+        return self._typeof_name_from_llvm_type(val.type, module)
+
+    def _typeof_id(self, type_name: str, module):
+        """Small integer standing for a typeof() type name in this module. Two names get the
+        same id exactly when they are the same type, so an id can be switched on."""
+        if not hasattr(module, '_typeof_ids'):
+            module._typeof_ids = {}
+        ids = module._typeof_ids
+        if type_name not in ids:
+            ids[type_name] = len(ids) + 1
+        return ir.Constant(ir.IntType(32), ids[type_name])
 
     def _typeof_const_str(self, type_name: str, module):
         """
@@ -7033,9 +7043,59 @@ class CodegenVisitor:
 
     def _visit_switch_typeof(self, node, builder, module):
         """
-        Lower  switch (typeof(x)) { case (typeof(T)) { ... } ... }  as a
-        pointer-equality if/else-if chain.  typeof() returns a deduplicated
-        global byte-array pointer so icmp eq on the pointers is correct.
+        Lower  switch (typeof(x)) { case (typeof(T)) { ... } ... }  as an LLVM switch on the
+        type ids of the types. Every typeof() is known at compile time, so the discriminant is
+        a constant and the jump is O(1) however many cases there are. When a case value is not
+        itself a typeof(), the pointer equality chain is used instead.
+        """
+        from iast import TypeOf
+        if not all(c.value is None or isinstance(c.value, TypeOf) for c in node.cases):
+            return self._visit_switch_typeof_chain(node, builder, module)
+
+        disc = self._typeof_id(self._typeof_type_name(node.expression, builder, module), module)
+
+        func = builder.block.function
+        merge_block   = func.append_basic_block("switch_typeof_merge")
+        default_block = None
+        case_blocks   = []
+        for i, case in enumerate(node.cases):
+            if case.value is None:
+                default_block = func.append_basic_block("switch_typeof_default")
+                case_blocks.append((None, default_block))
+            else:
+                case_blocks.append((case.value, func.append_basic_block(f"switch_typeof_case_{i}")))
+        if default_block is None:
+            default_block = merge_block
+
+        sw = builder.switch(disc, default_block)
+        seen = set()
+        for case_expr, case_block in case_blocks:
+            if case_expr is None:
+                continue
+            case_id = self._typeof_id(self._typeof_type_name(case_expr, builder, module), module)
+            if case_id.constant in seen:
+                continue                    # the first case of a type wins
+            seen.add(case_id.constant)
+            sw.add_case(case_id, case_block)
+
+        for i, (case_expr, case_block) in enumerate(case_blocks):
+            builder.position_at_start(case_block)
+            func_entry = builder.function.entry_basic_block
+            outer_alloca_block = getattr(builder, '_switch_case_alloca_block', None)
+            builder._switch_case_alloca_block = func_entry
+            self.visit(node.cases[i].body, builder, module)
+            builder._switch_case_alloca_block = outer_alloca_block
+            if not builder.block.is_terminated:
+                builder.branch(merge_block)
+
+        builder.position_at_start(merge_block)
+        return None
+
+    def _visit_switch_typeof_chain(self, node, builder, module):
+        """
+        switch (typeof(x)) as a pointer-equality if/else-if chain. typeof() returns a
+        deduplicated global byte-array pointer, so icmp eq on the pointers is correct.
+        Only used for a switch with a case value that is not a typeof().
         """
         from iast import TypeOf
         switch_ptr = self.visit(node.expression, builder, module)
@@ -7094,9 +7154,8 @@ class CodegenVisitor:
 
     def visit_SwitchStatement(self, node, builder, module):
         from iast import Literal, Identifier, TypeOf, MemberAccess, UnaryOp
-        # typeof() returns a deduplicated global pointer, not an integer.
-        # LLVM switch requires an integer discriminant, so lower
-        # switch(typeof(x)) as a pointer-equality if/else-if chain instead.
+        # typeof() returns a deduplicated global pointer, not an integer. A switch on it
+        # switches on the type ids instead (see _visit_switch_typeof).
         if isinstance(node.expression, TypeOf):
             return self._visit_switch_typeof(node, builder, module)
 

@@ -1,6 +1,6 @@
-# fpm — Flux Package Manager
+# fpm — IDEKA Package Manager
 
-`fpm` downloads and manages the Flux standard library and third-party packages, and comes included in the language.
+`fpm` downloads and manages the IDEKA standard library and third-party packages, and comes included in the language.
 
 ---
 
@@ -23,13 +23,13 @@ from typing import Optional
 
 | Path | Purpose |
 |------|---------|
-| `~/Flux/.fpm/` | fpm working directory |
-| `~/Flux/.fpm/packages/` | Installed third-party packages |
-| `~/Flux/.fpm/registry.json` | Local registry cache |
-| `~/Flux/.fpm/installed.json` | Installed package records |
-| `~/Flux/.fpm/sources.json` | Configured remote sources |
-| `~/Flux/src/stdlib/` | Standard library files |
-| `~/Flux/src/stdlib/package.json` | Stdlib package manifest |
+| `~/IDEKA/.fpm/` | fpm working directory |
+| `~/IDEKA/.fpm/packages/` | Installed third-party packages |
+| `~/IDEKA/.fpm/registry.json` | Local registry cache |
+| `~/IDEKA/.fpm/installed.json` | Installed package records |
+| `~/IDEKA/.fpm/sources.json` | Configured remote sources |
+| `~/IDEKA/src/stdlib/` | Standard library files |
+| `~/IDEKA/src/stdlib/package.json` | Stdlib package manifest |
 
 ---
 
@@ -143,7 +143,7 @@ When installing a named package, fpm:
 When downloading a package file, fpm tries source URLs in this order:
 
 1. The source URL the package was discovered from (third-party sources).
-2. The official Flux stdlib base URL as a fallback.
+2. The official IDEKA stdlib base URL as a fallback.
 
 ---
 
@@ -153,12 +153,12 @@ Both the stdlib and third-party sources use the same `package.json` format:
 
 ```json
 {
-  "pack": "flux-fpm",
+  "pack": "IDEKA-fpm",
   "version": "1.0.0",
   "author": "Karac V. Thweatt",
   "license": "MIT",
-  "repository": "https://github.com/kvthweatt/Flux",
-  "base_url": "https://raw.githubusercontent.com/kvthweatt/Flux/main/src/stdlib",
+  "repository": "https://github.com/kvthweatt/IDEKA",
+  "base_url": "https://raw.githubusercontent.com/kvthweatt/IDEKA/main/src/stdlib",
   "packages":
   {
     "fpm":
@@ -166,19 +166,19 @@ Both the stdlib and third-party sources use the same `package.json` format:
       "version": "1.0.0",
       "entries":
       {
-        "main": "fpm.fx"
+        "main": "fpm.idk"
       }
       "path": "",
-      "description": "Flux Package Manager",
+      "description": "IDEKA Package Manager",
       "dependencies":
       {
-        "flux-types": ">=1.0.0",
-        "flux-memory": ">=1.0.0",
-        "flux-allocators": ">=1.0.0",
-        "flux-string-utilities": ">=1.0.0",
-        "flux-sys": ">=1.0.0",
-        "flux-io": ">=1.0.0",
-        "flux-ffifio": ">=1.0.0"
+        "IDEKA-types": ">=1.0.0",
+        "IDEKA-memory": ">=1.0.0",
+        "IDEKA-allocators": ">=1.0.0",
+        "IDEKA-string-utilities": ">=1.0.0",
+        "IDEKA-sys": ">=1.0.0",
+        "IDEKA-io": ">=1.0.0",
+        "IDEKA-ffifio": ">=1.0.0"
       }
     }
   }

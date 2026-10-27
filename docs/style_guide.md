@@ -1,8 +1,8 @@
-# Flux Style Guide
+# IDEKA Style Guide
 
-A standard for writing clear, consistent, and correct Flux code.
+A standard for writing clear, consistent, and correct IDEKA code.
 This is not enforced by the compiler. It reflects the conventions
-used across the Flux standard library and official examples.
+used across the IDEKA standard library and official examples.
 
 ---
 
@@ -13,19 +13,19 @@ or code. Multi-file imports are on one line, comma-separated,
 left to right in dependency order.
 
 ```
-#import <standard.fx>, <math.fx>, <windows.fx>, <opengl.fx>;
+#import <standard.idk>, <math.idk>, <windows.idk>, <opengl.idk>;
 ```
 
 Platform-conditional imports use `#ifdef`/`#endif` blocks immediately
 after any unconditional imports:
 
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 #ifdef __WINDOWS__
-#import <net_windows.fx>;
+#import <net_windows.idk>;
 #endif;
 #ifdef __LINUX__
-#import <net_linux.fx>;
+#import <net_linux.idk>;
 #endif;
 ```
 
@@ -292,7 +292,7 @@ If you scatter declarations:
 - the frame becomes fragmented,
 - early returns waste allocations, and the generated code becomes harder to reason about.
 
-By forcing all locals to the top, Flux guarantees:
+By forcing all locals to the top, IDEKA guarantees:
 - one contiguous frame
 - one prologue
 - no mid‑function stack mutations
@@ -427,7 +427,7 @@ u16 flags = raw `& 0x00FF;                          // bitwise
 ### XOR
 
 Use `^|` for bitwise XOR of values. Never use `^` for XOR — `^` is
-exponentiation in Flux:
+exponentiation in IDEKA:
 
 ```
 ipad_key[i] = k ^| byte(0x36);
@@ -507,8 +507,8 @@ Do not rely on implicit null termination. The `` is always explicit.
 `noopstr` is defined as `byte[] as noopstr;` and `noop` stands for "non-OOP".
 
 ```
-noopstr cls = "FluxNotepad",
-        ttl = "Flux Notepad - Untitled";
+noopstr cls = "IDEKANotepad",
+        ttl = "IDEKA Notepad - Untitled";
 ```
 
 ---
@@ -698,7 +698,7 @@ object GLContext
 
 ## Calling Conventions
 
-`def` is `fastcall` by default and is used for all Flux-to-Flux calls.
+`def` is `fastcall` by default and is used for all IDEKA-to-IDEKA calls.
 `stdcall`, `cdecl`, and other conventions are used only when required
 by an external ABI. Declare them explicitly at the function definition:
 

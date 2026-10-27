@@ -30,9 +30,9 @@ import argparse
 from pathlib import Path
 
 # fbc modules
-from ibc_alias import AliasMap, Violation
+from idkbc_alias import AliasMap, Violation
 from itypesys import StorageClass as _StorageClass
-from ibc_report import print_violations, print_summary
+from idkbc_report import print_violations, print_summary
 
 # IDEKA compiler modules
 # idkbc.py lives at the project root alongside idkc.py.
@@ -92,20 +92,20 @@ def _make_param_site(func_name: str, param_name: str) -> str:
     return f"param:{func_name}:{param_name}"
 
 def _is_fmalloc(node) -> bool:
-    if isinstance(node, fast.FunctionCall):
+    if isinstance(node, iast.FunctionCall):
         return node.name == 'fmalloc'
     return False
 
 def _is_ffree(node) -> bool:
-    if isinstance(node, fast.FunctionCall):
+    if isinstance(node, iast.FunctionCall):
         return node.name == 'ffree'
     return False
 
 def _is_thread_spawn(node) -> bool:
     """Heuristic: function calls that look like thread spawns."""
-    if isinstance(node, fast.FunctionCall):
+    if isinstance(node, iast.FunctionCall):
         return 'spawn' in node.name.lower() or 'thread' in node.name.lower()
-    if isinstance(node, fast.MethodCall):
+    if isinstance(node, iast.MethodCall):
         name = getattr(node, 'name', '') or ''
         return 'spawn' in name.lower() or 'thread' in name.lower()
     return False
@@ -119,7 +119,7 @@ class CallGraph:
 
     def __init__(self):
         # name -> FunctionDef
-        self.funcs: dict[str, fast.FunctionDef] = {}
+        self.funcs: dict[str, iast.FunctionDef] = {}
         # short name -> mangled name, for intra-namespace call resolution
         self.short_names: dict[str, str] = {}
         # base name -> list of mangled names (for overload resolution at call sites)
@@ -153,7 +153,7 @@ class CallGraph:
         table = self.visited_thread if thread else self.visited_main
         table.setdefault(name, set()).add(ctx)
 
-    def collect(self, program: fast.Program):
+    def collect(self, program: iast.Program):
         """Walk the top-level program and collect all function definitions."""
         for node in program.statements:
             self._collect_node(node)
@@ -184,17 +184,17 @@ class CallGraph:
             self.async_uses.append((key, func, use))
 
     def _collect_node(self, node, ns_prefix: str = ''):
-        if isinstance(node, fast.AsyncTagDef):
+        if isinstance(node, iast.AsyncTagDef):
             self.async_tags[node.name] = node
-        elif isinstance(node, fast.FunctionDef):
+        elif isinstance(node, iast.FunctionDef):
             self._note_async(node, node.name)
             if not node.is_prototype:
                 self.funcs[node.name] = node
-        elif isinstance(node, fast.FunctionDefStatement):
+        elif isinstance(node, iast.FunctionDefStatement):
             self._collect_node(node.function_def, ns_prefix)
-        elif isinstance(node, fast.NamespaceDefStatement):
+        elif isinstance(node, iast.NamespaceDefStatement):
             self._collect_node(node.namespace_def, ns_prefix)
-        elif isinstance(node, fast.NamespaceDef):
+        elif isinstance(node, iast.NamespaceDef):
             prefix = f"{ns_prefix}__{node.name}" if ns_prefix else node.name
             for func in node.functions:
                 self._note_async(func, f"{prefix}__{func.name}")
@@ -205,24 +205,24 @@ class CallGraph:
                 self._collect_object(obj, prefix=prefix)
             for ns in node.nested_namespaces:
                 self._collect_node(ns, ns_prefix=prefix)
-        elif isinstance(node, fast.ObjectDef):
+        elif isinstance(node, iast.ObjectDef):
             self._collect_object(node, prefix=ns_prefix)
-        elif isinstance(node, fast.ObjectDefStatement):
+        elif isinstance(node, iast.ObjectDefStatement):
             self._collect_object(node.object_def, prefix=ns_prefix)
-        elif isinstance(node, fast.StructDef):
+        elif isinstance(node, iast.StructDef):
             pass
-        elif isinstance(node, fast.StructDefStatement):
+        elif isinstance(node, iast.StructDefStatement):
             pass
-        elif isinstance(node, fast.ExternBlock):
+        elif isinstance(node, iast.ExternBlock):
             pass
-        elif isinstance(node, fast.ExportBlock):
+        elif isinstance(node, iast.ExportBlock):
             for func in node.definitions:
                 if not func.is_prototype:
                     self.funcs[func.name] = func
 
     def _collect_object(self, obj, prefix: str):
         # guard: only ObjectDef has methods we can walk; TraitDef/InterfaceDef do not
-        if not isinstance(obj, fast.ObjectDef):
+        if not isinstance(obj, iast.ObjectDef):
             return
         for method in obj.methods:
             if method.name and method.body:
@@ -266,7 +266,7 @@ class BorrowChecker:
         # infinite recursion when context-sensitive re-entry produces a new
         # call_ctx tuple for an already-active recursive function
         self._call_stack: set[str] = set()
-        self._current_func_node: fast.FunctionDef | None = None
+        self._current_func_node: iast.FunctionDef | None = None
         # cache for FVM expression evaluation -- keyed by id(ast_node)
         # stores the result (int, str, or None) so each node is only executed once
         self._fvm_cache: dict[int, object] = {}
@@ -319,22 +319,22 @@ class BorrowChecker:
         stmts = func.body.statements
         if len(stmts) == 1:
             s = stmts[0]
-            if isinstance(s, fast.ReturnStatement) and s.value:
+            if isinstance(s, iast.ReturnStatement) and s.value:
                 if _is_fmalloc(s.value):
                     return True
-                if isinstance(s.value, fast.CastExpression) and _is_fmalloc(s.value.expression):
+                if isinstance(s.value, iast.CastExpression) and _is_fmalloc(s.value.expression):
                     return True
-                if isinstance(s.value, fast.FunctionCall) and isinstance(s.value.name, str):
+                if isinstance(s.value, iast.FunctionCall) and isinstance(s.value.name, str):
                     if 'malloc' in s.value.name.lower() or 'alloc' in s.value.name.lower():
                         return True
-            if isinstance(s, fast.ExpressionStatement):
+            if isinstance(s, iast.ExpressionStatement):
                 expr = s.expression
-                if isinstance(expr, fast.ReturnStatement) and expr.value:
+                if isinstance(expr, iast.ReturnStatement) and expr.value:
                     if _is_fmalloc(expr.value):
                         return True
         return False
 
-    def _check_function(self, func: fast.FunctionDef, thread_context: bool = False,
+    def _check_function(self, func: iast.FunctionDef, thread_context: bool = False,
                         call_ctx: tuple = ()):
         """
         Analyse one function body.
@@ -459,7 +459,7 @@ class BorrowChecker:
     def _violation_key(self, v) -> tuple:
         return (v.kind, v.file, v.line, v.message)
 
-    def _walk_block(self, block: fast.Block):
+    def _walk_block(self, block: iast.Block):
         self.alias.push_scope()
         for stmt in block.statements:
             if stmt is not None:
@@ -470,22 +470,22 @@ class BorrowChecker:
         file = _node_file(node)
         line = _node_line(node)
 
-        if isinstance(node, fast.VariableDeclaration):
+        if isinstance(node, iast.VariableDeclaration):
             self._on_var_decl(node)
 
-        elif isinstance(node, fast.Assignment):
+        elif isinstance(node, iast.Assignment):
             self._on_assign(node)
 
-        elif isinstance(node, fast.CompoundAssignment):
+        elif isinstance(node, iast.CompoundAssignment):
             self._walk_expr(node.value)
 
-        elif isinstance(node, fast.ExpressionStatement):
+        elif isinstance(node, iast.ExpressionStatement):
             self._walk_expr(node.expression)
 
-        elif isinstance(node, fast.Block):
+        elif isinstance(node, iast.Block):
             self._walk_block(node)
 
-        elif isinstance(node, fast.IfStatement):
+        elif isinstance(node, iast.IfStatement):
             self._walk_expr(node.condition)
             # snapshot freed_sites and heap_sites before each branch
             pre_freed = dict(self.alias.freed_sites)
@@ -517,7 +517,7 @@ class BorrowChecker:
                 merged_heap.update(then_heap)
                 self.alias.heap_sites = merged_heap
 
-        elif isinstance(node, fast.WhileLoop):
+        elif isinstance(node, iast.WhileLoop):
             self._walk_expr(node.condition)
             if node.body:
                 pre_freed = dict(self.alias.freed_sites)
@@ -538,7 +538,7 @@ class BorrowChecker:
                 merged_heap.update({s: v for s, v in loop_heap.items() if s not in pre_heap})
                 self.alias.heap_sites = merged_heap
 
-        elif isinstance(node, fast.DoWhileLoop):
+        elif isinstance(node, iast.DoWhileLoop):
             if node.body:
                 pre_freed = dict(self.alias.freed_sites)
                 pre_heap  = dict(self.alias.heap_sites)
@@ -550,7 +550,7 @@ class BorrowChecker:
                 self.alias.heap_sites = merged_heap
             self._walk_expr(node.condition)
 
-        elif isinstance(node, fast.ForLoop):
+        elif isinstance(node, iast.ForLoop):
             if node.init:
                 self._walk_stmt(node.init)
             if node.condition:
@@ -567,7 +567,7 @@ class BorrowChecker:
                 merged_heap.update({s: v for s, v in loop_heap.items() if s not in pre_heap})
                 self.alias.heap_sites = merged_heap
 
-        elif isinstance(node, fast.ForInLoop):
+        elif isinstance(node, iast.ForInLoop):
             if node.body:
                 pre_freed = dict(self.alias.freed_sites)
                 pre_heap  = dict(self.alias.heap_sites)
@@ -578,7 +578,7 @@ class BorrowChecker:
                 merged_heap.update({s: v for s, v in loop_heap.items() if s not in pre_heap})
                 self.alias.heap_sites = merged_heap
 
-        elif isinstance(node, fast.SwitchStatement):
+        elif isinstance(node, iast.SwitchStatement):
             self._walk_expr(node.expression)
             pre_freed = dict(self.alias.freed_sites)
             pre_heap  = dict(self.alias.heap_sites)
@@ -604,11 +604,11 @@ class BorrowChecker:
                 self.alias.freed_sites = dict(pre_freed)
                 self.alias.heap_sites  = dict(pre_heap)
 
-        elif isinstance(node, fast.ReturnStatement):
+        elif isinstance(node, iast.ReturnStatement):
             if node.value:
                 self._walk_expr(node.value)
 
-        elif isinstance(node, fast.DeferStatement):
+        elif isinstance(node, iast.DeferStatement):
             # deferred code executes at function exit, not at this point in
             # control flow -- snapshot freed_sites so any ffree inside the
             # defer body does not falsely mark sites as freed for UAF purposes.
@@ -622,7 +622,7 @@ class BorrowChecker:
                     self._walk_stmt(s)
             self.alias.freed_sites = dict(pre_freed)
 
-        elif isinstance(node, fast.TryBlock):
+        elif isinstance(node, iast.TryBlock):
             if node.try_body:
                 pre_freed = dict(self.alias.freed_sites)
                 pre_heap  = dict(self.alias.heap_sites)
@@ -655,7 +655,7 @@ class BorrowChecker:
                 merged_heap.update(h)
             self.alias.heap_sites = merged_heap
 
-        elif isinstance(node, fast.FunctionDefStatement):
+        elif isinstance(node, iast.FunctionDefStatement):
             # nested function def -- walk it under current context
             self._check_function(node.function_def, thread_context=self._in_thread_context)
 
@@ -669,11 +669,11 @@ class BorrowChecker:
             return False
         if _is_fmalloc(expr):
             return True
-        if isinstance(expr, (fast.CastExpression, fast.TypeConvertExpression)):
+        if isinstance(expr, (iast.CastExpression, iast.TypeConvertExpression)):
             return BorrowChecker._rhs_is_heap_alloc(expr.expression)
         return False
 
-    def _on_var_decl(self, node: fast.VariableDeclaration):
+    def _on_var_decl(self, node: iast.VariableDeclaration):
         file = _node_file(node)
         line = _node_line(node)
         is_ptr = _is_pointer_type(node.type_spec)
@@ -698,11 +698,11 @@ class BorrowChecker:
             # pointer arithmetic (byte* q = p + 8) is a different view into the same
             # allocation -- that IS a genuine alias and must not be excluded.
             rhs = node.initial_value
-            if isinstance(rhs, fast.Identifier):
+            if isinstance(rhs, iast.Identifier):
                 source_var = rhs.name
-            elif isinstance(rhs, (fast.CastExpression, fast.TypeConvertExpression)):
+            elif isinstance(rhs, (iast.CastExpression, iast.TypeConvertExpression)):
                 inner = rhs.expression
-                if isinstance(inner, fast.Identifier):
+                if isinstance(inner, iast.Identifier):
                     source_var = inner.name
                 else:
                     source_var = None
@@ -742,19 +742,19 @@ class BorrowChecker:
         if node.initial_value:
             self._walk_expr(node.initial_value)
 
-    def _on_assign(self, node: fast.Assignment):
+    def _on_assign(self, node: iast.Assignment):
         file = _node_file(node)
         line = _node_line(node)
         self._walk_expr(node.value)
 
         # is the target a pointer variable?
-        if isinstance(node.target, fast.Identifier):
+        if isinstance(node.target, iast.Identifier):
             var_name = node.target.name
             # check if we know this var as a pointer
             existing = self.alias._find_ptr(var_name)
             if existing is not None:
                 new_site = self._resolve_site(node.value, var_name, file, line)
-                source_var = node.value.name if isinstance(node.value, fast.Identifier) else None
+                source_var = node.value.name if isinstance(node.value, iast.Identifier) else None
                 self.alias.assign_ptr(var_name, new_site, True, file, line, source_var=source_var)
             elif self.check_leaks and self._rhs_is_heap_alloc(node.value):
                 # non-pointer-typed variable being assigned an fmalloc result --
@@ -772,12 +772,12 @@ class BorrowChecker:
 
         # arr[i] = ptr -- record that arr contains heap sites so ffree(arr[j])
         # can be resolved back to a valid heap site
-        if self.check_leaks and isinstance(node.target, fast.ArrayAccess):
+        if self.check_leaks and isinstance(node.target, iast.ArrayAccess):
             base = node.target.array
-            if isinstance(base, fast.Identifier):
+            if isinstance(base, iast.Identifier):
                 arr_name = base.name
                 rhs_site = None
-                if isinstance(node.value, fast.Identifier):
+                if isinstance(node.value, iast.Identifier):
                     info = self.alias._find_ptr(node.value.name)
                     if info and info.site in self.alias.heap_sites:
                         rhs_site = info.site
@@ -798,13 +798,13 @@ class BorrowChecker:
 
     def _unwrap_ptr_ident(self, expr) -> str:
         """Unwrap casts/address-of to find the underlying pointer variable name, if any."""
-        if isinstance(expr, fast.Identifier):
+        if isinstance(expr, iast.Identifier):
             return expr.name
-        if isinstance(expr, (fast.CastExpression, fast.TypeConvertExpression)):
+        if isinstance(expr, (iast.CastExpression, iast.TypeConvertExpression)):
             return self._unwrap_ptr_ident(expr.expression)
-        if isinstance(expr, fast.AddressOf):
+        if isinstance(expr, iast.AddressOf):
             return self._unwrap_ptr_ident(expr.expression)
-        if isinstance(expr, fast.FunctionCall) and expr.arguments:
+        if isinstance(expr, iast.FunctionCall) and expr.arguments:
             return self._unwrap_ptr_ident(expr.arguments[0])
         return None
 
@@ -863,7 +863,7 @@ class BorrowChecker:
             result.append((hint, site))
         return result
 
-    def _build_call_ctx(self, func: fast.FunctionDef, call_node: fast.FunctionCall) -> tuple:
+    def _build_call_ctx(self, func: iast.FunctionDef, call_node: iast.FunctionCall) -> tuple:
         """
         Build a call context tuple for a call site.
 
@@ -905,32 +905,32 @@ class BorrowChecker:
         ffree takes a numeric address -- the pointer is often cast before passing.
         """
         # plain identifier: ffree(ptr)
-        if isinstance(arg, fast.Identifier):
+        if isinstance(arg, iast.Identifier):
             info = self.alias._find_ptr(arg.name)
             return info.site if info else 'unknown'
         # cast: ffree(long(argv)) or ffree((u64)argv)
-        if isinstance(arg, fast.CastExpression):
+        if isinstance(arg, iast.CastExpression):
             return self._resolve_ffree_arg(arg.expression)
         # function call cast like long(argv) -- FunctionCall with type name
-        if isinstance(arg, fast.FunctionCall) and isinstance(arg.name, str):
+        if isinstance(arg, iast.FunctionCall) and isinstance(arg.name, str):
             if arg.arguments:
                 return self._resolve_ffree_arg(arg.arguments[0])
         # address-of: ffree(@argv) -- @argv gives address of the pointer variable
         # the pointer itself is what was malloc'd
-        if isinstance(arg, fast.AddressOf):
+        if isinstance(arg, iast.AddressOf):
             inner = arg.expression
-            if isinstance(inner, fast.Identifier):
+            if isinstance(inner, iast.Identifier):
                 info = self.alias._find_ptr(inner.name)
                 #import sys as _sys; _sys.stderr.write(f'[FBC DEBUG] resolve_ffree_arg @{inner.name!r}: info={info!r}\n'); _sys.stderr.flush()
                 return info.site if info else 'unknown'
         # type convert: long(argv), u64(argv) etc.
-        if isinstance(arg, fast.TypeConvertExpression):
+        if isinstance(arg, iast.TypeConvertExpression):
             return self._resolve_ffree_arg(arg.expression)
         # arr[i] -- if arr is known to hold heap sites, return and remove one
         # This handles the pattern: argv[k] = fmalloc(...) then ffree(argv[k])
-        if isinstance(arg, fast.ArrayAccess):
+        if isinstance(arg, iast.ArrayAccess):
             base = arg.array
-            if isinstance(base, fast.Identifier):
+            if isinstance(base, iast.Identifier):
                 arr_name = base.name
                 sites = self._array_heap_sites.get(arr_name)
                 if sites:
@@ -960,9 +960,9 @@ class BorrowChecker:
                 for param in (func.parameters or []):
                     cg._alloc_local(param.name)
                 body = func.body
-                stmts = body.statements if isinstance(body, fast.Block) else ([body] if body else [])
+                stmts = body.statements if isinstance(body, iast.Block) else ([body] if body else [])
                 for stmt in stmts:
-                    if isinstance(stmt, fast.VariableDeclaration):
+                    if isinstance(stmt, iast.VariableDeclaration):
                         cg._alloc_local(stmt.name)
             start = len(cg._instructions)
             cg._visit_expr(expr)
@@ -1015,18 +1015,18 @@ class BorrowChecker:
             return 'unknown'
 
         # @someVar or @someArray[i] -- address of a stack variable or element
-        if isinstance(expr, fast.AddressOf):
+        if isinstance(expr, iast.AddressOf):
             inner = expr.expression
-            if isinstance(inner, fast.Identifier):
+            if isinstance(inner, iast.Identifier):
                 target_name = inner.name
                 for frame in reversed(self.alias.frames):
                     if target_name in frame.var_sites:
                         return frame.var_sites[target_name]
                 return _make_stack_site(self.alias.func_name, target_name, line)
             # @arr[i] -- treat as address of the base array
-            if isinstance(inner, fast.ArrayAccess):
+            if isinstance(inner, iast.ArrayAccess):
                 base = inner.array
-                if isinstance(base, fast.Identifier):
+                if isinstance(base, iast.Identifier):
                     target_name = base.name
                     for frame in reversed(self.alias.frames):
                         if target_name in frame.var_sites:
@@ -1043,7 +1043,7 @@ class BorrowChecker:
             return 'unknown'
 
         # pointer arithmetic -- derived from base
-        if isinstance(expr, fast.BinaryOp) and expr.operator in (Operator.ADD, Operator.SUB):
+        if isinstance(expr, iast.BinaryOp) and expr.operator in (Operator.ADD, Operator.SUB):
             base_site = self._resolve_site(expr.left, var_name, file, line)
             if base_site != 'unknown':
                 return f"derived:{base_site}"
@@ -1053,7 +1053,7 @@ class BorrowChecker:
             return self._resolve_site_via_fvm(expr, var_name, file, line) or 'unknown'
 
         # identifier -- copy the site from the existing pointer
-        if isinstance(expr, fast.Identifier):
+        if isinstance(expr, iast.Identifier):
             info = self.alias._find_ptr(expr.name)
             if info:
                 site = info.site
@@ -1069,14 +1069,14 @@ class BorrowChecker:
         # cast / type convert -- mark as derived to avoid false alias with original
         # exception: a cast directly wrapping fmalloc is a fresh allocation and
         # must keep the raw heap: site so ffree can match it
-        if isinstance(expr, fast.CastExpression):
+        if isinstance(expr, iast.CastExpression):
             if _is_fmalloc(expr.expression):
                 return _make_heap_site(self.alias.func_name, _node_line(expr.expression))
             inner = self._resolve_site(expr.expression, var_name, file, line)
             if inner != 'unknown':
                 return f"derived:{inner}"
             return self._resolve_site_via_fvm(expr, var_name, file, line) or 'unknown'
-        if isinstance(expr, fast.TypeConvertExpression):
+        if isinstance(expr, iast.TypeConvertExpression):
             if _is_fmalloc(expr.expression):
                 return _make_heap_site(self.alias.func_name, _node_line(expr.expression))
             inner = self._resolve_site(expr.expression, var_name, file, line)
@@ -1085,7 +1085,7 @@ class BorrowChecker:
             return self._resolve_site_via_fvm(expr, var_name, file, line) or 'unknown'
 
         # deref -- try FVM before giving up
-        if isinstance(expr, fast.PointerDeref):
+        if isinstance(expr, iast.PointerDeref):
             return self._resolve_site_via_fvm(expr, var_name, file, line) or 'unknown'
 
         return self._resolve_site_via_fvm(expr, var_name, file, line) or 'unknown'
@@ -1098,7 +1098,7 @@ class BorrowChecker:
         if expr is None:
             return None
         # fast path: plain integer literal
-        if isinstance(expr, fast.Literal) and isinstance(expr.value, int):
+        if isinstance(expr, iast.Literal) and isinstance(expr.value, int):
             return expr.value
         # cache check
         key = id(expr)
@@ -1115,9 +1115,9 @@ class BorrowChecker:
                 for param in (func.parameters or []):
                     cg._alloc_local(param.name)
                 body = func.body
-                stmts = body.statements if isinstance(body, fast.Block) else ([body] if body else [])
+                stmts = body.statements if isinstance(body, iast.Block) else ([body] if body else [])
                 for stmt in stmts:
-                    if isinstance(stmt, fast.VariableDeclaration):
+                    if isinstance(stmt, iast.VariableDeclaration):
                         cg._alloc_local(stmt.name)
             start = len(cg._instructions)
             cg._visit_expr(expr)
@@ -1146,7 +1146,7 @@ class BorrowChecker:
         Unwraps casts and type conversions to reach the underlying value.
         """
         inner = expr
-        while isinstance(inner, (fast.CastExpression, fast.TypeConvertExpression)):
+        while isinstance(inner, (iast.CastExpression, iast.TypeConvertExpression)):
             inner = inner.expression
         return self._eval_index_via_fvm(inner)
 
@@ -1197,20 +1197,20 @@ class BorrowChecker:
 
         # fmalloc may be wrapped in a cast: (byte**)fmalloc(...)
         _fmalloc_node = node
-        if isinstance(node, (fast.CastExpression, fast.TypeConvertExpression)):
+        if isinstance(node, (iast.CastExpression, iast.TypeConvertExpression)):
             _fmalloc_node = node.expression
         if _is_fmalloc(_fmalloc_node) and self.check_leaks:
             site = _make_heap_site(self.alias.func_name, _node_line(_fmalloc_node))
             self.alias.record_malloc(site, _node_file(_fmalloc_node), _node_line(_fmalloc_node))
             #import sys as _sys; _sys.stderr.write(f'[FBC DEBUG] record_malloc: site={site!r} func={self.alias.func_name!r}\n'); _sys.stderr.flush()
             # record the allocation size if the argument is statically determinable
-            if isinstance(_fmalloc_node, fast.FunctionCall) and _fmalloc_node.arguments:
+            if isinstance(_fmalloc_node, iast.FunctionCall) and _fmalloc_node.arguments:
                 size = self._eval_size_via_fvm(_fmalloc_node.arguments[0])
                 if size is not None:
                     self.alias.record_alloc_size(site, size)
 
         if _is_ffree(node) and self.check_leaks:
-            if isinstance(node, fast.FunctionCall) and node.arguments:
+            if isinstance(node, iast.FunctionCall) and node.arguments:
                 arg = node.arguments[0]
                 # resolve the argument to a site -- handles Identifier, @x, cast(x), etc.
                 freed_site = self._resolve_ffree_arg(arg)
@@ -1277,11 +1277,11 @@ class BorrowChecker:
                         ))
 
         # check any identifier use against thread-escaped sites
-        if self.check_threads and isinstance(node, fast.Identifier):
+        if self.check_threads and isinstance(node, iast.Identifier):
             self._check_ident_escape(node.name, file, line)
 
         # resolve calls into the call graph
-        if isinstance(node, fast.FunctionCall):
+        if isinstance(node, iast.FunctionCall):
             callee_name = node.name if isinstance(node.name, str) else None
             # if the callee is an expression (function pointer), try FVM to resolve it
             if callee_name is None and node.name is not None:
@@ -1325,7 +1325,7 @@ class BorrowChecker:
             for arg in (node.arguments or []):
                 self._walk_expr(arg)
 
-        elif isinstance(node, fast.MethodCall):
+        elif isinstance(node, iast.MethodCall):
             self._walk_expr(node.object)
             for arg in (node.arguments or []):
                 self._walk_expr(arg)
@@ -1372,99 +1372,99 @@ class BorrowChecker:
                     arg_sites = self._collect_arg_sites(list(node.arguments or []), file, line)
                     self.alias.check_call_args(arg_sites, file, line)
 
-        elif isinstance(node, fast.BinaryOp):
+        elif isinstance(node, iast.BinaryOp):
             self._walk_expr(node.left)
             self._walk_expr(node.right)
 
-        elif isinstance(node, fast.UnaryOp):
+        elif isinstance(node, iast.UnaryOp):
             self._walk_expr(node.operand)
 
-        elif isinstance(node, fast.AddressOf):
+        elif isinstance(node, iast.AddressOf):
             self._walk_expr(node.expression)
 
-        elif isinstance(node, fast.PointerDeref):
+        elif isinstance(node, iast.PointerDeref):
             # check for use-after-thread-escape
-            if self.check_threads and isinstance(node.pointer, fast.Identifier):
+            if self.check_threads and isinstance(node.pointer, iast.Identifier):
                 self.alias.check_use_after_escape(node.pointer.name, file, line)
             # check for use-after-free
-            if isinstance(node.pointer, fast.Identifier):
+            if isinstance(node.pointer, iast.Identifier):
                 #import sys as _sys; _sys.stderr.write(f'[FBC DEBUG] PointerDeref: ptr={node.pointer.name!r} freed_sites={list(self.alias.freed_sites.keys())!r}\n'); _sys.stderr.flush()
                 self.alias.check_use_after_free(node.pointer.name, file, line)
             self._walk_expr(node.pointer)
 
-        elif isinstance(node, fast.MemberAccess):
+        elif isinstance(node, iast.MemberAccess):
             self._walk_expr(node.object)
 
-        elif isinstance(node, fast.ArrayAccess):
+        elif isinstance(node, iast.ArrayAccess):
             # check for access to thread-escaped pointer
-            if self.check_threads and isinstance(node.array, fast.Identifier):
+            if self.check_threads and isinstance(node.array, iast.Identifier):
                 self.alias.check_use_after_escape(node.array.name, file, line)
             # check for use-after-free
-            if isinstance(node.array, fast.Identifier):
+            if isinstance(node.array, iast.Identifier):
                 self.alias.check_use_after_free(node.array.name, file, line)
             # check for statically-determinable out-of-bounds index
-            if isinstance(node.array, fast.Identifier):
+            if isinstance(node.array, iast.Identifier):
                 self._check_bounds_at_access(node.array.name, node.index, file, line)
             self._walk_expr(node.array)
             self._walk_expr(node.index)
 
-        elif isinstance(node, fast.CastExpression):
+        elif isinstance(node, iast.CastExpression):
             self._walk_expr(node.expression)
 
-        elif isinstance(node, fast.TypeConvertExpression):
+        elif isinstance(node, iast.TypeConvertExpression):
             self._walk_expr(node.expression)
 
-        elif isinstance(node, fast.IfExpression):
+        elif isinstance(node, iast.IfExpression):
             self._walk_expr(node.condition)
             self._walk_expr(node.then_expr)
             self._walk_expr(node.else_expr)
 
-        elif isinstance(node, fast.TernaryOp):
+        elif isinstance(node, iast.TernaryOp):
             self._walk_expr(node.condition)
             self._walk_expr(node.true_expr)
             self._walk_expr(node.false_expr)
 
-        elif isinstance(node, fast.Assignment):
+        elif isinstance(node, iast.Assignment):
             self._walk_expr(node.value)
             # check lvalue target for escaped site access
             if self.check_threads:
-                if isinstance(node.target, fast.Identifier):
+                if isinstance(node.target, iast.Identifier):
                     self._check_ident_escape(node.target.name, file, line)
-                elif isinstance(node.target, fast.ArrayAccess):
+                elif isinstance(node.target, iast.ArrayAccess):
                     arr = node.target.array
-                    if isinstance(arr, fast.Identifier):
+                    if isinstance(arr, iast.Identifier):
                         self._check_ident_escape(arr.name, file, line)
             # check lvalue target for use-after-free
-            if isinstance(node.target, fast.PointerDeref):
+            if isinstance(node.target, iast.PointerDeref):
                 inner = node.target.pointer
-                if isinstance(inner, fast.Identifier):
+                if isinstance(inner, iast.Identifier):
                     self.alias.check_use_after_free(inner.name, file, line)
                     self.alias.check_write_alias(inner.name, file, line)
-            elif isinstance(node.target, fast.ArrayAccess):
+            elif isinstance(node.target, iast.ArrayAccess):
                 arr = node.target.array
-                if isinstance(arr, fast.Identifier):
+                if isinstance(arr, iast.Identifier):
                     self.alias.check_use_after_free(arr.name, file, line)
                     self.alias.check_write_alias(arr.name, file, line)
                     self._check_bounds_at_access(arr.name, node.target.index, file, line, write=True)
                     # arr[i] = ptr -- track heap sites stored into arrays so
                     # ffree(arr[j]) can resolve back to the original heap site
-                    if self.check_leaks and isinstance(node.value, fast.Identifier):
+                    if self.check_leaks and isinstance(node.value, iast.Identifier):
                         info = self.alias._find_ptr(node.value.name)
                         if info and info.site in self.alias.heap_sites:
                             if arr.name not in self._array_heap_sites:
                                 self._array_heap_sites[arr.name] = set()
                             self._array_heap_sites[arr.name].add(info.site)
             # if target is a known pointer, update its site
-            if isinstance(node.target, fast.Identifier):
+            if isinstance(node.target, iast.Identifier):
                 existing = self.alias._find_ptr(node.target.name)
                 if existing is not None:
                     new_site = self._resolve_site(node.value, node.target.name,
                                                   _node_file(node), _node_line(node))
-                    source_var = node.value.name if isinstance(node.value, fast.Identifier) else None
+                    source_var = node.value.name if isinstance(node.value, iast.Identifier) else None
                     self.alias.assign_ptr(node.target.name, new_site, True,
                                           _node_file(node), _node_line(node), source_var=source_var)
 
-        elif isinstance(node, fast.CompoundAssignment):
+        elif isinstance(node, iast.CompoundAssignment):
             self._walk_expr(node.value)
 
 # ---------------------------------------------------------------------------
@@ -1917,53 +1917,53 @@ class _LifetimeAnalysis:
         ln = _line(node, self._cur_line)
         self._cur_line = ln
 
-        if isinstance(node, fast.VariableDeclaration):
+        if isinstance(node, iast.VariableDeclaration):
             self._decl(node, st, bid)
-        elif isinstance(node, fast.ExpressionStatement):
+        elif isinstance(node, iast.ExpressionStatement):
             self._async_node = node.expression
             self._eval(node.expression, st)
-        elif isinstance(node, fast.Assignment):
+        elif isinstance(node, iast.Assignment):
             self._assign(node.target, node.value, st)
-        elif isinstance(node, fast.CompoundAssignment):
+        elif isinstance(node, iast.CompoundAssignment):
             self._compound(node, st)
-        elif isinstance(node, fast.Block):
+        elif isinstance(node, iast.Block):
             self._block(node, st)
-        elif isinstance(node, fast.ReturnStatement):
+        elif isinstance(node, iast.ReturnStatement):
             self._return(node, st)
-        elif isinstance(node, fast.IfStatement):
+        elif isinstance(node, iast.IfStatement):
             self._if(node, st)
-        elif isinstance(node, fast.WhileLoop):
+        elif isinstance(node, iast.WhileLoop):
             self._loop(st, cond=node.condition, body=node.body, check_first=True)
-        elif isinstance(node, fast.DoWhileLoop):
+        elif isinstance(node, iast.DoWhileLoop):
             self._loop(st, cond=node.condition, body=node.body, check_first=False)
-        elif isinstance(node, fast.DoLoop):
+        elif isinstance(node, iast.DoLoop):
             self._loop(st, cond=None, body=node.body, check_first=False, once=True)
-        elif isinstance(node, fast.ForLoop):
+        elif isinstance(node, iast.ForLoop):
             st.active = st.active + (id(node),)
             if node.init is not None:
                 self._stmt(node.init, st, id(node))
             self._loop(st, cond=node.condition, body=node.body,
                        check_first=True, update=node.update)
             st.active = tuple(b for b in st.active if b != id(node))
-        elif isinstance(node, fast.ForInLoop):
+        elif isinstance(node, iast.ForInLoop):
             self._eval(node.iterable, st)
             for v in (node.variables or []):
                 st.env[v] = frozenset()
                 self._locals[v] = ('val', ('stack', self._fn, v, id(node.body)))
             self._loop(st, cond=None, body=node.body, check_first=True)
-        elif isinstance(node, fast.SwitchStatement):
+        elif isinstance(node, iast.SwitchStatement):
             self._switch(node, st)
-        elif isinstance(node, fast.BreakStatement):
+        elif isinstance(node, iast.BreakStatement):
             if self._loops:
                 self._loops[-1]['breaks'].append(st.copy())
             st.dead = True
-        elif isinstance(node, fast.ContinueStatement):
+        elif isinstance(node, iast.ContinueStatement):
             if self._loops:
                 self._loops[-1]['conts'].append(st.copy())
             st.dead = True
-        elif isinstance(node, fast.DeferStatement):
+        elif isinstance(node, iast.DeferStatement):
             self._defers[-1].append(node)
-        elif isinstance(node, fast.TryBlock):
+        elif isinstance(node, iast.TryBlock):
             pre = st.copy()
             self._block(node.try_body, st)
             res = join(pre, st)
@@ -1985,20 +1985,20 @@ class _LifetimeAnalysis:
         if not hasattr(node, '__dict__'):
             return
         for v in list(vars(node).values()):
-            if isinstance(v, fast.Block):
+            if isinstance(v, iast.Block):
                 self._block(v, st)
-            elif isinstance(v, fast.ASTNode):
-                if isinstance(v, fast.Statement):
+            elif isinstance(v, iast.ASTNode):
+                if isinstance(v, iast.Statement):
                     self._stmt(v, st, FN)
                 else:
                     self._eval(v, st)
             elif isinstance(v, list):
                 for x in v:
-                    if isinstance(x, fast.Block):
+                    if isinstance(x, iast.Block):
                         self._block(x, st)
-                    elif isinstance(x, fast.Statement):
+                    elif isinstance(x, iast.Statement):
                         self._stmt(x, st, FN)
-                    elif isinstance(x, fast.ASTNode):
+                    elif isinstance(x, iast.ASTNode):
                         self._eval(x, st)
 
     # -- declarations ---------------------------------------------------
@@ -2034,7 +2034,7 @@ class _LifetimeAnalysis:
                     self._store_cells(frozenset([reg]), self._eval(e, st), st, False, node)
                 return
             elems = getattr(iv, 'elements', None)
-            if elems is not None and not isinstance(iv, fast.FunctionCall):
+            if elems is not None and not isinstance(iv, iast.FunctionCall):
                 for e in elems:
                     self._store_cells(frozenset([reg]), self._eval(e, st), st, False, node)
                 return
@@ -2058,10 +2058,10 @@ class _LifetimeAnalysis:
         self._last_task = None
         v = self._eval(value, st)
         if self._last_task is not None and self._last_task.node is value:
-            if isinstance(target, fast.Identifier):
+            if isinstance(target, iast.Identifier):
                 self._last_task.result_var = target.name
             self._last_task = None
-        if isinstance(target, fast.Identifier):
+        if isinstance(target, iast.Identifier):
             n = target.name
             if n in self._locals and self._locals[n][1][0] != 'static':
                 self._al.deriv.setdefault(n, set()).update(self._rhs_vars(value, n))
@@ -2086,7 +2086,7 @@ class _LifetimeAnalysis:
             self._alias_check(target, dr, st, True)
         self._access(frozenset(self._root(c) for c in cells), A_W, st,
                      rng=self._acc_range(target, st))
-        if isinstance(target, fast.ArrayAccess) and not isinstance(target.index, fast.Literal):
+        if isinstance(target, iast.ArrayAccess) and not isinstance(target.index, iast.Literal):
             for r in v:
                 if r[0] in ('heap', 'param'):
                     self.multi.add(r)
@@ -2115,15 +2115,15 @@ class _LifetimeAnalysis:
     # ------------------------------------------------------------------
     def _root_ident(self, e):
         while True:
-            if isinstance(e, fast.Identifier):
+            if isinstance(e, iast.Identifier):
                 return e
-            if isinstance(e, fast.PointerDeref):
+            if isinstance(e, iast.PointerDeref):
                 e = e.pointer
-            elif isinstance(e, fast.ArrayAccess):
+            elif isinstance(e, iast.ArrayAccess):
                 e = e.array
-            elif isinstance(e, fast.MemberAccess):
+            elif isinstance(e, iast.MemberAccess):
                 e = e.object
-            elif isinstance(e, fast.CastExpression):
+            elif isinstance(e, iast.CastExpression):
                 e = e.expression
             else:
                 return None
@@ -2131,7 +2131,7 @@ class _LifetimeAnalysis:
     def _rhs_vars(self, e, exclude):
         out = set()
         def walk(n):
-            if isinstance(n, fast.Identifier):
+            if isinstance(n, iast.Identifier):
                 if n.name != exclude and n.name in self._locals:
                     out.add(n.name)
                 return
@@ -2139,7 +2139,7 @@ class _LifetimeAnalysis:
                 for x in n:
                     walk(x)
                 return
-            if isinstance(n, fast.ASTNode):
+            if isinstance(n, iast.ASTNode):
                 for v in vars(n).values():
                     walk(v)
         walk(e)
@@ -2165,12 +2165,12 @@ class _LifetimeAnalysis:
                 for x in n:
                     walk(x, path, loops)
                 return
-            if not isinstance(n, fast.ASTNode) or isinstance(n, fast.FunctionDef):
+            if not isinstance(n, iast.ASTNode) or isinstance(n, iast.FunctionDef):
                 return
-            if isinstance(n, fast.Identifier):
+            if isinstance(n, iast.Identifier):
                 record(n, path, loops)
                 return
-            if isinstance(n, fast.IfStatement):
+            if isinstance(n, iast.IfStatement):
                 walk(n.condition, path, loops)
                 walk(n.then_block, path + ((id(n), 0),), loops)
                 for i, (c, b) in enumerate(n.elif_blocks or []):
@@ -2180,54 +2180,54 @@ class _LifetimeAnalysis:
                 if n.else_block is not None:
                     walk(n.else_block, path + ((id(n), len(n.elif_blocks or []) + 1),), loops)
                 return
-            if isinstance(n, fast.SwitchStatement):
+            if isinstance(n, iast.SwitchStatement):
                 walk(n.expression, path, loops)
                 for i, c in enumerate(n.cases):
                     walk(c.value, path, loops)
                     walk(c.body, path + ((id(n), i),), loops)
                 return
-            if isinstance(n, (fast.WhileLoop, fast.DoWhileLoop, fast.DoLoop,
-                              fast.ForLoop, fast.ForInLoop)):
-                if isinstance(n, fast.ForLoop):
+            if isinstance(n, (iast.WhileLoop, iast.DoWhileLoop, iast.DoLoop,
+                              iast.ForLoop, iast.ForInLoop)):
+                if isinstance(n, iast.ForLoop):
                     walk(n.init, path, loops)
-                if isinstance(n, fast.ForInLoop):
+                if isinstance(n, iast.ForInLoop):
                     walk(n.iterable, path, loops)
                 lid = id(n)
                 al.loop_start[lid] = al.seq
                 l2 = loops + (lid,)
-                if isinstance(n, fast.ForLoop):
+                if isinstance(n, iast.ForLoop):
                     walk(n.condition, path, l2)
                     walk(n.body, path, l2)
                     walk(n.update, path, l2)
-                elif isinstance(n, fast.ForInLoop):
+                elif isinstance(n, iast.ForInLoop):
                     walk(n.body, path, l2)
                 else:
                     walk(getattr(n, 'condition', None), path, l2)
                     walk(n.body, path, l2)
                 al.loop_end[lid] = al.seq
                 return
-            if isinstance(n, fast.Assignment):
+            if isinstance(n, iast.Assignment):
                 walk(n.value, path, loops)
-                if isinstance(n.target, fast.Identifier):
+                if isinstance(n.target, iast.Identifier):
                     al.defs.setdefault(n.target.name, []).append((al.seq, path, loops))
                     al.seq += 1
                     return
                 walk(n.target, path, loops)
                 note_writer(n.target)
                 return
-            if isinstance(n, fast.CompoundAssignment):
+            if isinstance(n, iast.CompoundAssignment):
                 walk(n.value, path, loops)
                 walk(n.target, path, loops)
-                if not isinstance(n.target, fast.Identifier):
+                if not isinstance(n.target, iast.Identifier):
                     note_writer(n.target)
                 return
-            if (isinstance(n, fast.UnaryOp)
+            if (isinstance(n, iast.UnaryOp)
                     and getattr(n.operator, 'name', '') in ('INCREMENT', 'DECREMENT')):
                 walk(n.operand, path, loops)
-                if not isinstance(n.operand, fast.Identifier):
+                if not isinstance(n.operand, iast.Identifier):
                     note_writer(n.operand)
                 return
-            if isinstance(n, fast.VariableDeclaration):
+            if isinstance(n, iast.VariableDeclaration):
                 walk(n.initial_value, path, loops)
                 al.first[n.name] = al.seq
                 al.defs.setdefault(n.name, []).append((al.seq, path, loops))
@@ -2334,9 +2334,9 @@ class _LifetimeAnalysis:
 
     def _arg_ident(self, a):
         while True:
-            if isinstance(a, fast.Identifier):
+            if isinstance(a, iast.Identifier):
                 return a
-            if isinstance(a, (fast.CastExpression, fast.AddressOf)):
+            if isinstance(a, (iast.CastExpression, iast.AddressOf)):
                 a = a.expression
             else:
                 return None
@@ -2368,7 +2368,7 @@ class _LifetimeAnalysis:
                     [f"call at {self._where(self._cur_line)}"])
         for i in range(n):
             r = roots[i]
-            if r is None or isinstance(args[i], fast.AddressOf):
+            if r is None or isinstance(args[i], iast.AddressOf):
                 continue
             if r.name not in al.ptr_vars or not arg_regs[i]:
                 continue
@@ -2382,7 +2382,7 @@ class _LifetimeAnalysis:
     def _tie(self, e, st):
         """~x moves the value out of x: x holds null afterwards."""
         op = e.operand
-        if not isinstance(op, fast.Identifier):
+        if not isinstance(op, iast.Identifier):
             return self._eval(op, st)
         info = self._locals.get(op.name)
         v = self._eval(op, st)
@@ -2396,7 +2396,7 @@ class _LifetimeAnalysis:
 
     def _compound(self, node, st):
         t = node.target
-        if not isinstance(t, fast.Identifier):
+        if not isinstance(t, iast.Identifier):
             cells, dr = self._cells_of(t, st)
             if dr:
                 self._deref_check(dr, t, st)
@@ -2409,7 +2409,7 @@ class _LifetimeAnalysis:
         else:
             self._access(frozenset([('static', t.name)]), A_R | A_W, st)
         v = self._eval(node.value, st)
-        if isinstance(t, fast.Identifier) and t.name in self._locals:
+        if isinstance(t, iast.Identifier) and t.name in self._locals:
             st.env[t.name] = st.env.get(t.name, frozenset()) | v
 
     def _store_cells(self, cells, v, st, check, node):
@@ -2488,23 +2488,23 @@ class _LifetimeAnalysis:
     # -- null tests -------------------------------------------------------
     @staticmethod
     def _bare(e):
-        while isinstance(e, (fast.CastExpression, fast.TypeConvertExpression)):
+        while isinstance(e, (iast.CastExpression, iast.TypeConvertExpression)):
             e = e.expression
         return e
 
     def _null_facts(self, cond, truth):
         """Variables known to be null when cond evaluates to truth."""
         c = self._bare(cond)
-        if isinstance(c, fast.UnaryOp) and c.operator == Operator.NOT and not c.is_postfix:
+        if isinstance(c, iast.UnaryOp) and c.operator == Operator.NOT and not c.is_postfix:
             return self._null_facts(c.operand, not truth)
-        if isinstance(c, fast.Identifier):
+        if isinstance(c, iast.Identifier):
             return [c.name] if not truth else []
-        if isinstance(c, fast.BinaryOp):
+        if isinstance(c, iast.BinaryOp):
             if c.operator in (Operator.EQUAL, Operator.NOT_EQUAL):
                 l, r = self._bare(c.left), self._bare(c.right)
-                if isinstance(r, fast.Identifier) and isinstance(l, fast.Literal):
+                if isinstance(r, iast.Identifier) and isinstance(l, iast.Literal):
                     l, r = r, l
-                if (isinstance(l, fast.Identifier) and isinstance(r, fast.Literal)
+                if (isinstance(l, iast.Identifier) and isinstance(r, iast.Literal)
                         and isinstance(r.value, int) and r.value == 0):
                     is_eq = c.operator == Operator.EQUAL
                     return [l.name] if is_eq == truth else []
@@ -2558,7 +2558,7 @@ class _LifetimeAnalysis:
     def _case_truth(c):
         """True or False for 'case (true)' / 'case (false)' of a boolean switch, else None."""
         v = c.value
-        if isinstance(v, fast.Literal):
+        if isinstance(v, iast.Literal):
             if v.value is True:
                 return True
             if v.value is False:
@@ -2583,7 +2583,7 @@ class _LifetimeAnalysis:
             if tv is not None:
                 self._narrow(s, node.expression, tv)
             if c.body is not None:
-                if isinstance(c.body, fast.Block):
+                if isinstance(c.body, iast.Block):
                     self._block(c.body, s)
                 else:
                     self._stmt(c.body, s, FN)
@@ -2666,7 +2666,7 @@ class _LifetimeAnalysis:
         """Cells an lvalue-like expression addresses, plus the set of regions that
         are dereferenced to reach them (empty when no pointer is followed)."""
         E = frozenset()
-        if isinstance(e, fast.Identifier):
+        if isinstance(e, iast.Identifier):
             info = self._loc_info(e.name)
             if info is None:
                 return frozenset([('static', e.name)]), E
@@ -2677,12 +2677,12 @@ class _LifetimeAnalysis:
             if vals:
                 return vals, vals
             return frozenset([reg]), E
-        if isinstance(e, (fast.MemberAccess, fast.ArrayAccess)):
-            is_m = isinstance(e, fast.MemberAccess)
+        if isinstance(e, (iast.MemberAccess, iast.ArrayAccess)):
+            is_m = isinstance(e, iast.MemberAccess)
             base = e.object if is_m else e.array
             if not is_m:
                 self._eval(e.index, st)
-            if isinstance(base, fast.Identifier):
+            if isinstance(base, iast.Identifier):
                 bc, dr = self._cells_of(base, st)
                 if base.name in self._locals and self._locals[base.name][0] != 'array':
                     # plain variable: pointer when it holds regions, value otherwise
@@ -2698,7 +2698,7 @@ class _LifetimeAnalysis:
             if is_m:
                 return frozenset(('fld', c, e.member) for c in bc), dr
             return bc, dr
-        if isinstance(e, fast.PointerDeref):
+        if isinstance(e, iast.PointerDeref):
             v = self._eval(e.pointer, st)
             return v, v
         v = self._eval(e, st)
@@ -2745,15 +2745,15 @@ class _LifetimeAnalysis:
 
     def _hint(self, e):
         while True:
-            if isinstance(e, fast.Identifier):
+            if isinstance(e, iast.Identifier):
                 return e.name
-            if isinstance(e, fast.PointerDeref):
+            if isinstance(e, iast.PointerDeref):
                 e = e.pointer
-            elif isinstance(e, fast.MemberAccess):
+            elif isinstance(e, iast.MemberAccess):
                 e = e.object
-            elif isinstance(e, fast.ArrayAccess):
+            elif isinstance(e, iast.ArrayAccess):
                 e = e.array
-            elif isinstance(e, (fast.CastExpression, fast.AddressOf)):
+            elif isinstance(e, (iast.CastExpression, iast.AddressOf)):
                 e = e.expression
             else:
                 return '<expr>'
@@ -2765,15 +2765,15 @@ class _LifetimeAnalysis:
         if ln:
             self._cur_line = ln
 
-        if isinstance(e, fast.Literal):
+        if isinstance(e, iast.Literal):
             return frozenset()
-        if isinstance(e, fast.Assignment):
+        if isinstance(e, iast.Assignment):
             self._assign(e.target, e.value, st)
-            return self._eval(e.target, st) if isinstance(e.target, fast.Identifier) else frozenset()
-        if isinstance(e, fast.CompoundAssignment):
+            return self._eval(e.target, st) if isinstance(e.target, iast.Identifier) else frozenset()
+        if isinstance(e, iast.CompoundAssignment):
             self._compound(e, st)
             return frozenset()
-        if isinstance(e, fast.Identifier):
+        if isinstance(e, iast.Identifier):
             self._join_result(e.name, st)
             info = self._loc_info(e.name)
             if info is None:
@@ -2784,9 +2784,9 @@ class _LifetimeAnalysis:
                 return frozenset([reg])
             self._access(frozenset([reg]), A_R, st)
             return st.env.get(e.name, frozenset())
-        if isinstance(e, fast.AddressOf):
+        if isinstance(e, iast.AddressOf):
             return self._addr_of(e.expression, st)
-        if isinstance(e, (fast.PointerDeref, fast.ArrayAccess, fast.MemberAccess)):
+        if isinstance(e, (iast.PointerDeref, iast.ArrayAccess, iast.MemberAccess)):
             cells, dr = self._cells_of(e, st)
             if dr:
                 self._deref_check(dr, e, st)
@@ -2794,16 +2794,16 @@ class _LifetimeAnalysis:
             self._access(frozenset(self._root(c) for c in cells), A_R, st,
                          rng=self._acc_range(e, st))
             return self._load(cells, st)
-        if isinstance(e, fast.CastExpression):
+        if isinstance(e, iast.CastExpression):
             ts = e.target_type
-            if (isinstance(e.expression, fast.TieExpression)
+            if (isinstance(e.expression, iast.TieExpression)
                     and getattr(ts, 'base_type', None) is not None
                     and getattr(ts.base_type, 'name', '') == 'VOID'
                     and not getattr(ts, 'is_pointer', False)):
                 # (void)~x releases the tied value
                 self._do_free(self._eval(e.expression, st), st, definite=True)
                 return frozenset()
-            if (isinstance(e.expression, fast.Identifier)
+            if (isinstance(e.expression, iast.Identifier)
                     and (e.expression.name in self._heapvars
                          or e.expression.name in self._al.ptr_vars)
                     and getattr(ts, 'base_type', None) is not None
@@ -2813,17 +2813,17 @@ class _LifetimeAnalysis:
                 self._do_free(self._eval(e.expression, st), st, definite=True)
                 return frozenset()
             return self._eval(e.expression, st)
-        if isinstance(e, fast.BinaryOp):
+        if isinstance(e, iast.BinaryOp):
             l = self._eval(e.left, st)
             r = self._eval(e.right, st)
             op = getattr(e.operator, 'name', str(e.operator))
             if op in self._NON_VALUE_OPS:
                 return frozenset()
             return l | r
-        if (isinstance(e, fast.UnaryOp)
+        if (isinstance(e, iast.UnaryOp)
                 and getattr(e.operator, 'name', '') in ('INCREMENT', 'DECREMENT')
-                and isinstance(e.operand, (fast.PointerDeref, fast.ArrayAccess,
-                                           fast.MemberAccess))):
+                and isinstance(e.operand, (iast.PointerDeref, iast.ArrayAccess,
+                                           iast.MemberAccess))):
             cells, dr = self._cells_of(e.operand, st)
             if dr:
                 self._deref_check(dr, e.operand, st)
@@ -2831,59 +2831,59 @@ class _LifetimeAnalysis:
             self._access(frozenset(self._root(c) for c in cells), A_R | A_W, st,
                          rng=self._acc_range(e.operand, st))
             return self._load(cells, st)
-        if isinstance(e, fast.UnaryOp):
+        if isinstance(e, iast.UnaryOp):
             v = self._eval(e.operand, st)
             if (getattr(e.operator, 'name', '') in ('INCREMENT', 'DECREMENT')
-                    and isinstance(e.operand, fast.Identifier)):
+                    and isinstance(e.operand, iast.Identifier)):
                 st.terms.pop(e.operand.name, None)
             if getattr(e.operator, 'name', '') == 'NOT':
                 return frozenset()
             return v
-        if isinstance(e, fast.TieExpression):
+        if isinstance(e, iast.TieExpression):
             return self._tie(e, st)
-        if isinstance(e, fast.TypeConvertExpression):
+        if isinstance(e, iast.TypeConvertExpression):
             return self._eval(e.expression, st)
-        if isinstance(e, fast.NullCoalesce):
+        if isinstance(e, iast.NullCoalesce):
             return self._eval(e.left, st) | self._eval(e.right, st)
-        if isinstance(e, fast.NotNull):
+        if isinstance(e, iast.NotNull):
             self._eval(e.operand, st)
             return frozenset()
-        if isinstance(e, fast.TernaryOp):
+        if isinstance(e, iast.TernaryOp):
             self._eval(e.condition, st)
             return self._eval(e.true_expr, st) | self._eval(e.false_expr, st)
-        if isinstance(e, fast.IfExpression):
+        if isinstance(e, iast.IfExpression):
             self._eval(e.condition, st)
             v = self._eval(e.value_expr, st)
             if e.else_expr is not None and not isinstance(e.else_expr, str):
                 v = v | self._eval(e.else_expr, st)
             return v
-        if isinstance(e, fast.FunctionCall):
+        if isinstance(e, iast.FunctionCall):
             return self._call(e, st)
-        if isinstance(e, fast.MethodCall):
+        if isinstance(e, iast.MethodCall):
             return self._method(e, st)
         # generic expression: evaluate children for their effects
         if hasattr(e, '__dict__'):
             out = frozenset()
             for v in list(vars(e).values()):
-                if isinstance(v, fast.ASTNode):
+                if isinstance(v, iast.ASTNode):
                     out = out | self._eval(v, st)
                 elif isinstance(v, (list, tuple)):
                     for x in v:
-                        if isinstance(x, fast.ASTNode):
+                        if isinstance(x, iast.ASTNode):
                             out = out | self._eval(x, st)
-            return frozenset() if not isinstance(e, fast.Expression) else frozenset()
+            return frozenset() if not isinstance(e, iast.Expression) else frozenset()
         return frozenset()
 
     def _addr_of(self, e, st):
-        if isinstance(e, fast.Identifier):
+        if isinstance(e, iast.Identifier):
             info = self._loc_info(e.name)
             if info is None:
                 return frozenset([('static', e.name)])
             return frozenset([info[1]])
-        if isinstance(e, (fast.MemberAccess, fast.ArrayAccess)):
+        if isinstance(e, (iast.MemberAccess, iast.ArrayAccess)):
             cells, dr = self._cells_of(e, st)
             return frozenset(self._root(c) for c in cells)
-        if isinstance(e, fast.PointerDeref):
+        if isinstance(e, iast.PointerDeref):
             return self._eval(e.pointer, st)
         return self._eval(e, st)
 
@@ -2937,7 +2937,7 @@ class _LifetimeAnalysis:
     # -- index terms and ranges -------------------------------------------
     def _term_of(self, e, st):
         """e as param + constant, or None."""
-        if isinstance(e, fast.Literal):
+        if isinstance(e, iast.Literal):
             v = e.value
             if isinstance(v, bool):
                 return None
@@ -2947,11 +2947,11 @@ class _LifetimeAnalysis:
                 return (-1, int(str(v)))
             except ValueError:
                 return None
-        if isinstance(e, fast.Identifier):
+        if isinstance(e, iast.Identifier):
             return st.terms.get(e.name)
-        if isinstance(e, fast.CastExpression):
+        if isinstance(e, iast.CastExpression):
             return self._term_of(e.expression, st)
-        if isinstance(e, fast.BinaryOp):
+        if isinstance(e, iast.BinaryOp):
             op = getattr(e.operator, 'name', '')
             if op in ('ADD', 'SUB'):
                 l = self._term_of(e.left, st)
@@ -2970,11 +2970,11 @@ class _LifetimeAnalysis:
         return any(n in self._ivars for n in names)
 
     def _index_range(self, idx, st):
-        if isinstance(idx, fast.Identifier) and idx.name in self._ivars:
+        if isinstance(idx, iast.Identifier) and idx.name in self._ivars:
             return self._ivars[idx.name]
-        if isinstance(idx, fast.CastExpression):
+        if isinstance(idx, iast.CastExpression):
             return self._index_range(idx.expression, st)
-        if isinstance(idx, fast.BinaryOp) and getattr(idx.operator, 'name', '') in ('ADD', 'SUB'):
+        if isinstance(idx, iast.BinaryOp) and getattr(idx.operator, 'name', '') in ('ADD', 'SUB'):
             op = idx.operator.name
             for var_side, const_side, ok in ((idx.left, idx.right, True),
                                               (idx.right, idx.left, op == 'ADD')):
@@ -3002,78 +3002,78 @@ class _LifetimeAnalysis:
     def _acc_range(self, e, st):
         """Element range of an lvalue expression, in the pointee's element units."""
         via_member = False
-        while isinstance(e, fast.MemberAccess):
+        while isinstance(e, iast.MemberAccess):
             e = e.object
             via_member = True
-        if isinstance(e, fast.ArrayAccess):
-            if isinstance(e.array, fast.Identifier):
+        if isinstance(e, iast.ArrayAccess):
+            if isinstance(e.array, iast.Identifier):
                 return self._index_range(e.index, st)
             return None
-        if isinstance(e, fast.PointerDeref):
+        if isinstance(e, iast.PointerDeref):
             return ((-1, 0), (-1, 1))
-        if isinstance(e, fast.Identifier) and via_member:
+        if isinstance(e, iast.Identifier) and via_member:
             return ((-1, 0), (-1, 1))
         return None
 
     def _count_mods(self, node, name):
         n = 0
-        if isinstance(node, fast.Assignment) and isinstance(node.target, fast.Identifier) \
+        if isinstance(node, iast.Assignment) and isinstance(node.target, iast.Identifier) \
                 and node.target.name == name:
             n += 1
-        elif isinstance(node, fast.CompoundAssignment) and isinstance(node.target, fast.Identifier) \
+        elif isinstance(node, iast.CompoundAssignment) and isinstance(node.target, iast.Identifier) \
                 and node.target.name == name:
             n += 1
-        elif isinstance(node, fast.UnaryOp) and getattr(node.operator, 'name', '') in \
-                ('INCREMENT', 'DECREMENT') and isinstance(node.operand, fast.Identifier) \
+        elif isinstance(node, iast.UnaryOp) and getattr(node.operator, 'name', '') in \
+                ('INCREMENT', 'DECREMENT') and isinstance(node.operand, iast.Identifier) \
                 and node.operand.name == name:
             n += 1
-        elif isinstance(node, fast.VariableDeclaration) and node.name == name:
+        elif isinstance(node, iast.VariableDeclaration) and node.name == name:
             n += 1
         if hasattr(node, '__dict__'):
             for v in list(vars(node).values()):
-                if isinstance(v, fast.ASTNode):
+                if isinstance(v, iast.ASTNode):
                     n += self._count_mods(v, name)
                 elif isinstance(v, (list, tuple)):
                     for x in v:
-                        if isinstance(x, fast.ASTNode):
+                        if isinstance(x, iast.ASTNode):
                             n += self._count_mods(x, name)
         return n
 
     def _idents_in(self, e, out):
-        if isinstance(e, fast.Identifier):
+        if isinstance(e, iast.Identifier):
             out.add(e.name)
         elif hasattr(e, '__dict__'):
             for v in list(vars(e).values()):
-                if isinstance(v, fast.ASTNode):
+                if isinstance(v, iast.ASTNode):
                     self._idents_in(v, out)
         return out
 
     @staticmethod
     def _is_inc(stmt, name):
-        s = stmt.expression if isinstance(stmt, fast.ExpressionStatement) else stmt
-        if isinstance(s, fast.UnaryOp):
+        s = stmt.expression if isinstance(stmt, iast.ExpressionStatement) else stmt
+        if isinstance(s, iast.UnaryOp):
             return (getattr(s.operator, 'name', '') == 'INCREMENT'
-                    and isinstance(s.operand, fast.Identifier) and s.operand.name == name)
-        if isinstance(s, fast.CompoundAssignment):
+                    and isinstance(s.operand, iast.Identifier) and s.operand.name == name)
+        if isinstance(s, iast.CompoundAssignment):
             tn = getattr(s.op_token, 'name', str(s.op_token))
-            return (isinstance(s.target, fast.Identifier) and s.target.name == name
+            return (isinstance(s.target, iast.Identifier) and s.target.name == name
                     and ('PLUS' in tn or 'ADD' in tn)
-                    and isinstance(s.value, fast.Literal) and s.value.value in (1, '1'))
-        if isinstance(s, fast.Assignment):
+                    and isinstance(s.value, iast.Literal) and s.value.value in (1, '1'))
+        if isinstance(s, iast.Assignment):
             v = s.value
-            return (isinstance(s.target, fast.Identifier) and s.target.name == name
-                    and isinstance(v, fast.BinaryOp) and getattr(v.operator, 'name', '') == 'ADD'
-                    and isinstance(v.left, fast.Identifier) and v.left.name == name
-                    and isinstance(v.right, fast.Literal) and v.right.value in (1, '1'))
+            return (isinstance(s.target, iast.Identifier) and s.target.name == name
+                    and isinstance(v, iast.BinaryOp) and getattr(v.operator, 'name', '') == 'ADD'
+                    and isinstance(v.left, iast.Identifier) and v.left.name == name
+                    and isinstance(v.right, iast.Literal) and v.right.value in (1, '1'))
         return False
 
     def _loop_pattern(self, cond, body, update, st):
         """Counting loop: i starts at a known term, steps by one at the end of every
         iteration, and runs while i < bound (bound unchanged by the loop)."""
-        if not isinstance(cond, fast.BinaryOp):
+        if not isinstance(cond, iast.BinaryOp):
             return None
         op = getattr(cond.operator, 'name', '')
-        if op not in ('LESS_THAN', 'LESS_EQUAL') or not isinstance(cond.left, fast.Identifier):
+        if op not in ('LESS_THAN', 'LESS_EQUAL') or not isinstance(cond.left, iast.Identifier):
             return None
         name = cond.left.name
         lo = st.terms.get(name)
@@ -3145,17 +3145,17 @@ class _LifetimeAnalysis:
 
     def _offset_zero(self, a):
         """The argument points at element 0 of the object it names."""
-        while isinstance(a, fast.CastExpression):
+        while isinstance(a, iast.CastExpression):
             a = a.expression
-        if isinstance(a, fast.Identifier):
+        if isinstance(a, iast.Identifier):
             return True
-        if isinstance(a, fast.AddressOf):
+        if isinstance(a, iast.AddressOf):
             x = a.expression
-            if isinstance(x, fast.Identifier):
+            if isinstance(x, iast.Identifier):
                 return True
-            if isinstance(x, fast.ArrayAccess):
-                if isinstance(x.index, fast.Literal) and x.index.value in (0, '0'):
-                    return isinstance(x.array, fast.Identifier)
+            if isinstance(x, iast.ArrayAccess):
+                if isinstance(x.index, iast.Literal) and x.index.value in (0, '0'):
+                    return isinstance(x.array, iast.Identifier)
             return False
         return False
 

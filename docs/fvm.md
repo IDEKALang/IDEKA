@@ -1,8 +1,8 @@
-# Flux Virtual Machine (FVM) — Complete Reference
+# IDEKA Virtual Machine (FVM) — Complete Reference
 
 **Source file:** `fvm.py`  
 **Copyright:** 2026 Karac V. Thweatt  
-**Role:** Experimental comptime execution backend for the Flux language compiler.
+**Role:** Experimental comptime execution backend for the IDEKA language compiler.
 
 ---
 
@@ -37,14 +37,14 @@
 
 ## 1. Overview
 
-The Flux Virtual Machine (FVM) is a stack-based bytecode interpreter that executes **comptime** (compile-time) code for the Flux programming language. It is not a general-purpose runtime — it runs during the compiler's compilation phase to evaluate constant expressions, generate code fragments, perform metaprogramming, and interact with the host system (file I/O, FFI, inline assembly) before the final program is emitted.
+The IDEKA Virtual Machine (FVM) is a stack-based bytecode interpreter that executes **comptime** (compile-time) code for the IDEKA programming language. It is not a general-purpose runtime — it runs during the compiler's compilation phase to evaluate constant expressions, generate code fragments, perform metaprogramming, and interact with the host system (file I/O, FFI, inline assembly) before the final program is emitted.
 
 **Key characteristics:**
 
 - **Stack-based** — all operand passing and results use a value stack.
 - **Typed values** — every value on the stack carries a type tag (`TTag`).
 - **Comptime only** — the VM is invoked by the compiler, not at program runtime.
-- **Boundary crossing** — instructions like `EMIT_CONST`, `EMIT_GLOBAL`, `EMITFLUX` pass computed values back to the compiler's code-generation layer.
+- **Boundary crossing** — instructions like `EMIT_CONST`, `EMIT_GLOBAL`, `EMITIDEKA` pass computed values back to the compiler's code-generation layer.
 - **FFI and inline ASM** — comptime code can load native libraries and execute x86-64 AT&T assembly snippets at compile time.
 - **Watchdog** — a 5-minute execution timeout prevents infinite comptime loops from hanging the compiler.
 - **16 MB heap** — a private bump-allocator heap is available for comptime memory operations.
@@ -55,7 +55,7 @@ The Flux Virtual Machine (FVM) is a stack-based bytecode interpreter that execut
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│                       FluxVM                             │
+│                       IDEKAVM                             │
 │                                                          │
 │  ┌─────────┐  ┌──────────────┐  ┌────────────────────┐  │
 │  │  Stack  │  │  Call Frames │  │  VMHeap (16 MB)    │  │
@@ -68,7 +68,7 @@ The Flux Virtual Machine (FVM) is a stack-based bytecode interpreter that execut
 │  └──────────────────┘  └──────────────────────────────┘  │
 │                                                          │
 │  ┌──────────────────────────────────────────────────┐    │
-│  │  emit_results  [ ('const', val), ('flux', src) ] │    │
+│  │  emit_results  [ ('const', val), ('IDEKA', src) ] │    │
 │  └──────────────────────────────────────────────────┘    │
 └──────────────────────────────────────────────────────────┘
          ↑  parse_fvm_source()
@@ -80,12 +80,12 @@ The Flux Virtual Machine (FVM) is a stack-based bytecode interpreter that execut
 
 | Class | Purpose |
 |---|---|
-| `FluxVM` | The interpreter — holds stack, heap, frames, and all execution logic. |
+| `IDEKAVM` | The interpreter — holds stack, heap, frames, and all execution logic. |
 | `VMHeap` | 16 MB bump-allocator with a type-tag map and a free list. |
 | `CallFrame` | A function activation record — instruction pointer, locals array, exception handler stack. |
 | `Val` | A typed value on the VM stack (tag + data + optional meta dict). |
 | `Instr` | A single decoded instruction (opcode + operand list + source line). |
-| `StructLayout` | Cached field layout for a Flux struct type (names, tags, byte offsets, sizes). |
+| `StructLayout` | Cached field layout for a IDEKA struct type (names, tags, byte offsets, sizes). |
 | `Op` | Enum of all opcodes. |
 | `TTag` | Enum of all type tags. |
 
@@ -99,17 +99,17 @@ The Flux Virtual Machine (FVM) is a stack-based bytecode interpreter that execut
 python fvm.py <program.fvm>
 ```
 
-The CLI parses the file, creates a `FluxVM`, registers all `func` blocks, and executes the main instruction block. Any `emit_results` are printed to stdout.
+The CLI parses the file, creates a `IDEKAVM`, registers all `func` blocks, and executes the main instruction block. Any `emit_results` are printed to stdout.
 
 ### Embedding the VM in Python
 
 ```python
-from fvm import FluxVM, parse_fvm_source, VMError
+from fvm import IDEKAVM, parse_fvm_source, VMError
 
 source = open("my_program.fvm").read()
 instructions, local_count, functions, struct_layouts = parse_fvm_source(source)
 
-vm = FluxVM(struct_layouts=struct_layouts)
+vm = IDEKAVM(struct_layouts=struct_layouts)
 
 for name, instrs in functions.items():
     vm.register_function(name, instrs)
@@ -217,7 +217,7 @@ ptr:29[struct_type=Point,stack_slot,x:0,y:32]
 
 Every `Val` carries one of the following type tags:
 
-| TTag | Flux Type | Python Representation |
+| TTag | IDEKA Type | Python Representation |
 |---|---|---|
 | `INT` | `int` (i32) | `int` |
 | `UINT` | `uint` (u32) | `int` |
@@ -248,7 +248,7 @@ Arithmetic and bitwise results are wrapped to the bit width implied by the value
 - `BYTE` / `CHAR` / `BOOL` → 8-bit
 - `DATA` → uses the `bits` field in `meta`
 
-This matches Flux's fixed-width integer overflow semantics.
+This matches IDEKA's fixed-width integer overflow semantics.
 
 ---
 
@@ -266,7 +266,7 @@ The `meta` dict carries optional auxiliary information:
 
 | Key | Used by | Meaning |
 |---|---|---|
-| `struct_type` | STRUCT | Name of the Flux struct type |
+| `struct_type` | STRUCT | Name of the IDEKA struct type |
 | `fields` | STRUCT | `dict[str, Val]` — field values |
 | `stack_slot` | PTR | Flag: pointer addresses a frame local slot |
 | `field_bit_offsets` | PTR/STRUCT | `dict[str, int]` — bit offsets of fields |
@@ -428,7 +428,7 @@ The FVM supports comptime try/catch/throw.
 |---|---|---|---|
 | `TRY_BEGIN` | `catch_addr` | | Register a catch handler at `catch_addr`. Records the current stack depth. |
 | `TRY_END` | | | Remove the innermost exception handler (normal exit from a try body). |
-| `THROW` | | `val --` | Pop a value and raise `FluxThrowSignal(val)`. The VM walks the frame stack looking for a `TRY_BEGIN` handler. If found, the stack is trimmed to the recorded depth, the thrown value is pushed, and execution jumps to `catch_addr`. If no handler exists, a `VMError` is raised. |
+| `THROW` | | `val --` | Pop a value and raise `IDEKAThrowSignal(val)`. The VM walks the frame stack looking for a `TRY_BEGIN` handler. If found, the stack is trimmed to the recorded depth, the thrown value is pushed, and execution jumps to `catch_addr`. If no handler exists, a `VMError` is raised. |
 
 **Example pattern:**
 
@@ -591,7 +591,7 @@ INLINE_ASM "movq $1, $0\naddq $1, $0" "" 1 1 result
 
 ## 16. Compiler Built-ins
 
-These opcodes implement the `compiler.*` namespace that Flux comptime code uses to interact with the compilation environment.
+These opcodes implement the `compiler.*` namespace that IDEKA comptime code uses to interact with the compilation environment.
 
 ### Console I/O
 
@@ -621,8 +621,8 @@ These opcodes implement the `compiler.*` namespace that Flux comptime code uses 
 | Opcode | Stack effect | Description |
 |---|---|---|
 | `COMPILER_IMPORT_STDLIB` | `path --` | Import a standard library module (resolved relative to the compiler's stdlib root). Requires `_codegen_class` to be injected. |
-| `COMPILER_IMPORT_LOCAL` | `path --` | Import a local Flux source file (resolved relative to `source_file`). Requires `_codegen_class`. |
-| `COMPILER_FPM_PACKAGE` | `path --` | Install or resolve an FPM (Flux Package Manager) package. Requires `_codegen_class`. |
+| `COMPILER_IMPORT_LOCAL` | `path --` | Import a local IDEKA source file (resolved relative to `source_file`). Requires `_codegen_class`. |
+| `COMPILER_FPM_PACKAGE` | `path --` | Install or resolve an FPM (IDEKA Package Manager) package. Requires `_codegen_class`. |
 | `COMPILER_LOADLIB` | `name ext --` | Load a native shared library by name and extension (e.g. `"mylib"` `"so"`). The library is made available for `INLINE_ASM` symbol resolution and `EXTERN_DECL` calls. Platform-specific candidates are tried automatically (`lib<name>.<ext>`, `lib<name>.so`, `lib<name>.dylib`). |
 
 ---
@@ -636,12 +636,12 @@ These opcodes pass comptime-computed values back to the compiler's code-generati
 | `EMIT_CONST` | `val --` | `('const', val)` | Emit a comptime value as an IR constant. |
 | `EMIT_GLOBAL` | `size -- bytes` | `('global', bytes)` | Pop a size, snapshot that many bytes from the VM heap starting at the current bump pointer (or per the operand), emit as a global variable. |
 | `EMIT_TYPE` | `val --` | `('type', val)` | Emit a type reference. The value should be a type tag. |
-| `EMITFLUX` | `src_text var_names` | `('flux', substituted_text)` | Substitute comptime local values into `src_text` using `{varname:slot}` tokens, then emit the resulting Flux source fragment. |
+| `EMITIDEKA` | `src_text var_names` | `('IDEKA', substituted_text)` | Substitute comptime local values into `src_text` using `{varname:slot}` tokens, then emit the resulting IDEKA source fragment. |
 
-### EMITFLUX operand format
+### EMITIDEKA operand format
 
 ```
-EMITFLUX "const N = {value:0};" value:0
+EMITIDEKA "const N = {value:0};" value:0
 ```
 
 Each `name:slot` pair substitutes the value from `locals[slot]` into the placeholder `{name}` in the source text.
@@ -685,10 +685,10 @@ All string ops work on `BYTES` values (UTF-8 byte strings).
 
 ## 21. Python API
 
-### `FluxVM`
+### `IDEKAVM`
 
 ```python
-class FluxVM:
+class IDEKAVM:
     def __init__(
         self,
         struct_layouts: Dict[str, StructLayout] = None,
@@ -721,7 +721,7 @@ Execute a flat instruction list as a top-level comptime block. Returns the top-o
 
 | Attribute | Type | Description |
 |---|---|---|
-| `vm.emit_results` | `List[tuple]` | Accumulated emit operations from `EMIT_CONST`, `EMIT_GLOBAL`, `EMIT_TYPE`, `EMITFLUX`. |
+| `vm.emit_results` | `List[tuple]` | Accumulated emit operations from `EMIT_CONST`, `EMIT_GLOBAL`, `EMIT_TYPE`, `EMITIDEKA`. |
 | `vm.last_locals` | `List[Val]` | Snapshot of the top-level frame's locals after the last `HALT`. |
 | `vm.stack` | `List[Val]` | The value stack (may be non-empty if `HALT` was reached mid-stack). |
 | `vm._globals` | `dict` | Comptime global variables (persist between `execute()` calls). |
@@ -783,7 +783,7 @@ The heap can be accessed directly via `vm.heap` if needed from Python host code.
 class VMError(Exception): ...          # Runtime errors
 class FVMParseError(Exception):        # Parse errors; has .lineno attribute
     lineno: int
-class FluxThrowSignal(Exception):      # Raised by THROW; has .value: Val
+class IDEKAThrowSignal(Exception):      # Raised by THROW; has .value: Val
     value: Val
 ```
 
@@ -799,7 +799,7 @@ Converts a `Val` back to a `type:value` token string. PTR values with meta (stru
 
 ### Instruction serialisation (`_serialise_instr`)
 
-Converts an `Instr` to a `.fvm` line (opcode + operands). Handles all opcodes including multi-operand ones (`CALL`, `JTABLE`, `EMITFLUX`, `INLINE_ASM`).
+Converts an `Instr` to a `.fvm` line (opcode + operands). Handles all opcodes including multi-operand ones (`CALL`, `JTABLE`, `EMITIDEKA`, `INLINE_ASM`).
 
 ### File layout (output of `serialise_fvm`)
 

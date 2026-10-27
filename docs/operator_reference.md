@@ -1,7 +1,7 @@
-# Flux Operator Reference
+# IDEKA Operator Reference
 
-This document covers every operator available in Flux, organized by category.
-For keyword operators (`and`, `or`, `not`, `is`, `xor`), see also the [Keyword Reference](https://fluxspl.org/docs/keyword_reference.html).
+This document covers every operator available in IDEKA, organized by category.
+For keyword operators (`and`, `or`, `not`, `is`, `xor`), see also the [Keyword Reference](https://IDEKAspl.org/docs/keyword_reference.html).
 
 ---
 
@@ -513,7 +513,7 @@ int x;
 x = 25;
 ```
 
-Combining stringification and codification at `comptime` with `emitflux` creates a powerful combination:
+Combining stringification and codification at `comptime` with `emitideka` creates a powerful combination:
 ```
 comptime
 {
@@ -529,12 +529,12 @@ comptime
         T   = types[idx];
         TAG = tags[idx];
 
-        emitflux
+        emitideka
         {
             comptime
             {
                 compiler.io.console.println(f"Stage 2: generating for type {$~$T}, tag {$~$TAG}");
-                emitflux
+                emitideka
                 {
                     def ~$f"clamp_{T}"(~$T val, ~$T lo, ~$T hi) -> ~$T
                     {
@@ -582,7 +582,7 @@ def is_float(float x) -> bool
 The compile-time execution looks like:
 ```
 [INFO] [codegen] ► LLVM IR code generation
-[AST] Begining codegen for Flux program ...
+[AST] Begining codegen for IDEKA program ...
 [AST] Total statements in AST: 81
 [AST] Namespace definitions: 11
 [AST] Pass 1: Processing using statements...
@@ -602,7 +602,7 @@ Stage 2: generating for type float, tag FLOAT
 **`#"`** - Ditto
 Used to repeat an assignment in a list of assignments.
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -719,7 +719,7 @@ endianof(string)   // 1
 
 ## Operator Overloading and Custom Operators
 
-Flux allows defining new infix operators and overloading existing ones.
+IDEKA allows defining new infix operators and overloading existing ones.
 
 **Custom symbol operator:**
 ```

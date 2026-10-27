@@ -1,12 +1,12 @@
-# Flux Developer Tools
+# IDEKA Developer Tools
 
-Two developer utilities for the [Flux language](https://flux-lang.org): a diagnostics-only LSP server for editor integration, and an automated test runner for the compiler.
+Two developer utilities for the [IDEKA language](https://IDEKA-lang.org): a diagnostics-only LSP server for editor integration, and an automated test runner for the compiler.
 
 ---
 
-## `flsp.py` — Flux Language Server
+## `flsp.py` — IDEKA Language Server
 
-A [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) server that provides real-time diagnostics for `.fx` files. It wraps the Flux parser (`fparser.py`) and surfaces parse errors directly in your editor as you type.
+A [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) server that provides real-time diagnostics for `.idk` files. It wraps the IDEKA parser (`fparser.py`) and surfaces parse errors directly in your editor as you type.
 
 ### Requirements
 
@@ -14,7 +14,7 @@ A [Language Server Protocol](https://microsoft.github.io/language-server-protoco
 pip install pygls lsprotocol
 ```
 
-The server must be able to import `fparser.py` and `fmacros.py` from the Flux compiler source. Either run the script from the repo root, or set the `FLUXC_SRCDIR` environment variable to the repo root path.
+The server must be able to import `fparser.py` and `fmacros.py` from the IDEKA compiler source. Either run the script from the repo root, or set the `IDEKA_SRCDIR` environment variable to the repo root path.
 
 ### Usage
 
@@ -34,40 +34,40 @@ python flsp.py --tcp --host 0.0.0.0 --port 9000
 **Neovim** (`init.lua`):
 ```lua
 vim.lsp.start({
-    name = "flux",
+    name = "IDEKA",
     cmd  = { "python3", "/path/to/flsp.py" },
-    filetypes = { "flux" },
+    filetypes = { "IDEKA" },
     root_dir = vim.fn.getcwd(),
 })
 ```
 
-For [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) users, register Flux as a custom server:
+For [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) users, register IDEKA as a custom server:
 ```lua
 local lspconfig = require("lspconfig")
 local configs = require("lspconfig.configs")
 
-if not configs.flux then
-    configs.flux = {
+if not configs.IDEKA then
+    configs.IDEKA = {
         default_config = {
             cmd = { "python3", "/path/to/flsp.py" },
-            filetypes = { "flux" },
+            filetypes = { "IDEKA" },
             root_dir = lspconfig.util.root_pattern(".git"),
             single_file_support = true,
         },
     }
 end
 
-lspconfig.flux.setup({})
+lspconfig.IDEKA.setup({})
 ```
 
 **Helix** (`languages.toml`):
 ```toml
 [[language]]
-name = "flux"
-language-servers = ["flux-lsp"]
+name = "IDEKA"
+language-servers = ["IDEKA-lsp"]
 file-types = ["fx"]
 
-[language-server.flux-lsp]
+[language-server.IDEKA-lsp]
 command = "python3"
 args    = ["/path/to/flsp.py"]
 ```
@@ -79,8 +79,8 @@ Install the [generic LSP client extension](https://marketplace.visualstudio.com/
 ```json
 {
     "languageServerExample.trace.server": "verbose",
-    "[flux]": {
-        "editor.defaultFormatter": "flux-lsp"
+    "[IDEKA]": {
+        "editor.defaultFormatter": "IDEKA-lsp"
     }
 }
 ```
@@ -91,17 +91,17 @@ For a quick no-extension setup, the [Command Variable](https://marketplace.visua
 ```elisp
 (require 'eglot)
 
-;; Register the Flux server
+;; Register the IDEKA server
 (add-to-list 'eglot-server-programs
-             '(flux-mode . ("python3" "/path/to/flsp.py")))
+             '(IDEKA-mode . ("python3" "/path/to/flsp.py")))
 
-;; Define a minimal major mode for .fx files if you don't have one
-(define-derived-mode flux-mode prog-mode "Flux"
-  "Major mode for Flux source files.")
-(add-to-list 'auto-mode-alist '("\\.fx\\'" . flux-mode))
+;; Define a minimal major mode for .idk files if you don't have one
+(define-derived-mode IDEKA-mode prog-mode "IDEKA"
+  "Major mode for IDEKA source files.")
+(add-to-list 'auto-mode-alist '("\\.idk\\'" . IDEKA-mode))
 
-;; Auto-start eglot when opening .fx files
-(add-hook 'flux-mode-hook #'eglot-ensure)
+;; Auto-start eglot when opening .idk files
+(add-hook 'IDEKA-mode-hook #'eglot-ensure)
 ```
 
 **Emacs** (with [lsp-mode](https://emacs-lsp.github.io/lsp-mode/)):
@@ -111,11 +111,11 @@ For a quick no-extension setup, the [Command Variable](https://marketplace.visua
 (lsp-register-client
  (make-lsp-client
   :new-connection (lsp-stdio-connection '("python3" "/path/to/flsp.py"))
-  :activation-fn (lsp-activate-on "flux")
-  :major-modes '(flux-mode)
-  :server-id 'flux-lsp))
+  :activation-fn (lsp-activate-on "IDEKA")
+  :major-modes '(IDEKA-mode)
+  :server-id 'IDEKA-lsp))
 
-(add-hook 'flux-mode-hook #'lsp)
+(add-hook 'IDEKA-mode-hook #'lsp)
 ```
 
 **Sublime Text** (with [LSP](https://packagecontrol.io/packages/LSP)):
@@ -124,16 +124,16 @@ Open **Preferences → Package Settings → LSP → Settings** and add:
 ```json
 {
     "clients": {
-        "flux-lsp": {
+        "IDEKA-lsp": {
             "command": ["python3", "/path/to/flsp.py"],
             "enabled": true,
-            "selector": "source.flux"
+            "selector": "source.IDEKA"
         }
     }
 }
 ```
 
-You will also need a `Flux.sublime-syntax` file that sets the scope to `source.flux` for `.fx` files.
+You will also need a `IDEKA.sublime-syntax` file that sets the scope to `source.IDEKA` for `.idk` files.
 
 **Kate** (`~/.config/katerc` or via the LSP Client plugin UI):
 
@@ -141,9 +141,9 @@ Go to **Settings → Configure Kate → LSP Client → User Server Settings** an
 ```json
 {
     "servers": {
-        "flux": {
+        "IDEKA": {
             "command": ["python3", "/path/to/flsp.py"],
-            "highlightingModeRegex": "^Flux$",
+            "highlightingModeRegex": "^IDEKA$",
             "url": "",
             "rootIndicationFileNames": [".git"]
         }
@@ -155,7 +155,7 @@ Go to **Settings → Configure Kate → LSP Client → User Server Settings** an
 ```json
 {
     "lsp": {
-        "flux-lsp": {
+        "IDEKA-lsp": {
             "binary": {
                 "path": "python3",
                 "arguments": ["/path/to/flsp.py"]
@@ -165,11 +165,11 @@ Go to **Settings → Configure Kate → LSP Client → User Server Settings** an
 }
 ```
 
-You will additionally need a Flux language extension for Zed that declares the `.fx` file type and references `flux-lsp` by name.
+You will additionally need a IDEKA language extension for Zed that declares the `.idk` file type and references `IDEKA-lsp` by name.
 
 ### How It Works
 
-The server listens for `textDocument/didOpen`, `didChange`, and `didSave` events. On each event it runs `FluxParser` against the file on disk and publishes any `ParseError` as an LSP diagnostic with the correct line, column, and token-length span so the offending token is underlined precisely. On `didClose`, diagnostics are cleared.
+The server listens for `textDocument/didOpen`, `didChange`, and `didSave` events. On each event it runs `IDEKAParser` against the file on disk and publishes any `ParseError` as an LSP diagnostic with the correct line, column, and token-length span so the offending token is underlined precisely. On `didClose`, diagnostics are cleared.
 
 Parse errors surfaced by the compiler as `ValueError` wrapping a `ParseError` are unwrapped transparently. Unexpected internal compiler errors are reported as diagnostics at line 1 so they don't silently disappear.
 
@@ -177,14 +177,14 @@ All logging goes to `stderr` to avoid corrupting the stdio LSP stream.
 
 ---
 
-## `run_tests.py` — Flux Test Runner
+## `run_tests.py` — IDEKA Test Runner
 
-An automated test runner that compiles and executes every `.fx` file in the `tests/` directory (or `examples/` with `--examples`) and reports pass/fail results with timing information.
+An automated test runner that compiles and executes every `.idk` file in the `tests/` directory (or `examples/` with `--examples`) and reports pass/fail results with timing information.
 
 ### Requirements
 
 - Python 3.x
-- `fxc.py` present at the project root (the Flux compiler)
+- `idkc.py` present at the project root (the IDEKA compiler)
 
 ### Usage
 
@@ -218,13 +218,13 @@ python run_tests.py --keep-artifacts
 
 ### How It Works
 
-The runner discovers all `.fx` files in `tests/` (sorted alphabetically), invokes `fxc.py` on each via subprocess, then executes the resulting binary. Each test has a 5-second execution timeout.
+The runner discovers all `.idk` files in `tests/` (sorted alphabetically), invokes `idkc.py` on each via subprocess, then executes the resulting binary. Each test has a 5-second execution timeout.
 
 A test **passes** when the compiler exits with code 0 and the binary subsequently exits with code 0. A test **fails** if either step fails. In `--compile-only` mode a test passes on a clean compile alone.
 
 After the run, a summary table is printed showing compile/run status and timing for each test. Compiled binaries and the `build/` directory are deleted automatically unless `--keep-artifacts` is set.
 
-If `tests/` doesn't exist it is created automatically with a placeholder `hello.fx` file.
+If `tests/` doesn't exist it is created automatically with a placeholder `hello.idk` file.
 
 ### Output Example
 
@@ -235,9 +235,9 @@ Running 3 test(s) from /path/to/tests
 ============================================================
 TEST SUMMARY
 ============================================================
-PASS  hello.fx                       Compile: PASS (0.31s), Run: PASS (0.01s)
-PASS  structs.fx                     Compile: PASS (0.44s), Run: PASS (0.02s)
-FAIL  bad_syntax.fx                  Compile: FAIL (0.12s)
+PASS  hello.idk                       Compile: PASS (0.31s), Run: PASS (0.01s)
+PASS  structs.idk                     Compile: PASS (0.44s), Run: PASS (0.02s)
+FAIL  bad_syntax.idk                  Compile: FAIL (0.12s)
 ============================================================
 Total Tests: 3
 Passed: 2 (66.7%)

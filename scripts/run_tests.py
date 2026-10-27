@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Flux Compiler Test Runner
+IDEKA Compiler Test Runner
 
-This script automatically runs the Flux compiler on all test files
+This script automatically runs the IDEKA compiler on all test files
 in the tests/ directory.
 
 Usage:
@@ -38,8 +38,8 @@ class TestRunner:
         # Get current working directory (project root)
         self.project_root = Path.cwd()
         
-        # Compiler is fxc.py at project root
-        self.compiler_path = self.project_root / "fxc.py"
+        # Compiler is idkc.py at project root
+        self.compiler_path = self.project_root / "idkc.py"
         
         # Tests directory is at project root
         if examples:
@@ -61,17 +61,17 @@ class TestRunner:
             print(f"   Creating tests/ directory...")
             self.test_dir.mkdir(exist_ok=True)
             print(f"   Created {self.test_dir}")
-            print(f"   Please add your .fx test files to this directory")
+            print(f"   Please add your .idk test files to this directory")
             
             # Create a simple test file as example
-            example_test = self.test_dir / "hello.fx"
+            example_test = self.test_dir / "hello.idk"
             if not example_test.exists():
                 example_test.write_text("func main() {\n    print(\"Hello from test!\");\n}\n")
                 print(f"   Created example test: {example_test}")
     
     def find_test_files(self) -> List[Path]:
-        """Find all .fx files in the tests directory"""
-        pattern = self.test_dir / "*.fx"
+        """Find all .idk files in the tests directory"""
+        pattern = self.test_dir / "*.idk"
         files = list(glob.glob(str(pattern)))
         
         if self.filter_pattern:
@@ -80,7 +80,7 @@ class TestRunner:
         return [Path(f) for f in sorted(files)]
     
     def run_compiler(self, test_file: Path) -> Tuple[bool, Optional[str], float, str]:
-        """Run the Flux compiler on a test file"""
+        """Run the IDEKA compiler on a test file"""
         print(f"Compiling: {test_file.name}...", end="", flush=True)
         
         start_time = time.time()
@@ -249,7 +249,7 @@ class TestRunner:
         test_files = self.find_test_files()
         
         if not test_files:
-            print(f"No .fx files found in {self.test_dir}")
+            print(f"No .idk files found in {self.test_dir}")
             print(f"   Add your test files to the tests/ directory")
             return
         
@@ -351,7 +351,7 @@ class TestRunner:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run Flux compiler tests",
+        description="Run IDEKA compiler tests",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

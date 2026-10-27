@@ -1,17 +1,17 @@
 # `compiler.symbol_table` — Compile-Time Reflection API
 
-`compiler.symbol_table` is a compile-time intrinsic available inside `comptime` blocks. It exposes the compiler's symbol table as queryable Flux structs, allowing programs to inspect their own structure at compile time. All access is zero runtime cost — everything is erased before codegen.
+`compiler.symbol_table` is a compile-time intrinsic available inside `comptime` blocks. It exposes the compiler's symbol table as queryable IDEKA structs, allowing programs to inspect their own structure at compile time. All access is zero runtime cost — everything is erased before codegen.
 
-Requires `#import <runtime.fx>` (or `compiler.import.stdlib("runtime.fx")` inside comptime) to bring the struct definitions into scope.
+Requires `#import <runtime.idk>` (or `compiler.import.stdlib("runtime.idk")` inside comptime) to bring the struct definitions into scope.
 
 ---
 
 ## Structs
 
-Defined in `runtime.fx`. Must be in scope before use. Pulled in via `standard.fx`.
+Defined in `runtime.idk`. Must be in scope before use. Pulled in via `standard.idk`.
 
 ```
-struct FXC_TYPESYS
+struct IDKC_TYPESYS
 {
     byte*  base_type;        // "int", "byte", "float", "struct", "void", etc.
     byte*  custom_typename;  // named type e.g. "MyStruct", empty if primitive
@@ -32,34 +32,34 @@ struct FXC_TYPESYS
     byte*  dict_value_type;  // value type as string, empty if not dict
 };
 
-struct FXC_SYMENTRY
+struct IDKC_SYMENTRY
 {
     byte*     name;   // unmangled bare name
     byte*     kind;   // "function", "struct", "object", "trait", "interface",
                       // "namespace", "variable", "enum", "union",
                       // "effect", "constraint", "contract"
-    FXC_TYPESYS type; // type info: return type for functions, declared type for variables,
+    IDKC_TYPESYS type; // type info: return type for functions, declared type for variables,
                       // zeroed for kinds with no single type (struct, trait, etc.)
     byte*     ns;     // fully qualified namespace path, empty if top-level
 };
 
-struct FXC_SYMTABLE
+struct IDKC_SYMTABLE
 {
     int          entries;
-    FXC_SYMENTRY* entry;
+    IDKC_SYMENTRY* entry;
 };
 
-struct FXC_PARAM
+struct IDKC_PARAM
 {
     byte*      name;
-    FXC_TYPESYS type;
+    IDKC_TYPESYS type;
 };
 
-struct FXC_FUNCINFO
+struct IDKC_FUNCINFO
 {
     int         param_count;
-    FXC_PARAM*  params;
-    FXC_TYPESYS return_type;
+    IDKC_PARAM*  params;
+    IDKC_TYPESYS return_type;
     byte*       calling_conv;    // "fastcall", "cdecl", etc. Empty = default (fastcall)
     bool        is_variadic;
     bool        is_recursive;
@@ -78,15 +78,15 @@ struct FXC_FUNCINFO
 
 ### `compiler.symbol_table`
 
-Returns an `FXC_SYMTABLE` containing all entries in the symbol table at the point the `comptime` block executes.
+Returns an `IDKC_SYMTABLE` containing all entries in the symbol table at the point the `comptime` block executes.
 
 ```
-FXC_SYMTABLE st = compiler.symbol_table;
+IDKC_SYMTABLE st = compiler.symbol_table;
 ```
 
 ### `compiler.symbol_table.<kind>`
 
-Returns an `FXC_SYMTABLE` filtered to a specific kind. Valid filters:
+Returns an `IDKC_SYMTABLE` filtered to a specific kind. Valid filters:
 
 | Access | Kind string in entries |
 |---|---|
@@ -104,18 +104,18 @@ Returns an `FXC_SYMTABLE` filtered to a specific kind. Valid filters:
 | `compiler.symbol_table.contracts` | `"contract"` |
 
 ```
-FXC_SYMTABLE fns = compiler.symbol_table.functions;
+IDKC_SYMTABLE fns = compiler.symbol_table.functions;
 ```
 
 ### `compiler.symbol_table.lookup(name)`
 
-Returns the first `FXC_SYMENTRY` matching the given name. Accepts a bare name or a fully qualified namespace path.
+Returns the first `IDKC_SYMENTRY` matching the given name. Accepts a bare name or a fully qualified namespace path.
 
-Returns a zeroed `FXC_SYMENTRY` (all fields empty strings, `kind == ""`) if not found.
+Returns a zeroed `IDKC_SYMENTRY` (all fields empty strings, `kind == ""`) if not found.
 
 ```
-FXC_SYMENTRY e = compiler.symbol_table.lookup("Point");
-FXC_SYMENTRY e2 = compiler.symbol_table.lookup("standard::io::console::print");
+IDKC_SYMENTRY e = compiler.symbol_table.lookup("Point");
+IDKC_SYMENTRY e2 = compiler.symbol_table.lookup("standard::io::console::print");
 
 if (e.kind == "")
 {
@@ -125,13 +125,13 @@ if (e.kind == "")
 
 ### `compiler.symbol_table.funcinfo(name)`
 
-Returns an `FXC_FUNCINFO` for the named function. Accepts bare or qualified name. When a function has multiple overloads, boolean flags (`has_effect`, `has_attenuate`, `is_variadic`, etc.) are OR'd across all overloads. Parameter info comes from the first overload.
+Returns an `IDKC_FUNCINFO` for the named function. Accepts bare or qualified name. When a function has multiple overloads, boolean flags (`has_effect`, `has_attenuate`, `is_variadic`, etc.) are OR'd across all overloads. Parameter info comes from the first overload.
 
-Returns a zeroed `FXC_FUNCINFO` (all zero/false/empty) if the name is not found or is not a function.
+Returns a zeroed `IDKC_FUNCINFO` (all zero/false/empty) if the name is not found or is not a function.
 
 ```
-FXC_FUNCINFO fi = compiler.symbol_table.funcinfo("f");
-FXC_FUNCINFO fi2 = compiler.symbol_table.funcinfo(e.name);
+IDKC_FUNCINFO fi = compiler.symbol_table.funcinfo("f");
+IDKC_FUNCINFO fi2 = compiler.symbol_table.funcinfo(e.name);
 ```
 
 ---
@@ -147,17 +147,17 @@ The symbol table is snapshotted at the point the `comptime` block begins executi
 ### Enumerate all functions
 
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
 comptime
 {
-    FXC_SYMTABLE st = compiler.symbol_table.functions;
+    IDKC_SYMTABLE st = compiler.symbol_table.functions;
     int i;
     while (i < st.entries)
     {
-        FXC_SYMENTRY e = st.entry[i];
+        IDKC_SYMENTRY e = st.entry[i];
         println(f"{e.name} -> {e.type.base_type}");
         i++;
     };
@@ -169,12 +169,12 @@ comptime
 ```
 comptime
 {
-    FXC_SYMTABLE st = compiler.symbol_table.functions;
+    IDKC_SYMTABLE st = compiler.symbol_table.functions;
     int i;
     while (i < st.entries)
     {
-        FXC_SYMENTRY e = st.entry[i];
-        FXC_FUNCINFO fi = compiler.symbol_table.funcinfo(e.name);
+        IDKC_SYMENTRY e = st.entry[i];
+        IDKC_FUNCINFO fi = compiler.symbol_table.funcinfo(e.name);
         compiler.io.console.print(f"{e.name} has effect: {fi.has_effect}\n") if (fi.has_effect);
         i++;
     };
@@ -186,7 +186,7 @@ comptime
 ```
 comptime
 {
-    FXC_SYMENTRY e = compiler.symbol_table.lookup("MyStruct");
+    IDKC_SYMENTRY e = compiler.symbol_table.lookup("MyStruct");
     if (e.kind == "struct")
     {
         compiler.io.console.print(f"Found: {e.name} in {e.ns}\n");
@@ -199,12 +199,12 @@ comptime
 ```
 comptime
 {
-    FXC_FUNCINFO fi = compiler.symbol_table.funcinfo("f");
+    IDKC_FUNCINFO fi = compiler.symbol_table.funcinfo("f");
     compiler.io.console.print(f"f has {fi.param_count} params\n");
     int i;
     while (i < fi.param_count)
     {
-        FXC_PARAM p = fi.params[i];
+        IDKC_PARAM p = fi.params[i];
         compiler.io.console.print(f"  {p.name} : {p.type.base_type}\n");
         i++;
     };
@@ -216,8 +216,8 @@ comptime
 ```
 comptime
 {
-    FXC_SYMENTRY e = compiler.symbol_table.lookup("standard::io::console::println");
-    FXC_FUNCINFO fi = compiler.symbol_table.funcinfo("standard::io::console::println");
+    IDKC_SYMENTRY e = compiler.symbol_table.lookup("standard::io::console::println");
+    IDKC_FUNCINFO fi = compiler.symbol_table.funcinfo("standard::io::console::println");
     compiler.io.console.print(f"println has_effect: {fi.has_effect}\n");
 };
 ```
@@ -288,7 +288,7 @@ comptime
 {
     if (compiler.target.has_avx2)
     {
-        emitflux
+        emitideka
         {
             def dot_product(float* a, float* b, int n) -> float
             {
@@ -298,7 +298,7 @@ comptime
     }
     else
     {
-        emitflux
+        emitideka
         {
             def dot_product(float* a, float* b, int n) -> float
             {
@@ -325,7 +325,7 @@ comptime
 comptime
 {
     compiler.io.console.print(f"Building for {compiler.target.arch} / {compiler.target.os}\n");
-    FXC_SYMTABLE st = compiler.symbol_table.structs;
+    IDKC_SYMTABLE st = compiler.symbol_table.structs;
     compiler.io.console.print(f"{st.entries} structs defined\n");
 };
 ```

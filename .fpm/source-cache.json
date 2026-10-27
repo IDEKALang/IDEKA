@@ -4,12 +4,12 @@
     "packages": {
       "test-pack": {
         "version": "0.0.1",
-        "description": "A Flux package called test-pack",
+        "description": "A IDEKA package called test-pack",
         "path": "",
         "author": "Karac Thweatt",
         "license": "MIT",
-        "entry": "test_pack.fx",
-        "_source_url": "https://www.uttcex.net/flux/fpm/public/packages/test-pack/package.json",
+        "entry": "test_pack.idk",
+        "_source_url": "https://www.uttcex.net/IDEKA/fpm/public/packages/test-pack/package.json",
         "_source_name": "UTTCex"
       }
     }
