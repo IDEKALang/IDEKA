@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Flux Type Geometry Visualizer (tg.py)
+IDEKA Type Geometry Visualizer (tg.py)
 
 Standalone entry point. All render logic lives in vizcore.py.
 
@@ -13,7 +13,7 @@ import sys
 import argparse
 
 def main():
-    ap = argparse.ArgumentParser(description='Flux Type Geometry Visualizer')
+    ap = argparse.ArgumentParser(description='IDEKA Type Geometry Visualizer')
     ap.add_argument('--expr', default='D !~= B & [A !@ A] !~= C !`< D !-= A',
                     help='Initial type constraint expression to visualize')
     args = ap.parse_args()

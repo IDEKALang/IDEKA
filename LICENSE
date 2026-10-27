@@ -1,4 +1,4 @@
-                             Flux Compiler License
+                             IDEKA Compiler License
                              Version 1.0, May 2026
 
    TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
@@ -61,10 +61,10 @@
       on behalf of whom a Contribution has been received by Licensor and
       subsequently incorporated within the Work.
 
-      "Flux Compiler" shall refer to the entirety of this software package,
+      "IDEKA Compiler" shall refer to the entirety of this software package,
       including the compiler, standard library, configuration files, examples,
       and tests.
-      For the purposes of this License, references to "the Flux Compiler"
+      For the purposes of this License, references to "the IDEKA Compiler"
       include any Derivative Works defined in Section 1, in whole or in part.
 
 
@@ -74,10 +74,10 @@
       copyright license to reproduce, prepare Derivative Works of,
       publicly display, publicly perform, and distribute the Work
       and such Derivative Works in Source or Object form. You may not
-      sublicense or re-sell the Flux Compiler.
+      sublicense or re-sell the IDEKA Compiler.
       For the purposes of this License, 'sell' or 're-sell' includes
-      distributing the Flux Compiler as part of any paid product, service,
-      subscription, or bundle, regardless of whether the Flux Compiler
+      distributing the IDEKA Compiler as part of any paid product, service,
+      subscription, or bundle, regardless of whether the IDEKA Compiler
       itself is separately itemized or charged for.
 
    3. Grant of Patent License. Subject to the terms and conditions of
@@ -163,6 +163,6 @@
 
       Copyright [2026] [Karac Von Thweatt]
 
-   Licensed under the Flux Compiler License (based on Apache License 2.0 with modifications).
+   Licensed under the IDEKA Compiler License (based on Apache License 2.0 with modifications).
    This is not the original Apache License. A copy of the original Apache License 2.0
    is available at http://www.apache.org/licenses/LICENSE-2.0.

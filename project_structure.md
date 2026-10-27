@@ -2,39 +2,39 @@
 root dir  
 |  
 |-- build\              // all programs build here:  build\program\program.ll IR output  
-|-- build\tmp.fx        // Preprocessor temporary output for builds  
+|-- build\tmp.idk        // Preprocessor temporary output for builds  
 |-- config\             // All configuration  
-|-- config\flux_configuration.cfg // Compiler configuration  
+|-- config\IDEKA_configuration.cfg // Compiler configuration  
 |-- docs\               // All docoumentation  
 |-- examples\           // Battle-tested production ready working examples  
 |-- scripts\            // Scripts like run_tests.py, compiles all test files in tests\  
-|-- tests\              // All Flux source file (.fx) testing (weird_test.fx, 64bit_test.fx)  
+|-- tests\              // All IDEKA source file (.idk) testing (weird_test.idk, 64bit_test.idk)  
 |-- src\                // Compiler & Standard Library source  
 |-- src\stdlib\         // Standard Library source  
 |-- src\compiler\       // Compiler source
-|   `--> fmacros.py     // Compiler macros  
-|   `--> ferrors.py     // Compiler errors  
-|   `--> fast.py        // AST  
-|   `--> fpreprocess.py // Preprocessor  
-|   `--> flexer.py      // Lexer  
-|   `--> fparser.py     // Parser  
-|   `--> fdce.py        // Dead code elimination module
-|	`--> ftypesys.py    // Type System  
-|   `--> fcodegen.py    // Code Generation
-|   `--> fvmcodegen.py  // FVM Code Generation
+|   `--> imacros.py     // Compiler macros  
+|   `--> ierrors.py     // Compiler errors  
+|   `--> iast.py        // AST  
+|   `--> ipreprocess.py // Preprocessor  
+|   `--> ilexer.py      // Lexer  
+|   `--> iparser.py     // Parser  
+|   `--> idce.py        // Dead code elimination module
+|	`--> itypesys.py    // Type System  
+|   `--> icodegen.py    // Code Generation
+|   `--> ivmcodegen.py  // FVM Code Generation
 |	`--> futilities.py  // Utility functions  
-|	`--> flogger.py     // Logging  
-|	`--> fconfig.py     // Config helper  
-|   `--> fc.py          // Compiler front-end  
+|	`--> ilogger.py     // Logging  
+|	`--> iconfig.py     // Config helper  
+|   `--> ic.py          // Compiler front-end  
 |  
-`--> fxc.py             // Compiler front-end entrypoint, root, calls to fc.py in src\compiler\
-`--> fbc.py             // Borrow Checker
-`--> fbc_alias.py       // Alias map and violation detection
-`--> fbc_report.py      // Violation reporting
-`--> fpm.py             // Flux Package Manager
-`--> fvm.py             // Flux Virtual Machine for comptime execution of Flux code & REPL
-`--> fvm_test.py        // Tests the FVM
-`--> frepl.py           // REPL for Flux, uses the FVM
+`--> idkc.py             // Compiler front-end entrypoint, root, calls to ic.py in src\compiler\
+`--> idkbc.py             // Borrow Checker
+`--> ibc_alias.py       // Alias map and violation detection
+`--> ibc_report.py      // Violation reporting
+`--> ipm.py             // IDEKA Package Manager
+`--> idkvm.py             // IDEKA Virtual Machine for comptime execution of IDEKA code & REPL
+`--> idkvm_test.py        // Tests the FVM
+`--> frepl.py           // REPL for IDEKA, uses the FVM
 `--> tg.py              // Type geometry visualizer
-`--> cft.py             // C->Flux translation utility
+`--> cft.py             // C->IDEKA translation utility
 ```

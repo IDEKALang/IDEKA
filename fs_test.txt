@@ -10,22 +10,22 @@ Warning: variable declaration inside a loop body - this will continually allocat
 Warning: variable declaration inside a loop body - this will continually allocate new slots on the stack each iteration. at 10432:17
                 byte* s = argv[a];
 ----------------^
-[AST] Begining codegen for Flux program ...
+[AST] Begining codegen for IDEKA program ...
 [AST] Total statements in AST: 88
 [AST] Namespace definitions: 12
 [AST] Pass 1: Processing using statements...
 [AST] Pass 2: Processing not using statements...
 [AST] Pre-pass: Registering all object types and extern blocks...
 [AST] Pass 3: Processing all other statements...
-; ModuleID = "flux_module"
+; ModuleID = "IDEKA_module"
 
-%"FXC_TYPESYS" = type {i8*, i8*, i1, i1, i1, i1, i1, i32, i1, i1, i1, i1, i1, i8*, i1, i8*, i8*}
-%"FXC_PARAM" = type {i8*, %"FXC_TYPESYS"}
-%"FXC_FUNCINFO" = type {i32, %"FXC_PARAM"*, %"FXC_TYPESYS", i8*, i1, i1, i1, i1, i1, i1, i32, i32}
+%"IDKC_TYPESYS" = type {i8*, i8*, i1, i1, i1, i1, i1, i32, i1, i1, i1, i1, i1, i8*, i1, i8*, i8*}
+%"IDKC_PARAM" = type {i8*, %"IDKC_TYPESYS"}
+%"IDKC_FUNCINFO" = type {i32, %"IDKC_PARAM"*, %"IDKC_TYPESYS", i8*, i1, i1, i1, i1, i1, i1, i32, i32}
 %"PtrVec" = type {i8**, i32, i32}
 %"NameMap" = type {i8**, i8**, i32*, i32, i32, i32}
-%"FXC_SYMENTRY" = type {i8*, i8*, %"FXC_TYPESYS"*, i8*, i32, i32, i8*, i8*}
-%"FXC_SYMTABLE" = type {i32, %"FXC_SYMENTRY"*, %"PtrVec"*, %"PtrVec"*, %"PtrVec"*, %"PtrVec"*, %"PtrVec"*, %"PtrVec"*, %"NameMap"*, %"NameMap"*, %"NameMap"*, i8*}
+%"IDKC_SYMENTRY" = type {i8*, i8*, %"IDKC_TYPESYS"*, i8*, i32, i32, i8*, i8*}
+%"IDKC_SYMTABLE" = type {i32, %"IDKC_SYMENTRY"*, %"PtrVec"*, %"PtrVec"*, %"PtrVec"*, %"PtrVec"*, %"PtrVec"*, %"PtrVec"*, %"NameMap"*, %"NameMap"*, %"NameMap"*, i8*}
 %"SYSTEM_INFO_PARTIAL" = type {i32, i32, i8*, i8*, i64, i32, i32, i32, i16, i16}
 %"BlockEntry" = type {i64, i64, i64, i64}
 %"Slab" = type {i64, i64, i64, i64, %"Slab"*}
@@ -36,7 +36,7 @@ Warning: variable declaration inside a loop body - this will continually allocat
 %"WinExceptionRecord" = type {i32, i32, %"WinExceptionRecord"*, i8*, i32, [15 x i64]}
 %"WinContext" = type {i64, i64, i64, i64, i64, i64, i32, i32, i16, i16, i16, i16, i16, i16, i32, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64}
 %"WinExceptionPointers" = type {%"WinExceptionRecord"*, %"WinContext"*}
-%"FluxJmpBuf" = type {i64, i64, i64, i64, i64, i64, i64, i64, i1*, i64*, i1*, i32*}
+%"IDEKAJmpBuf" = type {i64, i64, i64, i64, i64, i64, i64, i64, i1*, i64*, i1*, i32*}
 %"timespec" = type {i64, i64}
 %"standard__fs__DirIter" = type {i8*, i1, [320 x i8]}
 
@@ -9422,13 +9422,13 @@ cont:
 
 declare void @"llvm.memset.p0i8.i64"(i8* %".1", i8 %".2", i64 %".3", i1 %".4")
 
-@"FXC_TYPESYS.TLD" = internal constant {i32, i32, [17 x {i32, i32, i32}]} {i32 83, i32 17, [17 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 8, i32 8}, {i32, i32, i32} {i32 8, i32 8, i32 8}, {i32, i32, i32} {i32 16, i32 1, i32 1}, {i32, i32, i32} {i32 17, i32 1, i32 1}, {i32, i32, i32} {i32 18, i32 1, i32 1}, {i32, i32, i32} {i32 19, i32 1, i32 1}, {i32, i32, i32} {i32 20, i32 1, i32 1}, {i32, i32, i32} {i32 21, i32 32, i32 32}, {i32, i32, i32} {i32 53, i32 1, i32 1}, {i32, i32, i32} {i32 54, i32 1, i32 1}, {i32, i32, i32} {i32 55, i32 1, i32 1}, {i32, i32, i32} {i32 56, i32 1, i32 1}, {i32, i32, i32} {i32 57, i32 1, i32 1}, {i32, i32, i32} {i32 58, i32 8, i32 8}, {i32, i32, i32} {i32 66, i32 1, i32 1}, {i32, i32, i32} {i32 67, i32 8, i32 8}, {i32, i32, i32} {i32 75, i32 8, i32 8}]}
-@"FXC_PARAM.TLD" = internal constant {i32, i32, [2 x {i32, i32, i32}]} {i32 371, i32 2, [2 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 8, i32 8}, {i32, i32, i32} {i32 8, i32 363, i32 64}]}
-@"FXC_FUNCINFO.TLD" = internal constant {i32, i32, [12 x {i32, i32, i32}]} {i32 537, i32 12, [12 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 32, i32 32}, {i32, i32, i32} {i32 32, i32 64, i32 64}, {i32, i32, i32} {i32 96, i32 363, i32 64}, {i32, i32, i32} {i32 459, i32 8, i32 8}, {i32, i32, i32} {i32 467, i32 1, i32 1}, {i32, i32, i32} {i32 468, i32 1, i32 1}, {i32, i32, i32} {i32 469, i32 1, i32 1}, {i32, i32, i32} {i32 470, i32 1, i32 1}, {i32, i32, i32} {i32 471, i32 1, i32 1}, {i32, i32, i32} {i32 472, i32 1, i32 1}, {i32, i32, i32} {i32 473, i32 32, i32 32}, {i32, i32, i32} {i32 505, i32 32, i32 32}]}
+@"IDKC_TYPESYS.TLD" = internal constant {i32, i32, [17 x {i32, i32, i32}]} {i32 83, i32 17, [17 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 8, i32 8}, {i32, i32, i32} {i32 8, i32 8, i32 8}, {i32, i32, i32} {i32 16, i32 1, i32 1}, {i32, i32, i32} {i32 17, i32 1, i32 1}, {i32, i32, i32} {i32 18, i32 1, i32 1}, {i32, i32, i32} {i32 19, i32 1, i32 1}, {i32, i32, i32} {i32 20, i32 1, i32 1}, {i32, i32, i32} {i32 21, i32 32, i32 32}, {i32, i32, i32} {i32 53, i32 1, i32 1}, {i32, i32, i32} {i32 54, i32 1, i32 1}, {i32, i32, i32} {i32 55, i32 1, i32 1}, {i32, i32, i32} {i32 56, i32 1, i32 1}, {i32, i32, i32} {i32 57, i32 1, i32 1}, {i32, i32, i32} {i32 58, i32 8, i32 8}, {i32, i32, i32} {i32 66, i32 1, i32 1}, {i32, i32, i32} {i32 67, i32 8, i32 8}, {i32, i32, i32} {i32 75, i32 8, i32 8}]}
+@"IDKC_PARAM.TLD" = internal constant {i32, i32, [2 x {i32, i32, i32}]} {i32 371, i32 2, [2 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 8, i32 8}, {i32, i32, i32} {i32 8, i32 363, i32 64}]}
+@"IDKC_FUNCINFO.TLD" = internal constant {i32, i32, [12 x {i32, i32, i32}]} {i32 537, i32 12, [12 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 32, i32 32}, {i32, i32, i32} {i32 32, i32 64, i32 64}, {i32, i32, i32} {i32 96, i32 363, i32 64}, {i32, i32, i32} {i32 459, i32 8, i32 8}, {i32, i32, i32} {i32 467, i32 1, i32 1}, {i32, i32, i32} {i32 468, i32 1, i32 1}, {i32, i32, i32} {i32 469, i32 1, i32 1}, {i32, i32, i32} {i32 470, i32 1, i32 1}, {i32, i32, i32} {i32 471, i32 1, i32 1}, {i32, i32, i32} {i32 472, i32 1, i32 1}, {i32, i32, i32} {i32 473, i32 32, i32 32}, {i32, i32, i32} {i32 505, i32 32, i32 32}]}
 @"PtrVec.TLD" = internal constant {i32, i32, [3 x {i32, i32, i32}]} {i32 128, i32 3, [3 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 64, i32 64}, {i32, i32, i32} {i32 64, i32 32, i32 32}, {i32, i32, i32} {i32 96, i32 32, i32 32}]}
 @"NameMap.TLD" = internal constant {i32, i32, [6 x {i32, i32, i32}]} {i32 232, i32 6, [6 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 8, i32 8}, {i32, i32, i32} {i32 8, i32 64, i32 64}, {i32, i32, i32} {i32 72, i32 64, i32 64}, {i32, i32, i32} {i32 136, i32 32, i32 32}, {i32, i32, i32} {i32 168, i32 32, i32 32}, {i32, i32, i32} {i32 200, i32 32, i32 32}]}
-@"FXC_SYMENTRY.TLD" = internal constant {i32, i32, [8 x {i32, i32, i32}]} {i32 280, i32 8, [8 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 8, i32 8}, {i32, i32, i32} {i32 8, i32 8, i32 8}, {i32, i32, i32} {i32 16, i32 64, i32 64}, {i32, i32, i32} {i32 80, i32 8, i32 8}, {i32, i32, i32} {i32 88, i32 32, i32 32}, {i32, i32, i32} {i32 120, i32 32, i32 32}, {i32, i32, i32} {i32 152, i32 64, i32 64}, {i32, i32, i32} {i32 216, i32 64, i32 64}]}
-@"FXC_SYMTABLE.TLD" = internal constant {i32, i32, [12 x {i32, i32, i32}]} {i32 680, i32 12, [12 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 32, i32 32}, {i32, i32, i32} {i32 32, i32 64, i32 64}, {i32, i32, i32} {i32 96, i32 64, i32 64}, {i32, i32, i32} {i32 160, i32 64, i32 64}, {i32, i32, i32} {i32 224, i32 64, i32 64}, {i32, i32, i32} {i32 288, i32 64, i32 64}, {i32, i32, i32} {i32 352, i32 64, i32 64}, {i32, i32, i32} {i32 416, i32 64, i32 64}, {i32, i32, i32} {i32 480, i32 64, i32 64}, {i32, i32, i32} {i32 544, i32 64, i32 64}, {i32, i32, i32} {i32 608, i32 64, i32 64}, {i32, i32, i32} {i32 672, i32 8, i32 8}]}
+@"IDKC_SYMENTRY.TLD" = internal constant {i32, i32, [8 x {i32, i32, i32}]} {i32 280, i32 8, [8 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 8, i32 8}, {i32, i32, i32} {i32 8, i32 8, i32 8}, {i32, i32, i32} {i32 16, i32 64, i32 64}, {i32, i32, i32} {i32 80, i32 8, i32 8}, {i32, i32, i32} {i32 88, i32 32, i32 32}, {i32, i32, i32} {i32 120, i32 32, i32 32}, {i32, i32, i32} {i32 152, i32 64, i32 64}, {i32, i32, i32} {i32 216, i32 64, i32 64}]}
+@"IDKC_SYMTABLE.TLD" = internal constant {i32, i32, [12 x {i32, i32, i32}]} {i32 680, i32 12, [12 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 32, i32 32}, {i32, i32, i32} {i32 32, i32 64, i32 64}, {i32, i32, i32} {i32 96, i32 64, i32 64}, {i32, i32, i32} {i32 160, i32 64, i32 64}, {i32, i32, i32} {i32 224, i32 64, i32 64}, {i32, i32, i32} {i32 288, i32 64, i32 64}, {i32, i32, i32} {i32 352, i32 64, i32 64}, {i32, i32, i32} {i32 416, i32 64, i32 64}, {i32, i32, i32} {i32 480, i32 64, i32 64}, {i32, i32, i32} {i32 544, i32 64, i32 64}, {i32, i32, i32} {i32 608, i32 64, i32 64}, {i32, i32, i32} {i32 672, i32 8, i32 8}]}
 @"SYSTEM_INFO_PARTIAL.TLD" = internal constant {i32, i32, [10 x {i32, i32, i32}]} {i32 384, i32 10, [10 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 32, i32 32}, {i32, i32, i32} {i32 32, i32 32, i32 32}, {i32, i32, i32} {i32 64, i32 64, i32 64}, {i32, i32, i32} {i32 128, i32 64, i32 64}, {i32, i32, i32} {i32 192, i32 64, i32 64}, {i32, i32, i32} {i32 256, i32 32, i32 32}, {i32, i32, i32} {i32 288, i32 32, i32 32}, {i32, i32, i32} {i32 320, i32 32, i32 32}, {i32, i32, i32} {i32 352, i32 16, i32 16}, {i32, i32, i32} {i32 368, i32 16, i32 16}]}
 @"BlockEntry.TLD" = internal constant {i32, i32, [4 x {i32, i32, i32}]} {i32 256, i32 4, [4 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 64, i32 64}, {i32, i32, i32} {i32 64, i32 64, i32 64}, {i32, i32, i32} {i32 128, i32 64, i32 64}, {i32, i32, i32} {i32 192, i32 64, i32 64}]}
 @"Slab.TLD" = internal constant {i32, i32, [5 x {i32, i32, i32}]} {i32 320, i32 5, [5 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 64, i32 64}, {i32, i32, i32} {i32 64, i32 64, i32 64}, {i32, i32, i32} {i32 128, i32 64, i32 64}, {i32, i32, i32} {i32 192, i32 64, i32 64}, {i32, i32, i32} {i32 256, i32 64, i32 64}]}
@@ -9439,7 +9439,7 @@ declare void @"llvm.memset.p0i8.i64"(i8* %".1", i8 %".2", i64 %".3", i1 %".4")
 @"WinExceptionRecord.TLD" = internal constant {i32, i32, [6 x {i32, i32, i32}]} {i32 1184, i32 6, [6 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 32, i32 32}, {i32, i32, i32} {i32 32, i32 32, i32 32}, {i32, i32, i32} {i32 64, i32 64, i32 64}, {i32, i32, i32} {i32 128, i32 64, i32 64}, {i32, i32, i32} {i32 192, i32 32, i32 32}, {i32, i32, i32} {i32 224, i32 960, i32 64}]}
 @"WinContext.TLD" = internal constant {i32, i32, [38 x {i32, i32, i32}]} {i32 2048, i32 38, [38 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 64, i32 64}, {i32, i32, i32} {i32 64, i32 64, i32 64}, {i32, i32, i32} {i32 128, i32 64, i32 64}, {i32, i32, i32} {i32 192, i32 64, i32 64}, {i32, i32, i32} {i32 256, i32 64, i32 64}, {i32, i32, i32} {i32 320, i32 64, i32 64}, {i32, i32, i32} {i32 384, i32 32, i32 32}, {i32, i32, i32} {i32 416, i32 32, i32 32}, {i32, i32, i32} {i32 448, i32 16, i32 16}, {i32, i32, i32} {i32 464, i32 16, i32 16}, {i32, i32, i32} {i32 480, i32 16, i32 16}, {i32, i32, i32} {i32 496, i32 16, i32 16}, {i32, i32, i32} {i32 512, i32 16, i32 16}, {i32, i32, i32} {i32 528, i32 16, i32 16}, {i32, i32, i32} {i32 544, i32 32, i32 32}, {i32, i32, i32} {i32 576, i32 64, i32 64}, {i32, i32, i32} {i32 640, i32 64, i32 64}, {i32, i32, i32} {i32 704, i32 64, i32 64}, {i32, i32, i32} {i32 768, i32 64, i32 64}, {i32, i32, i32} {i32 832, i32 64, i32 64}, {i32, i32, i32} {i32 896, i32 64, i32 64}, {i32, i32, i32} {i32 960, i32 64, i32 64}, {i32, i32, i32} {i32 1024, i32 64, i32 64}, {i32, i32, i32} {i32 1088, i32 64, i32 64}, {i32, i32, i32} {i32 1152, i32 64, i32 64}, {i32, i32, i32} {i32 1216, i32 64, i32 64}, {i32, i32, i32} {i32 1280, i32 64, i32 64}, {i32, i32, i32} {i32 1344, i32 64, i32 64}, {i32, i32, i32} {i32 1408, i32 64, i32 64}, {i32, i32, i32} {i32 1472, i32 64, i32 64}, {i32, i32, i32} {i32 1536, i32 64, i32 64}, {i32, i32, i32} {i32 1600, i32 64, i32 64}, {i32, i32, i32} {i32 1664, i32 64, i32 64}, {i32, i32, i32} {i32 1728, i32 64, i32 64}, {i32, i32, i32} {i32 1792, i32 64, i32 64}, {i32, i32, i32} {i32 1856, i32 64, i32 64}, {i32, i32, i32} {i32 1920, i32 64, i32 64}, {i32, i32, i32} {i32 1984, i32 64, i32 64}]}
 @"WinExceptionPointers.TLD" = internal constant {i32, i32, [2 x {i32, i32, i32}]} {i32 128, i32 2, [2 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 64, i32 64}, {i32, i32, i32} {i32 64, i32 64, i32 64}]}
-@"FluxJmpBuf.TLD" = internal constant {i32, i32, [12 x {i32, i32, i32}]} {i32 736, i32 12, [12 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 64, i32 64}, {i32, i32, i32} {i32 64, i32 64, i32 64}, {i32, i32, i32} {i32 128, i32 64, i32 64}, {i32, i32, i32} {i32 192, i32 64, i32 64}, {i32, i32, i32} {i32 256, i32 64, i32 64}, {i32, i32, i32} {i32 320, i32 64, i32 64}, {i32, i32, i32} {i32 384, i32 64, i32 64}, {i32, i32, i32} {i32 448, i32 64, i32 64}, {i32, i32, i32} {i32 512, i32 64, i32 64}, {i32, i32, i32} {i32 576, i32 64, i32 64}, {i32, i32, i32} {i32 640, i32 64, i32 64}, {i32, i32, i32} {i32 704, i32 32, i32 32}]}
+@"IDEKAJmpBuf.TLD" = internal constant {i32, i32, [12 x {i32, i32, i32}]} {i32 736, i32 12, [12 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 64, i32 64}, {i32, i32, i32} {i32 64, i32 64, i32 64}, {i32, i32, i32} {i32 128, i32 64, i32 64}, {i32, i32, i32} {i32 192, i32 64, i32 64}, {i32, i32, i32} {i32 256, i32 64, i32 64}, {i32, i32, i32} {i32 320, i32 64, i32 64}, {i32, i32, i32} {i32 384, i32 64, i32 64}, {i32, i32, i32} {i32 448, i32 64, i32 64}, {i32, i32, i32} {i32 512, i32 64, i32 64}, {i32, i32, i32} {i32 576, i32 64, i32 64}, {i32, i32, i32} {i32 640, i32 64, i32 64}, {i32, i32, i32} {i32 704, i32 32, i32 32}]}
 @"timespec.TLD" = internal constant {i32, i32, [2 x {i32, i32, i32}]} {i32 128, i32 2, [2 x {i32, i32, i32}] [{i32, i32, i32} {i32 0, i32 64, i32 64}, {i32, i32, i32} {i32 64, i32 64, i32 64}]}
 @"STDLIB_GVP" = internal global i8* null
 @"U64MAXVAL" = internal global i64 -1
@@ -9482,7 +9482,7 @@ declare void @"llvm.memset.p0i8.i64"(i8* %".1", i8 %".2", i64 %".3", i1 %".4")
 @"FEXC_PAGE_READWRITE" = internal global i32 4
 @"FEXC_STACK_GUARANTEE_BYTES" = internal global i32 65536
 @"FEXC_JMPSTACK_CAPACITY" = internal global i64 64
-@"FEXC_JMPSTACK_BASE" = internal global %"FluxJmpBuf"* null
+@"FEXC_JMPSTACK_BASE" = internal global %"IDEKAJmpBuf"* null
 @"FEXC_JMPSTACK_TOP" = internal global i64 0
 @"FEXC_INITIALIZED" = internal global i1 0
 @"FEXC_PENDING" = internal global %"Exception" zeroinitializer

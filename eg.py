@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Flux Effect Geometry Visualizer (eg.py)
+IDEKA Effect Geometry Visualizer (eg.py)
 
 Standalone entry point. All render logic lives in vizcore.py.
 
@@ -13,7 +13,7 @@ import sys
 import argparse
 
 def main():
-    ap = argparse.ArgumentParser(description='Flux Effect Geometry Visualizer')
+    ap = argparse.ArgumentParser(description='IDEKA Effect Geometry Visualizer')
     ap.add_argument('--expr', default='*Hook.Detour & !Alloc & ~IO & Hook.Detour ^| Process.Inject',
                     help='Initial effect expression to visualize')
     args = ap.parse_args()

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-vizcore.py -- Shared render core for Flux visualizers.
+vizcore.py -- Shared render core for IDEKA visualizers.
 
 Provides two renderer classes:
   EffectGeomRenderer   -- effect algebra graph (used by eg.py)
@@ -1571,12 +1571,12 @@ def render_type_frame(expr: str, w: int = 400, h: int = 300,
 def launch_effect_full(expr: str = ''):
     """Open a full interactive effect geometry window. Blocks until closed."""
     run_interactive(EffectGeomRenderer(),
-                    'Flux Effect Geometry Visualizer',
+                    'IDEKA Effect Geometry Visualizer',
                     'Effect expr:', expr)
 
 
 def launch_type_full(expr: str = ''):
     """Open a full interactive type geometry window. Blocks until closed."""
     run_interactive(TypeGeomRenderer(),
-                    'Flux Type Geometry Visualizer',
+                    'IDEKA Type Geometry Visualizer',
                     'Constraint:', expr)

@@ -1,4 +1,4 @@
-// Flux Compiler Version Information
-const byte* FLUX_COMPILER_VERSION      = g"1.5.4",
-            FLUX_VERSION_NAME          = g"Spicy Sugar",
-            FLUX_COMPILER_RELEASE_DATE = g"20261020"; // YYYYMMDD
+// IDEKA Compiler Version Information
+const byte* IDEKA_COMPILER_VERSION      = g"1.5.4",
+            IDEKA_VERSION_NAME          = g"Spicy Sugar",
+            IDEKA_COMPILER_RELEASE_DATE = g"20261020"; // YYYYMMDD

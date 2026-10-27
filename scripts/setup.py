@@ -1,30 +1,30 @@
 """
-Flux Language - Setup Wizard (Windows, macOS, Linux)
+IDEKA Language - Setup Wizard (Windows, macOS, Linux)
 scripts/setup.py
 
 Run this from the repo root or directly from the scripts/ folder.
 Requires Python 3.10+ (3.13+ recommended) and an internet connection.
 
-What it sets up, in the order the Flux compiler needs it:
+What it sets up, in the order the IDEKA compiler needs it:
 
   Windows
     1. Python and the llvmlite package (the compiler runs on Python)
     2. LLVM 21+ (llc, opt, clang, lld-link); MSYS2 only if the LLVM package has no llc
     3. MSVC (lld-link takes kernel32.lib, ucrt.lib and friends from the Windows SDK)
-    4. FLUXC_SRCDIR (user environment variable) and PATH
-    5. A developer prompt launcher (scripts/flux_dev_prompt.bat)
+    4. IDEKA_SRCDIR (user environment variable) and PATH
   macOS
     1. Xcode command line tools (clang is the linker)
-    2. Homebrew LLVM (llc), then FLUXC_SRCDIR and PATH in your shell rc file
+    2. Homebrew LLVM (llc), then IDEKA_SRCDIR and PATH in your shell rc file
     3. A virtual environment (.venv) with llvmlite
   Linux
     1. llc (LLVM), ld (binutils) and the libc development files, through apt, dnf,
        pacman or zypper (needs root: pkexec or passwordless sudo)
-    2. A virtual environment (.venv) with llvmlite, FLUXC_SRCDIR in your shell rc file
+    2. A virtual environment (.venv) with llvmlite, IDEKA_SRCDIR in your shell rc file
 
   All platforms, last
-    - The Python compiler (v1.5.4), copied from src/compiler/v1.5.4 if missing
-    - Bootstrap: python fxc.py fxc.fx (stage 1), then the native fxc builds fxc2 (stage 2)
+    - The Python compiler (v<version.txt>), copied from src/compiler/v<version.txt> if missing
+    - Bootstrap: python idkc.py idkc.idk (stage 1), idkc idkc.idk (stage 2), idkc idkc.idk again
+      (stage 3, fixed point check), then idkc and idkvm are copied to the compiler root
     - Remove the Python compiler files this script copied (and only those)
 """
 
@@ -63,7 +63,7 @@ except ImportError:
 # Constants
 # ---------------------------------------------------------------------------
 
-APP_NAME    = "Flux Systems Programming Language"
+APP_NAME    = "IDEKA Systems Programming Language"
 APP_VERSION = "2.0.8"
 
 # Direct download URLs
@@ -77,7 +77,7 @@ URLS = {
 
 LICENSE_TEXT = """\
 
-                             Flux Compiler License
+                             IDEKA Compiler License
                              Version 1.0, May 2026
 
    TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
@@ -140,10 +140,10 @@ LICENSE_TEXT = """\
       on behalf of whom a Contribution has been received by Licensor and
       subsequently incorporated within the Work.
 
-      "Flux Compiler" shall refer to the entirety of this software package,
+      "IDEKA Compiler" shall refer to the entirety of this software package,
       including the compiler, standard library, configuration files, examples,
       and tests.
-      For the purposes of this License, references to "the Flux Compiler"
+      For the purposes of this License, references to "the IDEKA Compiler"
       include any Derivative Works defined in Section 1, in whole or in part.
 
 
@@ -153,10 +153,10 @@ LICENSE_TEXT = """\
       copyright license to reproduce, prepare Derivative Works of,
       publicly display, publicly perform, and distribute the Work
       and such Derivative Works in Source or Object form. You may not
-      sublicense or re-sell the Flux Compiler.
+      sublicense or re-sell the IDEKA Compiler.
       For the purposes of this License, 'sell' or 're-sell' includes
-      distributing the Flux Compiler as part of any paid product, service,
-      subscription, or bundle, regardless of whether the Flux Compiler
+      distributing the IDEKA Compiler as part of any paid product, service,
+      subscription, or bundle, regardless of whether the IDEKA Compiler
       itself is separately itemized or charged for.
 
    3. Grant of Patent License. Subject to the terms and conditions of
@@ -242,7 +242,7 @@ LICENSE_TEXT = """\
 
       Copyright [2026] [Karac Von Thweatt]
 
-   Licensed under the Flux Compiler License (based on Apache License 2.0 with modifications).
+   Licensed under the IDEKA Compiler License (based on Apache License 2.0 with modifications).
    This is not the original Apache License. A copy of the original Apache License 2.0
    is available at http://www.apache.org/licenses/LICENSE-2.0.
 """
@@ -272,8 +272,8 @@ MIN_LLVM_MAJOR = 21
 LLVMLITE_SPEC  = "llvmlite>=0.43.0"
 BREW_LLVM_BINS = ["/opt/homebrew/opt/llvm/bin", "/usr/local/opt/llvm/bin"]
 BREW_BINS      = ["/opt/homebrew/bin/brew", "/usr/local/bin/brew"]
-RC_BEGIN = "# >>> Flux setup >>>"
-RC_END   = "# <<< Flux setup <<<"
+RC_BEGIN = "# >>> IDEKA setup >>>"
+RC_END   = "# <<< IDEKA setup <<<"
 # Linux packages per package manager: tool -> package
 LINUX_PKGS = {
     "apt-get": {"llc": "llvm", "ld": "binutils", "libc": "libc6-dev", "venv": "python3-venv"},
@@ -282,15 +282,14 @@ LINUX_PKGS = {
     "zypper":  {"llc": "llvm", "ld": "binutils", "libc": "glibc-devel"},
 }
 
-PY_COMPILER_VERSION = "1.5.4"
-# Python compiler files that live in <FLUXC_SRCDIR>\\src\\compiler
+# Python compiler files that live in <IDEKA_SRCDIR>\\src\\compiler
 PY_COMPILER_CORE = [
-    "fast.py", "fasync.py", "fc.py", "fcodegen.py", "fconfig.py", "fdce.py",
-    "feffects.py", "ferrors.py", "flexer.py", "flogger.py", "fmacros.py",
-    "fmodules.py", "fparser.py", "fpreprocess.py", "ftypesys.py", "fvmcodegen.py",
+    "iast.py", "iasync.py", "ic.py", "icodegen.py", "iconfig.py", "idce.py",
+    "ieffects.py", "ierrors.py", "ilexer.py", "ilogger.py", "imacros.py",
+    "imodules.py", "iparser.py", "ipreprocess.py", "itypesys.py", "ivmcodegen.py",
 ]
-# Python compiler files that live in <FLUXC_SRCDIR>
-PY_COMPILER_ENTRY = ["fxc.py"]
+# Python compiler files that live in <IDEKA_SRCDIR>
+PY_COMPILER_ENTRY = ["idkc.py"]
 VSWHERE_PATHS  = [
     r"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe",
     r"C:\Program Files\Microsoft Visual Studio\Installer\vswhere.exe",
@@ -313,7 +312,7 @@ def _run_long(cmd, log, cwd=None, env=None, shell=False) -> int:
     """Run a long task with no timeout, streaming each output line to log()."""
     p = subprocess.Popen(cmd, cwd=cwd, env=env, shell=shell,
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                         text=True, errors="replace")
+                         text=True, encoding="utf-8", errors="replace")
     for line in p.stdout:
         line = line.rstrip()
         if line:
@@ -368,7 +367,7 @@ def llvm_outdated(banner: Optional[str]) -> bool:
 
 
 def detect_llvmlite() -> Optional[str]:
-    """llvmlite version as seen by this interpreter (the one that will run fxc.py)."""
+    """llvmlite version as seen by this interpreter (the one that will run idkc.py)."""
     try:
         import llvmlite
         return llvmlite.__version__
@@ -392,7 +391,7 @@ def detect_llvmlite_unix(srcdir: str) -> Optional[str]:
 
 
 def compiler_python(srcdir: str) -> Optional[str]:
-    """The python that has llvmlite and will run fxc.py (unix)."""
+    """The python that has llvmlite and will run idkc.py (unix)."""
     for py in (venv_python(srcdir), sys.executable):
         if py and _run([py, "-c", "import llvmlite"], timeout=30)[0]:
             return py
@@ -458,7 +457,7 @@ def shell_rc() -> Path:
 
 
 def write_rc_block(rc: Path, lines: list[str]):
-    """Insert or replace the Flux block in a shell rc file; everything else is left alone."""
+    """Insert or replace the IDEKA block in a shell rc file; everything else is left alone."""
     text = rc.read_text() if rc.exists() else ""
     if RC_BEGIN in text and RC_END in text:
         pre = text[:text.index(RC_BEGIN)]
@@ -469,7 +468,7 @@ def write_rc_block(rc: Path, lines: list[str]):
 
 
 def unix_env(srcdir: str) -> dict:
-    env = dict(os.environ, FLUXC_SRCDIR=srcdir, PYTHONDONTWRITEBYTECODE="1")
+    env = dict(os.environ, IDEKA_SRCDIR=srcdir, PYTHONDONTWRITEBYTECODE="1")
     if IS_MAC:
         extra = [b for b in BREW_LLVM_BINS if Path(b).is_dir()]
         env["PATH"] = os.pathsep.join(extra + [env.get("PATH", "")])
@@ -562,7 +561,7 @@ def refresh_process_path():
     os.environ["PATH"] = ";".join(out)
 
 
-def detect_fluxc_srcdir() -> str:
+def detect_IDEKAc_srcdir() -> str:
     """Guess the repo root from this script's location."""
     here = Path(__file__).resolve()
     # If we're in scripts/, go up one level
@@ -579,13 +578,34 @@ def missing_py_compiler(srcdir: str) -> list[str]:
     return miss
 
 
+def compiler_version(srcdir: str) -> str:
+    """The compiler version from <srcdir>/version.txt, e.g. "1.5.5". Empty when it cannot be read.
+    version.txt holds the version constant (IDEKA_COMPILER_VERSION = g"1.5.5") or the bare number."""
+    try:
+        text = (Path(srcdir) / "version.txt").read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+    m = re.search(r'COMPILER_VERSION\s*=\s*g?"\s*v?(\d+(?:\.\d+)*)', text)
+    if not m:
+        m = re.search(r'^\s*v?(\d+(?:\.\d+)+)\s*$', text, re.M)
+    return m.group(1) if m else ""
+
+
+def compiler_dir_name(srcdir: str) -> str:
+    """Name of the folder under src/compiler that holds this version's Python files: v<version>."""
+    ver = compiler_version(srcdir)
+    return f"v{ver}" if ver else "v?"
+
+
 def py_compiler_bundle(srcdir: str) -> tuple[Path, Path]:
-    base = Path(srcdir) / "src" / "compiler" / f"v{PY_COMPILER_VERSION}"
+    if not compiler_version(srcdir):
+        raise RuntimeError(f"cannot read the compiler version from {Path(srcdir) / 'version.txt'}")
+    base = Path(srcdir) / "src" / "compiler" / compiler_dir_name(srcdir)
     return base / "core", base / "entrypoint"
 
 
 def valid_srcdir(path: str) -> bool:
-    """FLUXC_SRCDIR must be an existing directory (this release ships no Python compiler)."""
+    """IDEKA_SRCDIR must be an existing directory (this release ships no Python compiler)."""
     return Path(path).is_dir()
 
 # ---------------------------------------------------------------------------
@@ -628,11 +648,10 @@ class WizardApp(tk.Tk):
             "install_msvc":   tk.BooleanVar(value=False),
             "install_pip":    tk.BooleanVar(value=True),
             "set_env":        tk.BooleanVar(value=True),
-            "make_launcher":  tk.BooleanVar(value=IS_WIN),
             "have_pycompiler": tk.BooleanVar(value=False),
             "bootstrap":      tk.BooleanVar(value=True),
             "py_removed":     False,   # True once the copied Python compiler files were removed
-            "fluxc_srcdir":   tk.StringVar(value=detect_fluxc_srcdir()),
+            "IDEKAc_srcdir":   tk.StringVar(value=detect_IDEKAc_srcdir()),
             # detection results (filled in on components page)
             "det": {},
         }
@@ -785,13 +804,13 @@ class WelcomePage(tk.Frame):
         super().__init__(parent, bg=BG)
         self.app = app
 
-        tk.Label(self, text="Welcome to the Flux\nLanguage Installer",
+        tk.Label(self, text="Welcome to the IDEKA\nLanguage Installer",
                  font=(FONT_FAMILY, 18, "bold"), bg=BG, fg=FG,
                  justify="left").pack(anchor="w", padx=PAD, pady=(PAD, 8))
 
         tk.Label(self,
                  text="This wizard will set up everything you need to\n"
-                      f"compile and run Flux programs on {PLATFORM_NAME}.",
+                      f"compile and run IDEKA programs on {PLATFORM_NAME}.",
                  font=FONT_BODY, bg=BG, fg=FG_DIM, justify="left"
                  ).pack(anchor="w", padx=PAD, pady=(0, PAD))
 
@@ -804,7 +823,7 @@ class WelcomePage(tk.Frame):
 
         if IS_WIN:
             items = [
-                ("Python 3.10+",        "Runs the Flux compiler"),
+                ("Python 3.10+",        "Runs the IDEKA compiler"),
                 ("LLVM & Clang v21+",   "llc, opt and lld-link"),
                 ("MSVC / Build Tools",  "Windows SDK libraries for linking"),
                 ("llvmlite",            "Python -> LLVM IR bindings"),
@@ -822,8 +841,8 @@ class WelcomePage(tk.Frame):
                 ("llvmlite",            "Python -> LLVM IR bindings, in .venv"),
             ]
         items += [
-            ("FLUXC_SRCDIR",        "Environment variable pointing to this repo"),
-            ("Python compiler",     f"v{PY_COMPILER_VERSION}, copied in if missing, then bootstrapped"),
+            ("IDEKA_SRCDIR",        "Environment variable pointing to this repo"),
+            ("Python compiler",     f"{compiler_dir_name(app.state['IDEKAc_srcdir'].get())}, copied in if missing, then bootstrapped"),
         ]
         for name, desc in items:
             row = tk.Frame(inner, bg=BG2)
@@ -889,7 +908,7 @@ class ComponentsPage(tk.Frame):
 
         # Run detection
         det = app.state["det"]
-        srcdir = app.state["fluxc_srcdir"].get()
+        srcdir = app.state["IDEKAc_srcdir"].get()
         det["python"] = detect_python()
         if IS_WIN:
             det["clang"]    = detect_clang()
@@ -992,66 +1011,66 @@ class ComponentsPage(tk.Frame):
                                activebackground=BG2, activeforeground=ACCENT,
                                font=FONT_SMALL, cursor="hand2").pack(side="left")
 
-        # FLUXC_SRCDIR
-        tk.Label(self, text="FLUXC_SRCDIR", font=FONT_HEAD,
+        # IDEKA_SRCDIR
+        tk.Label(self, text="IDEKA_SRCDIR", font=FONT_HEAD,
                  bg=BG, fg=FG).pack(anchor="w", padx=PAD, pady=(14, 2))
         row = tk.Frame(self, bg=BG)
         row.pack(fill="x", padx=PAD)
-        entry = tk.Entry(row, textvariable=app.state["fluxc_srcdir"],
+        entry = tk.Entry(row, textvariable=app.state["IDEKAc_srcdir"],
                          font=FONT_BODY, bg=BG3, fg=FG, insertbackground=ACCENT,
                          relief="flat", width=52)
         entry.pack(side="left", ipady=5, padx=(0, 8))
 
         def browse():
-            d = filedialog.askdirectory(title="Select Flux repo root", parent=self.app)
+            d = filedialog.askdirectory(title="Select IDEKA repo root", parent=self.app)
             if d:
-                app.state["fluxc_srcdir"].set(d)
+                app.state["IDEKAc_srcdir"].set(d)
 
         tk.Button(row, text="Browse…", command=browse,
                   bg=BG3, fg=FG, activebackground="#333", font=FONT_SMALL,
                   relief="flat", padx=10, pady=4, cursor="hand2").pack(side="left")
 
         tk.Checkbutton(self,
-                       text=("Set FLUXC_SRCDIR as a user environment variable" if IS_WIN
-                             else f"Set FLUXC_SRCDIR in your shell rc file ({shell_rc().name})"),
+                       text=("Set IDEKA_SRCDIR as a user environment variable" if IS_WIN
+                             else f"Set IDEKA_SRCDIR in your shell rc file ({shell_rc().name})"),
                        variable=app.state["set_env"],
                        bg=BG, fg=FG, selectcolor=BG3,
                        activebackground=BG, activeforeground=ACCENT,
                        font=FONT_SMALL, cursor="hand2").pack(anchor="w", padx=PAD, pady=(6, 0))
         # Python compiler question
-        have = not missing_py_compiler(app.state["fluxc_srcdir"].get())
+        have = not missing_py_compiler(app.state["IDEKAc_srcdir"].get())
         app.state["have_pycompiler"].set(have)
-        tk.Label(self, text=f"Do you already have the Python version of Flux v{PY_COMPILER_VERSION} installed?",
-                 font=FONT_BODY, bg=BG, fg=FG).pack(anchor="w", padx=PAD, pady=(14, 0))
+        q_lbl = tk.Label(self, text="", font=FONT_BODY, bg=BG, fg=FG)
+        q_lbl.pack(anchor="w", padx=PAD, pady=(14, 0))
         rb = tk.Frame(self, bg=BG)
         rb.pack(anchor="w", padx=PAD)
-        for text, val in (("Yes", True),
-                          (f"No - copy it from src{os.sep}compiler{os.sep}v{PY_COMPILER_VERSION}", False)):
-            tk.Radiobutton(rb, text=text, variable=app.state["have_pycompiler"], value=val,
-                           bg=BG, fg=FG, selectcolor=BG3, activebackground=BG,
-                           activeforeground=ACCENT, font=FONT_SMALL,
-                           cursor="hand2").pack(side="left", padx=(0, 16))
+        no_btn = None
+        for text, val in (("Yes", True), ("", False)):
+            btn = tk.Radiobutton(rb, text=text, variable=app.state["have_pycompiler"], value=val,
+                                 bg=BG, fg=FG, selectcolor=BG3, activebackground=BG,
+                                 activeforeground=ACCENT, font=FONT_SMALL,
+                                 cursor="hand2")
+            btn.pack(side="left", padx=(0, 16))
+            if not val:
+                no_btn = btn
         py_lbl = tk.Label(self, text="", font=FONT_SMALL, bg=BG)
         py_lbl.pack(anchor="w", padx=PAD)
 
         def refresh_py(*_):
-            miss = missing_py_compiler(app.state["fluxc_srcdir"].get())
+            sd = app.state["IDEKAc_srcdir"].get()
+            vd = compiler_dir_name(sd)
+            q_lbl.config(text=f"Do you already have the Python version of IDEKA {vd} installed?")
+            no_btn.config(text=f"No - copy it from src{os.sep}compiler{os.sep}{vd}")
+            miss = missing_py_compiler(sd)
             app.state["have_pycompiler"].set(not miss)
             py_lbl.config(text="Detected: all compiler files present." if not miss
                           else f"Detected: {len(miss)} compiler file(s) missing.",
                           fg=FG_OK if not miss else FG_ERR)
         refresh_py()
-        app.state["fluxc_srcdir"].trace_add("write", refresh_py)
+        app.state["IDEKAc_srcdir"].trace_add("write", refresh_py)
 
-        if IS_WIN:
-            tk.Checkbutton(self,
-                           text="Create scripts\\flux_dev_prompt.bat (a prompt with the MSVC environment loaded)",
-                           variable=app.state["make_launcher"],
-                           bg=BG, fg=FG, selectcolor=BG3,
-                           activebackground=BG, activeforeground=ACCENT,
-                           font=FONT_SMALL, cursor="hand2").pack(anchor="w", padx=PAD)
         tk.Checkbutton(self,
-                       text="Bootstrap the compiler when done (python fxc.py fxc.fx)",
+                       text="Bootstrap the compiler when done (python idkc.py idkc.idk)",
                        variable=app.state["bootstrap"],
                        bg=BG, fg=FG, selectcolor=BG3,
                        activebackground=BG, activeforeground=ACCENT,
@@ -1187,11 +1206,11 @@ class InstallPage(tk.Frame):
 
         style = ttk.Style(self)
         style.theme_use("clam")
-        style.configure("Flux.Horizontal.TProgressbar",
+        style.configure("IDEKA.Horizontal.TProgressbar",
                          troughcolor=BG3, background=ACCENT,
                          darkcolor=ACCENT, lightcolor=ACCENT, bordercolor=BG3)
 
-        self._overall_bar = ttk.Progressbar(self, style="Flux.Horizontal.TProgressbar",
+        self._overall_bar = ttk.Progressbar(self, style="IDEKA.Horizontal.TProgressbar",
                                              length=660, mode="determinate")
         self._overall_bar.pack(padx=PAD, pady=(4, 10))
 
@@ -1200,7 +1219,7 @@ class InstallPage(tk.Frame):
                                     font=FONT_SMALL, bg=BG, fg=FG_DIM)
         self._step_label.pack(anchor="w", padx=PAD)
 
-        self._step_bar = ttk.Progressbar(self, style="Flux.Horizontal.TProgressbar",
+        self._step_bar = ttk.Progressbar(self, style="IDEKA.Horizontal.TProgressbar",
                                           length=660, mode="determinate")
         self._step_bar.pack(padx=PAD, pady=(2, 8))
 
@@ -1272,8 +1291,6 @@ class InstallPage(tk.Frame):
                 steps.append(("llvmlite (.venv)", self._install_llvmlite_unix))
         if st["set_env"].get():
             steps.append(("Environment vars", self._set_env_vars))
-        if IS_WIN and st["make_launcher"].get():
-            steps.append(("Developer prompt", self._make_launcher))
         steps.append(("Python compiler", self._install_py_compiler))
         if st["bootstrap"].get():
             steps.append(("Bootstrap compiler", self._bootstrap))
@@ -1432,7 +1449,7 @@ class InstallPage(tk.Frame):
                           "Install a newer llvm (for example from apt.llvm.org) and put it first on PATH.")
 
     def _install_llvmlite_unix(self):
-        srcdir = self.app.state["fluxc_srcdir"].get()
+        srcdir = self.app.state["IDEKAc_srcdir"].get()
         venv = Path(srcdir) / ".venv"
         if not venv_python(srcdir):
             self._log_msg(f"  Creating virtual environment: {venv}")
@@ -1458,44 +1475,26 @@ class InstallPage(tk.Frame):
             raise RuntimeError("pip install failed - see log above")
 
     def _set_env_vars(self):
-        srcdir = self.app.state["fluxc_srcdir"].get()
+        srcdir = self.app.state["IDEKAc_srcdir"].get()
         if not valid_srcdir(srcdir):
-            raise RuntimeError(f"{srcdir} is not a directory - choose the Flux root")
-        os.environ["FLUXC_SRCDIR"] = srcdir
+            raise RuntimeError(f"{srcdir} is not a directory - choose the IDEKA root")
+        os.environ["IDEKA_SRCDIR"] = srcdir
         if IS_WIN:
-            self._log_msg(f"  Setting FLUXC_SRCDIR = {srcdir}")
-            self._set_user_env("FLUXC_SRCDIR", srcdir)
+            self._log_msg(f"  Setting IDEKA_SRCDIR = {srcdir}")
+            self._set_user_env("IDEKA_SRCDIR", srcdir)
             return
         rc = shell_rc()
-        lines = [f'export FLUXC_SRCDIR="{srcdir}"']
+        lines = [f'export IDEKA_SRCDIR="{srcdir}"']
         if IS_MAC:
             brew_llvm = next((b for b in BREW_LLVM_BINS if Path(b).is_dir()), None)
             if brew_llvm:
                 lines.append(f'export PATH="{brew_llvm}:$PATH"')
         write_rc_block(rc, lines)
-        self._log_msg(f"  Wrote FLUXC_SRCDIR{' and PATH' if len(lines) > 1 else ''} to {rc}")
+        self._log_msg(f"  Wrote IDEKA_SRCDIR{' and PATH' if len(lines) > 1 else ''} to {rc}")
         self._log_msg(f"  Open a new terminal or run: source {rc}")
 
-    def _make_launcher(self):
-        """Write scripts\\flux_dev_prompt.bat: cmd with vcvars64 loaded, in the repo root."""
-        srcdir = Path(self.app.state["fluxc_srcdir"].get())
-        vcvars = find_vcvars()
-        if not vcvars:
-            self._log_msg("  Visual Studio C++ tools not found - no launcher written.")
-            self._log_msg("  Install them, then open 'x64 Native Tools Command Prompt for VS'.")
-            return
-        out = srcdir / "scripts" / "flux_dev_prompt.bat"
-        out.parent.mkdir(exist_ok=True)
-        out.write_text(
-            "@echo off\r\n"
-            f'call "{vcvars}"\r\n'
-            f'set "FLUXC_SRCDIR={srcdir}"\r\n'
-            f'cd /d "{srcdir}"\r\n'
-            "cmd /k\r\n", encoding="ascii")
-        self._log_msg(f"  Wrote {out}")
-
     def _install_py_compiler(self):
-        srcdir = self.app.state["fluxc_srcdir"].get()
+        srcdir = self.app.state["IDEKAc_srcdir"].get()
         if not self.app.state["have_pycompiler"].get():
             core, entry = py_compiler_bundle(srcdir)
             for d in (core, entry):
@@ -1517,71 +1516,99 @@ class InstallPage(tk.Frame):
         miss = missing_py_compiler(srcdir)
         if miss:
             raise RuntimeError("Python compiler incomplete, missing: " + ", ".join(miss))
-        self._log_msg(f"  Python compiler v{PY_COMPILER_VERSION} is complete.")
+        self._log_msg(f"  Python compiler {compiler_dir_name(srcdir)} is complete.")
 
     def _bootstrap(self):
-        """python fxc.py fxc.fx, run inside the MSVC environment so lld-link finds the SDK."""
-        srcdir = self.app.state["fluxc_srcdir"].get()
+        """Three stages, all run from the compiler root (IDEKA_SRCDIR):
+
+        1. python idkc.py idkc.idk          the Python compiler builds the stage 1 idkc
+           the stage 1 idkc is copied from build/idkc/<Platform>/Release to the root
+        2. idkc idkc.idk                   builds the stage 2 idkc into the build folder
+           the stage 2 idkc is copied back to the root
+        3. idkc idkc.idk                   builds the stage 3 idkc into the build folder
+
+        Stage 3 is verified against stage 2 (the binaries, or failing that the LLVM IR, must
+        be identical). When it matches, the stage 3 idkc is copied back to the root and the
+        VM built along with it (build/idkvm/<Platform>/Release/idkvm) is copied there too."""
+        srcdir = self.app.state["IDEKAc_srcdir"].get()
         miss = missing_py_compiler(srcdir)
-        if miss or not (Path(srcdir) / "fxc.fx").is_file():
-            raise RuntimeError("cannot bootstrap: Python compiler or fxc.fx is missing")
-        if not IS_WIN:
-            return self._bootstrap_unix(srcdir)
-        refresh_process_path()
-        ok, _ = _run(["python", "-c", "import llvmlite"])
-        if not ok:
-            raise RuntimeError("llvmlite is not installed for the python on PATH")
-        vcvars = find_vcvars()
-        if vcvars:
-            cmd = f'call "{vcvars}" >nul && python fxc.py fxc.fx'
+        if miss or not (Path(srcdir) / "idkc.idk").is_file():
+            raise RuntimeError("cannot bootstrap: Python compiler or idkc.idk is missing")
+
+        root = Path(srcdir)
+        plat = "Windows" if IS_WIN else "Darwin" if IS_MAC else "Linux"
+        out_dir = lambda name: root / "build" / name / plat / "Release"
+        built_idkc = out_dir("idkc") / ("idkc" + EXE)
+        built_idkvm = out_dir("idkvm") / ("idkvm" + EXE)
+        built_ll = out_dir("idkc") / "idkc.ll"
+        placed_idkc = root / ("idkc" + EXE)
+        placed_idkvm = root / ("idkvm" + EXE)
+
+        if IS_WIN:
+            refresh_process_path()
+            ok, _ = _run(["python", "-c", "import llvmlite"])
+            if not ok:
+                raise RuntimeError("llvmlite is not installed for the python on PATH")
+            vcvars = find_vcvars()
+            if not vcvars:
+                self._log_msg("  No vcvars64.bat found, building without the MSVC environment.")
+            prefix = f'call "{vcvars}" >nul && ' if vcvars else ""
+            env = dict(os.environ, IDEKA_SRCDIR=srcdir, PYTHONDONTWRITEBYTECODE="1")
+            stage1_cmd = ["cmd", "/c", prefix + "python idkc.py idkc.idk"]
+            stage_n_cmd = ["cmd", "/c", prefix + ".\\" + placed_idkc.name + " idkc.idk"]
+            shown1 = "python idkc.py idkc.idk"
         else:
-            self._log_msg("  No vcvars64.bat found, building without the MSVC environment.")
-            cmd = "python fxc.py fxc.fx"
-        env = dict(os.environ, FLUXC_SRCDIR=srcdir, PYTHONDONTWRITEBYTECODE="1")
-        prefix = f'call "{vcvars}" >nul && ' if vcvars else ""
-        stage1 = Path(srcdir) / "build" / "fxc" / "fxc.exe"
-        stage2 = Path(srcdir) / "build" / "fxc2" / "fxc2.exe"
+            py = compiler_python(srcdir)
+            if not py:
+                raise RuntimeError("llvmlite is not installed (neither in .venv nor for this python)")
+            env = unix_env(srcdir)
+            stage1_cmd = [py, "idkc.py", "idkc.idk"]
+            stage_n_cmd = [str(placed_idkc), "idkc.idk"]
+            shown1 = f"{py} idkc.py idkc.idk"
 
-        self._log_msg("  Stage 1: python fxc.py fxc.fx")
-        self._set_step(0.1, "Stage 1: python fxc.py fxc.fx (a few minutes)")
-        rc = _run_long(["cmd", "/c", prefix + "python fxc.py fxc.fx"],
-                       self._log_msg, cwd=srcdir, env=env)
-        if rc != 0 or not stage1.exists():
-            raise RuntimeError(f"stage 1 failed (exit code {rc}); Python compiler files were kept")
-        self._log_msg(f"  Built {stage1}")
+        def run_stage(n, cmd, shown, frac):
+            self._log_msg(f"  Stage {n}: {shown}")
+            self._set_step(frac, f"Stage {n}: {shown}")
+            for stale in (built_idkc, built_idkvm):
+                try:
+                    stale.unlink()
+                except FileNotFoundError:
+                    pass
+            rc = _run_long(cmd, self._log_msg, cwd=srcdir, env=env)
+            if rc != 0 or not built_idkc.is_file():
+                raise RuntimeError(f"stage {n} failed (exit code {rc}); Python compiler files were kept")
+            self._log_msg(f"  Built {built_idkc}")
 
-        self._log_msg("  Stage 2: build\\fxc\\fxc.exe fxc.fx -o fxc2.exe")
-        self._set_step(0.6, "Stage 2: recompiling with build\\fxc\\fxc.exe")
-        rc = _run_long(["cmd", "/c", prefix + r"build\fxc\fxc.exe fxc.fx -o fxc2.exe"],
-                       self._log_msg, cwd=srcdir, env=env)
-        if rc != 0 or not stage2.exists():
-            raise RuntimeError(f"stage 2 failed (exit code {rc}); Python compiler files were kept")
-        self._log_msg(f"  Built {stage2}")
-        self._set_step(1.0, "")
-        self._bootstrapped = True
+        def place(src, dst):
+            shutil.copy2(src, dst)
+            if not IS_WIN:
+                dst.chmod(0o755)
+            self._log_msg(f"  Copied {src.name} -> {dst}")
 
-    def _bootstrap_unix(self, srcdir: str):
-        """Stage 1: python fxc.py fxc.fx. Stage 2: the native fxc rebuilds itself as fxc2."""
-        py = compiler_python(srcdir)
-        if not py:
-            raise RuntimeError("llvmlite is not installed (neither in .venv nor for this python)")
-        env = unix_env(srcdir)
-        stage1 = Path(srcdir) / "build" / "fxc" / "fxc"
-        stage2 = Path(srcdir) / "build" / "fxc2" / "fxc2"
+        # Stage 1: the Python compiler
+        run_stage(1, stage1_cmd, shown1, 0.05)
+        place(built_idkc, placed_idkc)
 
-        self._log_msg(f"  Stage 1: {py} fxc.py fxc.fx")
-        self._set_step(0.1, "Stage 1: python fxc.py fxc.fx (a few minutes)")
-        rc = _run_long([py, "fxc.py", "fxc.fx"], self._log_msg, cwd=srcdir, env=env)
-        if rc != 0 or not stage1.exists():
-            raise RuntimeError(f"stage 1 failed (exit code {rc}); Python compiler files were kept")
-        self._log_msg(f"  Built {stage1}")
+        # Stage 2: the bootstrap
+        run_stage(2, stage_n_cmd, "idkc idkc.idk", 0.35)
+        place(built_idkc, placed_idkc)
+        stage2_ll = built_ll.read_bytes() if built_ll.is_file() else None
 
-        self._log_msg("  Stage 2: build/fxc/fxc fxc.fx -o fxc2")
-        self._set_step(0.6, "Stage 2: recompiling with build/fxc/fxc")
-        rc = _run_long([str(stage1), "fxc.fx", "-o", "fxc2"], self._log_msg, cwd=srcdir, env=env)
-        if rc != 0 or not stage2.exists():
-            raise RuntimeError(f"stage 2 failed (exit code {rc}); Python compiler files were kept")
-        self._log_msg(f"  Built {stage2}")
+        # Stage 3: fixed point check
+        run_stage(3, stage_n_cmd, "idkc idkc.idk (fixed point check)", 0.65)
+        same_bin = built_idkc.read_bytes() == placed_idkc.read_bytes()
+        same_ll = stage2_ll is not None and built_ll.is_file() and built_ll.read_bytes() == stage2_ll
+        if not (same_bin or same_ll):
+            raise RuntimeError("fixed point check failed: stage 3 differs from stage 2; "
+                               "Python compiler files were kept")
+        self._log_msg("  Fixed point reached: stage 3 matches stage 2"
+                      + ("" if same_bin else " (identical LLVM IR, binaries differ)"))
+
+        # Stage 3 is the compiler from here on, and the VM goes next to it
+        if not built_idkvm.is_file():
+            raise RuntimeError(f"fixed point passed but {built_idkvm} was not built")
+        place(built_idkc, placed_idkc)
+        place(built_idkvm, placed_idkvm)
         self._set_step(1.0, "")
         self._bootstrapped = True
 
@@ -1656,12 +1683,11 @@ class FinishPage(tk.Frame):
                  ).pack(anchor="w", padx=PAD, pady=(PAD, 8))
 
         tk.Label(self,
-                 text=("Flux has been configured on your system.\n"
+                 text=("IDEKA has been configured on your system.\n"
                        "Open a new terminal to pick up the updated environment variables.\n"
-                       "Compile from scripts\\flux_dev_prompt.bat or a Developer Command Prompt for VS, "
-                       "which set the LIB path that lld-link needs.") if IS_WIN else
-                      ("Flux has been configured on your system.\n"
-                       f"Open a new terminal (or run: source {shell_rc()}) to pick up FLUXC_SRCDIR."),
+                       "Compile with: idkc file.idk -o out.exe") if IS_WIN else
+                      ("IDEKA has been configured on your system.\n"
+                       f"Open a new terminal (or run: source {shell_rc()}) to pick up IDEKA_SRCDIR."),
                  font=FONT_BODY, bg=BG, fg=FG, wraplength=660, justify="left"
                  ).pack(anchor="w", padx=PAD, pady=(0, PAD))
 
@@ -1674,26 +1700,26 @@ class FinishPage(tk.Frame):
         tk.Label(inner, text="Quick start", font=FONT_HEAD,
                  bg=BG2, fg=ACCENT).pack(anchor="w")
 
-        srcdir_txt = app.state["fluxc_srcdir"].get()
+        srcdir_txt = app.state["IDEKAc_srcdir"].get()
         native = app.state["bootstrap"].get()      # the native compiler exists only after the bootstrap
         if IS_WIN:
             cmds = ["cd /d " + srcdir_txt]
             if native:
-                cmds += ["build\\fxc\\fxc.exe examples\\helloworld.fx",
+                cmds += ["idkc.exe examples\\helloworld.idk",
                          "build\\helloworld\\helloworld.exe"]
             else:
-                cmds += ["python fxc.py fxc.fx                  (bootstrap, once)",
-                         "python fxc.py examples\\helloworld.fx",
+                cmds += ["python idkc.py idkc.idk                  (bootstrap, once)",
+                         "python idkc.py examples\\helloworld.idk",
                          "build\\helloworld\\helloworld.exe"]
         else:
             py_txt = ".venv/bin/python"
             cmds = ["cd " + srcdir_txt]
             if native:
-                cmds += ["build/fxc/fxc examples/helloworld.fx",
+                cmds += ["./idkc examples/helloworld.idk",
                          "build/helloworld/helloworld"]
             else:
-                cmds += [f"{py_txt} fxc.py fxc.fx                  (bootstrap, once)",
-                         f"{py_txt} fxc.py examples/helloworld.fx",
+                cmds += [f"{py_txt} idkc.py idkc.idk                  (bootstrap, once)",
+                         f"{py_txt} idkc.py examples/helloworld.idk",
                          "build/helloworld/helloworld"]
         for cmd in cmds:
             tk.Label(inner, text=f"  > {cmd}", font=FONT_MONO,
@@ -1705,9 +1731,9 @@ class FinishPage(tk.Frame):
                  font=FONT_SMALL, bg=BG, fg=FG_DIM, justify="left", wraplength=660
                  ).pack(anchor="w", padx=PAD, pady=(PAD, 0))
 
-        srcdir = app.state["fluxc_srcdir"].get()
+        srcdir = app.state["IDEKAc_srcdir"].get()
         tk.Label(self,
-                 text=f"FLUXC_SRCDIR = {srcdir}",
+                 text=f"IDEKA_SRCDIR = {srcdir}",
                  font=FONT_MONO, bg=BG, fg=FG_DIM
                  ).pack(anchor="w", padx=PAD, pady=(8, 0))
 

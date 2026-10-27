@@ -1,0 +1,122 @@
+// Author: Karac V. Thweatt
+
+// watchdog.fx - Execution watchdog library
+// Stops runaway loops by watching a time limit that is checked every N ticks.
+//
+// Basic usage:
+//
+//     Watchdog wd();
+//     wd.configure(300, 50000);   // optional: limit in seconds, ticks between clock reads
+//     wd.arm();
+//     while (work)
+//     {
+//         if (wd.tick()) { /* limit exceeded, wd.elapsed_sec() and wd.count tell how far it got */ break; };
+//     };
+//
+// tick() is cheap: it counts, and reads the monotonic clock only on every
+// `interval`th call. Once the limit is exceeded tick() keeps returning true until arm() is called.
+
+#ifndef FLUX_STANDARD
+#import <standard.fx>;
+#endif;
+
+#ifndef FLUX_STANDARD_TIME
+#import <runtime\timing.fx>;
+#endif;
+
+#ifndef FLUX_STANDARD_WATCHDOG
+#def FLUX_STANDARD_WATCHDOG 1;
+
+namespace standard
+{
+    namespace watchdog
+    {
+        // ============ CONSTANTS ============
+
+        global const i64 WATCHDOG_DEFAULT_LIMIT_SEC = 300,
+                         WATCHDOG_DEFAULT_INTERVAL  = 50000;
+
+        // ============ WATCHDOG ============
+
+        object Watchdog
+        {
+            i64 start_ns,       // clock reading at arm()
+                limit_ns,       // allowed run time in nanoseconds
+                interval,       // ticks between clock reads
+                count;          // ticks since arm()
+            bool tripped;       // the limit was exceeded
+
+            __init() -> this
+            {
+                this.limit_ns = WATCHDOG_DEFAULT_LIMIT_SEC * standard::time::TIME_NS_PER_SEC;
+                this.interval = WATCHDOG_DEFAULT_INTERVAL;
+                this.start_ns = 0;
+                this.count = 0;
+                this.tripped = false;
+                return this;
+            };
+
+            __expr() -> Watchdog* -> this;
+
+            __exit() -> void
+            {
+                return;
+            };
+
+            // Sets the limit in seconds and the number of ticks between clock reads.
+            // A limit or interval below 1 is raised to 1.
+            configure(i64 limit_sec, i64 every) -> void
+            {
+                if (limit_sec < 1) { limit_sec = 1; };
+                if (every < 1) { every = 1; };
+                this.limit_ns = limit_sec * standard::time::TIME_NS_PER_SEC;
+                this.interval = every;
+                return;
+            };
+
+            // Starts (or restarts) the watch from now
+            arm() -> void
+            {
+                this.start_ns = standard::time::time_now();
+                this.count = 0;
+                this.tripped = false;
+                return;
+            };
+
+            // Counts one unit of work. True when the time limit has been exceeded.
+            tick() -> bool
+            {
+                if (this.tripped) { return true; };
+                this.count++;
+                if (this.count % this.interval == 0)
+                {
+                    if (standard::time::time_now() - this.start_ns > this.limit_ns)
+                    {
+                        this.tripped = true;
+                    };
+                };
+                return this.tripped;
+            };
+
+            // Nanoseconds since arm()
+            elapsed_ns() -> i64
+            {
+                return standard::time::time_now() - this.start_ns;
+            };
+
+            // Whole seconds since arm()
+            elapsed_sec() -> i64
+            {
+                return this.elapsed_ns() / standard::time::TIME_NS_PER_SEC;
+            };
+
+            // The limit in whole seconds
+            limit_sec() -> i64
+            {
+                return this.limit_ns / standard::time::TIME_NS_PER_SEC;
+            };
+        };
+    };
+};
+
+#endif;

@@ -6,9 +6,9 @@
 
 <p align="center">
   <a href="https://discord.gg/wVAm2E6ymf">Discord</a> ·
-  <a href="https://fluxspl.org/ide">Online Compiler</a> ·
+  <a href="https://IDEKAspl.org/ide">Online Compiler</a> ·
   <a href="docs/Specs/language_specification.md">Language Specification</a> ·
-  <a href="docs/learn_flux_intro.md">Getting Started</a>
+  <a href="docs/learn_IDEKA_intro.md">Getting Started</a>
 </p>
 
 ---
@@ -17,16 +17,16 @@ IDEKA ("I Don't Even Know Anymore") is a compiled, statically typed systems prog
 
 - **Operators are part of the grammar.** Every operator you declare, made of punctuation or words, becomes part of the language's grammar, the same as the built-in ones.
 - **Bits are first class.** Bit slices, bit indexing, arbitrary-width integers, and endianness live in the type system.
-- **Compile-time code generation.** A built-in VM runs IDEKA at compile time and `emitflux` writes new definitions into your program.
+- **Compile-time code generation.** A built-in VM runs IDEKA at compile time and `emitideka` writes new definitions into your program.
 - **Interfaces** that govern which objects may call, feed, and be called from which other objects, enforced by the compiler.
 - **A module system** with per-module build settings, declared dependencies, and overrides.
 - **Contracts, templates with type geometry constraints, opt-in ownership, and a completely optional borrow checker.**
 
 It is not a C derivative, and it is not a safe language in the Rust sense. It is a high-trust language that gives you sharp tools and expects you to use them correctly. It is dense, with a low learning curve and a high skill ceiling.
 
-The language was previously called Flux. Some names in the compiler still carry it (`fxc.py`, `emitflux`, `FLUXC_SRCDIR`) and will follow the new name in an upcoming patch.
+The language was previously called IDEKA. Some names in the compiler still carry it (`idkc.py`, `emitideka`, `IDEKA_SRCDIR`) and will follow the new name in an upcoming patch.
 
-As of 10/12/2026, **IDEKA is bootstrapped and can compile itself**. It is recommended you bootstrap your compiler by running `python fxc.py fxc.fx` for faster compile times.  
+As of 10/12/2026, **IDEKA is bootstrapped and can compile itself**. It is recommended you bootstrap your compiler by running `python idkc.py idkc.idk` for faster compile times.  
 Alternatively you can now run a specialized setup script located at `repo_root\scripts\setup.py` which automates the process of setup, configuration, and bootstrap.
 
 ---
@@ -226,7 +226,7 @@ def main() -> int
 ```
 
 ```
-#import <standard.fx>;
+#import <standard.idk>;
 
 using standard::io::console;
 
@@ -420,7 +420,7 @@ comptime
     };
     compiler.io.console.println(f"[comptime] fib({max}) = {a}");
 
-    emitflux
+    emitideka
     {
         def ~$f"fib{max}"() -> int { return ~$f"{a}"; };
     };
@@ -438,9 +438,9 @@ def main() -> int
 832040                           <- printed by the program
 ```
 
-### Generate code with `emitflux`
+### Generate code with `emitideka`
 
-`emitflux` injects real IDEKA definitions into the program from inside a comptime block. Combine it with comptime loops and you get code generation without a macro preprocessor. Here a loop writes four functions, then builds a `dispatch` function whose `switch` is assembled one case at a time:
+`emitideka` injects real IDEKA definitions into the program from inside a comptime block. Combine it with comptime loops and you get code generation without a macro preprocessor. Here a loop writes four functions, then builds a `dispatch` function whose `switch` is assembled one case at a time:
 
 ```
 #def NUM_OPS 4;
@@ -458,7 +458,7 @@ comptime
     {
         nm   = op_names[i];
         expr = op_exprs[i];
-        emitflux
+        emitideka
         {
             def ~$i"op_{}":{nm} (int a, int b) -> int { return ~$expr; };
         };
@@ -466,7 +466,7 @@ comptime
     };
 
     // Open dispatch() and its switch, then drop back into comptime with }#;
-    emitflux
+    emitideka
     {
         def dispatch(int id, int a, int b) -> int
         {
@@ -480,7 +480,7 @@ comptime
     {
         nm = op_names[j];
         jv = j;
-        emitflux
+        emitideka
         {
                 case (~$f"{jv}") { return ~$i"op_{}":{nm;} (a, b); }
         };
@@ -488,7 +488,7 @@ comptime
     };
 
     // Close the switch and the function
-    emitflux
+    emitideka
     {
                 default { return -1; };
            #};
@@ -507,7 +507,7 @@ def main() -> int
 16 8 48 3 -1
 ```
 
-`}#;` leaves an `emitflux` block without closing the construct being built, so you can run ordinary comptime code between pieces. `#};` closes a brace inside generated code. The finished function is parsed like any other and is part of the AST.
+`}#;` leaves an `emitideka` block without closing the construct being built, so you can run ordinary comptime code between pieces. `#};` closes a brace inside generated code. The finished function is parsed like any other and is part of the AST.
 
 ### Drop into VM assembly
 
@@ -518,7 +518,7 @@ comptime
 {
     int x = 5;
 
-    fluxvm
+    idkvm
     {
         LOCAL_GET x
         PUSH 10
@@ -530,7 +530,7 @@ comptime
 };
 ```
 
-(`emitflux` and `fluxvm` are becoming `emitideka` and `idekavm`.)
+(`emitideka` and `idkvm` are becoming `emitideka` and `idekavm`.)
 
 ### Comptime control flow
 
@@ -605,7 +605,7 @@ Each `# build` block is plain data the compiler reads:
 |---|---|
 | `#[entrypoint] = this` | Marks the program's entry module. A file with several modules that define `main` builds each as its own program. |
 | `#[name]`, `#[target]`, `#[debug]` | Output name, kind (`executable`, `library`, `bootloader`, `compact`, `driver`), and Debug or Release layout. |
-| `#[requires] = {A, B}` | The modules this one uses. Only these, and what `from "file.fx"` pulls in, are built into it. |
+| `#[requires] = {A, B}` | The modules this one uses. Only these, and what `from "file.idk"` pulls in, are built into it. |
 | `#[borrow_check]`, `#[effect_check]`, `#[dce]` | Per-module checks and dead code elimination. |
 | `#[using]`, `#[platform]` | Namespaces made visible to the module, and the platforms it builds for. |
 | `!+#[tag]` | Locks a setting so no other module can override it. |
@@ -744,9 +744,9 @@ The syntax and grammar are stable and will not change. The compiler works. Real 
 - Bootstrapped compiler source
 - Language Server Protocol (LSP)
 - Package Manager (FPM)
-- [Online Compiler / IDE](https://fluxspl.org/ide)
+- [Online Compiler / IDE](https://IDEKAspl.org/ide)
 - [Language Specification](docs/Specs/language_specification.md)
-- [Beginner Tutorial](docs/learn_flux_intro.md) and [Adept Tutorial](docs/learn_flux_adept.md)
+- [Beginner Tutorial](docs/learn_IDEKA_intro.md) and [Adept Tutorial](docs/learn_IDEKA_adept.md)
 - Style Guide, Keyword Reference
 - Windows, Linux, and macOS setup guides
 - C->IDEKA translation utility
@@ -768,14 +768,14 @@ The syntax and grammar are stable and will not change. The compiler works. Real 
 ## Get involved
 
 - **Discord:** [discord.gg/wVAm2E6ymf](https://discord.gg/wVAm2E6ymf)
-- **Online IDE:** [fluxspl.org/ide](https://fluxspl.org/ide)
-- **GitHub:** [github.com/kvthweatt/FluxLang](https://github.com/kvthweatt/FluxLang)
+- **Online IDE:** [IDEKAspl.org/ide](https://IDEKAspl.org/ide)
+- **GitHub:** [github.com/kvthweatt/IDEKALang](https://github.com/kvthweatt/IDEKALang)
 
 ---
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=kvthweatt/FluxLang&type=date&legend=top-left)](https://www.star-history.com/#kvthweatt/FluxLang&type=date&legend=top-left)
+[![Star History Chart](https://api.star-history.com/svg?repos=kvthweatt/IDEKALang&type=date&legend=top-left)](https://www.star-history.com/#kvthweatt/IDEKALang&type=date&legend=top-left)
 
 ---
 

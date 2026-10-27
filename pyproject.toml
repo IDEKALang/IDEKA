@@ -1,7 +1,7 @@
 [project]
-name = "flux"
+name = "IDEKA"
 version = "0.1.0"
-description = "Flux Programming Language Compiler"
+description = "IDEKA Programming Language Compiler"
 authors = [
     {name = "Karac Thweatt", email = "karac@example.com"},
 ]
@@ -43,12 +43,12 @@ linting = [
 ]
 
 [project.scripts]
-flux = "flux_compiler:main"
+IDEKA = "IDEKA_compiler:main"
 
 [project.urls]
-"Homepage" = "https://github.com/your-username/flux"
-"Bug Reports" = "https://github.com/your-username/flux/issues"
-"Source" = "https://github.com/your-username/flux"
+"Homepage" = "https://github.com/your-username/IDEKA"
+"Bug Reports" = "https://github.com/your-username/IDEKA/issues"
+"Source" = "https://github.com/your-username/IDEKA"
 
 [build-system]
 requires = ["hatchling"]

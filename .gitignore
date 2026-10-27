@@ -167,7 +167,7 @@ cython_debug/
 .uv_cache/
 uv.lock
 
-# Flux-specific
+# IDEKA-specific
 **/*.exe
 **/*.exe.asm
 **/*.obj
