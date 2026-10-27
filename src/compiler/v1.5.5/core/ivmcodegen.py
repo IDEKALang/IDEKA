@@ -1482,6 +1482,7 @@ class FVMCodegen:
         elif t is BitSlice:            return self._visit_bit_slice(node)
         elif t is BitIndexAccess:      return self._visit_bit_index_access(node)
         elif t is NullCoalesce:        return self._visit_null_coalesce(node)
+        elif t is TernaryAssign:       self._visit_ternary_assign(node); return False
         elif t is NotNull:             return self._visit_not_null(node)
         elif t is ArraySlice:          return self._visit_array_slice(node)
         elif t is ArrayComprehension:  return self._visit_array_comprehension(node)
@@ -1612,8 +1613,8 @@ class FVMCodegen:
         if node.element_type is not None:
             from itypesys import DataType as _DT
             _dt_to_name = {
-                _DT.INT: 'int', _DT.UINT: 'uint',
-                _DT.LONG: 'long', _DT.ULONG: 'ulong',
+                _DT.SINT: 'int', _DT.UINT: 'uint',
+                _DT.SLONG: 'long', _DT.ULONG: 'ulong',
                 _DT.FLOAT: 'float', _DT.DOUBLE: 'double',
                 _DT.BOOL: 'bool', _DT.BYTE: 'byte', _DT.CHAR: 'char',
             }

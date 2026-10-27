@@ -24,7 +24,7 @@ IDEKA ("I Don't Even Know Anymore") is a compiled, statically typed systems prog
 
 It is not a C derivative, and it is not a safe language in the Rust sense. It is a high-trust language that gives you sharp tools and expects you to use them correctly. It is dense, with a low learning curve and a high skill ceiling.
 
-The language was previously called IDEKA. Some names in the compiler still carry it (`idkc.py`, `emitideka`, `IDEKA_SRCDIR`) and will follow the new name in an upcoming patch.
+The language was previously called Flux. Some names in the compiler still carry it and will follow the new names in upcoming patches.
 
 As of 10/12/2026, **IDEKA is bootstrapped and can compile itself**. It is recommended you bootstrap your compiler by running `python idkc.py idkc.idk` for faster compile times.  
 Alternatively you can now run a specialized setup script located at `repo_root\scripts\setup.py` which automates the process of setup, configuration, and bootstrap.
