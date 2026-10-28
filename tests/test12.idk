@@ -13,8 +13,6 @@ grade(int score) -> byte*
     else               -> "F";
 };
 
-cdecl baz() -> int;
-
 comptime
 {
     operator (...) [##] -> void { compiler.io.console.println(##); };
