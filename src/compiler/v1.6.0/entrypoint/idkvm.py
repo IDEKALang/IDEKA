@@ -136,12 +136,12 @@ class Op(Enum):
     COMPILER_INPUT      = auto()   # compiler.io.console.input() -> byte*
     COMPILER_READFILE   = auto()   # compiler.io.readfile(path: byte*) -> byte*
     COMPILER_WRITEFILE      = auto()   # compiler.io.writefile(path: byte*, content: byte*, flags: byte*)
-    COMPILER_FVM_DUMP       = auto()   # compiler.fvm.dump(path: byte*) - serialise current comptime to .fvm
-    COMPILER_FVM_TRACE_BEGIN = auto()  # compiler.fvm.trace.begin() - enable per-instruction VM tracing
-    COMPILER_FVM_TRACE_END   = auto()  # compiler.fvm.trace.end() - disable per-instruction VM tracing
-    COMPILER_FVM_SETBP       = auto()  # compiler.fvm.setbp() - comptime breakpoint: print stack and pause
+    COMPILER_FVM_DUMP       = auto()   # compiler.idkvm.dump(path: byte*) - serialise current comptime to .fvm
+    COMPILER_FVM_TRACE_BEGIN = auto()  # compiler.idkvm.trace.begin() - enable per-instruction VM tracing
+    COMPILER_FVM_TRACE_END   = auto()  # compiler.idkvm.trace.end() - disable per-instruction VM tracing
+    COMPILER_FVM_SETBP       = auto()  # compiler.idkvm.setbp() - comptime breakpoint: print stack and pause
     COMPILER_IMPORT_STDLIB  = auto()   # compiler.import.stdlib(path)
-    COMPILER_LOADLIB        = auto()   # compiler.fvm.loadlib(name, ext) - load a native library for asm symbol resolution
+    COMPILER_LOADLIB        = auto()   # compiler.idkvm.loadlib(name, ext) - load a native library for asm symbol resolution
     COMPILER_IMPORT_LOCAL   = auto()   # compiler.import.local(path)
     COMPILER_FPM_PACKAGE    = auto()   # compiler.fpm.package(path)
     COMPILER_SYMTABLE           = auto()   # compiler.symbol_table -> IDKC_SYMTABLE (all entries)
@@ -178,6 +178,8 @@ class Op(Enum):
                            # ('IDEKA', substituted_text) to emit_results.
     INLINE_ASM  = auto()   # INLINE_ASM <body> <constraints> <n_inputs> <n_outputs> <output_names>
                            # Assembles and executes x86-64 AT&T inline asm at comptime.
+    COMPILER_FVM_BINDUMP    = auto()   # compiler.idkvm.bindump(path: byte*) - serialise current comptime to binary IDKB
+                           # Appended last so every earlier opcode keeps its number (the binary format stores it).
 
 
 # ---------------------------------------------------------------------------
@@ -268,6 +270,74 @@ class CallFrame:
 # VM heap
 # ---------------------------------------------------------------------------
 
+def _f32(x: float) -> float:
+    """Round to a 32 bit float (every float operation of float2str is single precision)."""
+    try:
+        return struct.unpack('<f', struct.pack('<f', x))[0]
+    except OverflowError:
+        return float('inf') if x > 0 else float('-inf')
+
+
+def _cvt_int(x: float, bits: int) -> int:
+    """fptosi: truncate toward zero, the x86 'integer indefinite' value when out of range."""
+    lo = -(1 << (bits - 1))
+    if x != x or x >= -lo or x < lo:
+        return lo
+    return int(x)
+
+
+def _fixed_text(neg: bool, int_part: int, frac_part: int, precision: int) -> str:
+    """The digits string of float2str and dbl2str: int part, '.', frac part with leading zeros."""
+    out = '-' if neg else ''
+    out += '0' if int_part == 0 else (str(int_part) if int_part > 0 else '')
+    if precision > 0:
+        out += '.'
+        if frac_part == 0:
+            out += '0' * precision
+        else:
+            digits = str(frac_part) if frac_part > 0 else ''
+            out += '0' * max(0, precision - len(digits)) + digits
+    return out
+
+
+def _float2str(value, precision: int = 6) -> str:
+    """standard::strings::float2str as fstr_append(float) runs it: single precision arithmetic."""
+    v = _f32(float(value))
+    neg = v < 0.0
+    if neg:
+        v = -v
+    if v == 0.0:
+        return '0.' + '0' * precision
+    int_part = _cvt_int(v, 32)
+    fractional = _f32(v - _f32(float(int_part)))
+    mult = 10 ** precision
+    scaled = _f32(fractional * _f32(float(mult)))
+    frac_part = _cvt_int(_f32(scaled + 0.5), 32)
+    if frac_part >= mult:
+        int_part += 1
+        frac_part = 0
+    return _fixed_text(neg, int_part, frac_part, precision)
+
+
+def _dbl2str(value, precision: int = 14) -> str:
+    """standard::strings::dbl2str as fstr_append(double) runs it."""
+    v = float(value)
+    neg = v < 0.0
+    if neg:
+        v = -v
+    if v == 0.0:
+        return '0.' + '0' * precision
+    int_part = _cvt_int(v, 64)
+    fractional = v - float(int_part)
+    mult = 10 ** precision
+    scaled = fractional * float(mult)
+    frac_part = _cvt_int(scaled + 0.5, 64)
+    if frac_part >= mult:
+        int_part += 1
+        frac_part = 0
+    return _fixed_text(neg, int_part, frac_part, precision)
+
+
 class VMHeap:
     """
     Simple bump allocator backed by a bytearray.
@@ -279,7 +349,10 @@ class VMHeap:
     def __init__(self, size: int = DEFAULT_SIZE):
         self._mem   = bytearray(size)
         self._size  = size
-        self._bump  = 8              # start at offset 8, 0 is the null pointer
+        # Heap addresses start above every frame slot number. A PTR below the slot
+        # count of the frame is a slot address (@var), so a heap address that small
+        # would be mistaken for one by ARRAY_LOAD and ARRAY_STORE. 0 is the null pointer.
+        self._bump  = 0x10000
         self._allocs: Dict[int, int] = {}   # ptr -> byte_size
         self._tags:   Dict[int, TTag] = {}  # ptr -> TTag
         self._free_list: List[Tuple[int, int]] = []  # (ptr, size) freed blocks
@@ -368,6 +441,105 @@ class StructLayout:
 # IDEKAVM
 # ---------------------------------------------------------------------------
 
+def _x86_jit(asm_text: str) -> int:
+    """Assembles asm_text (AT&T, x86-64, no arguments, result in rax) with keystone and runs it."""
+    import ctypes as _ct
+    import platform as _plat
+    try:
+        import keystone as _ks
+    except ImportError:
+        raise VMError('compiler.target: keystone-engine is not installed (pip install keystone-engine)')
+    ks = _ks.Ks(_ks.KS_ARCH_X86, _ks.KS_MODE_64)
+    ks.syntax = _ks.KS_OPT_SYNTAX_ATT
+    try:
+        encoding, _count = ks.asm(asm_text)
+    except _ks.KsError as e:
+        raise VMError(f'compiler.target: assembly failed: {e}')
+    code = bytes(encoding)
+    size = len(code)
+    if _plat.system() == 'Windows':
+        k32 = _ct.windll.kernel32
+        k32.VirtualAlloc.restype = _ct.c_void_p
+        k32.VirtualAlloc.argtypes = [_ct.c_void_p, _ct.c_size_t, _ct.c_ulong, _ct.c_ulong]
+        buf = k32.VirtualAlloc(None, size, 0x1000 | 0x2000, 0x40)
+        if not buf:
+            raise VMError('compiler.target: VirtualAlloc failed')
+        _ct.memmove(buf, code, size)
+        k32.VirtualFree.argtypes = [_ct.c_void_p, _ct.c_size_t, _ct.c_ulong]
+        free_fn = lambda b: k32.VirtualFree(_ct.c_void_p(b), 0, 0x8000)
+    else:
+        import mmap as _mmap
+        mm = _mmap.mmap(-1, size, prot=_mmap.PROT_READ | _mmap.PROT_WRITE | _mmap.PROT_EXEC)
+        mm.write(code)
+        mm.seek(0)
+        buf = _ct.addressof((_ct.c_char * size).from_buffer(mm))
+        free_fn = lambda b: mm.close()
+    try:
+        return int(_ct.CFUNCTYPE(_ct.c_uint64)(buf)()) & 0xFFFFFFFFFFFFFFFF
+    finally:
+        free_fn(buf)
+
+
+def _x86_cpuid(leaf: int, sub: int) -> tuple:
+    """(eax, ebx, ecx, edx) of CPUID leaf/sub."""
+    regs = []
+    for reg in ('eax', 'ebx', 'ecx', 'edx'):
+        regs.append(_x86_jit(
+            'pushq %rbx\n'
+            f'movl ${leaf}, %eax\n'
+            f'movl ${sub}, %ecx\n'
+            'cpuid\n'
+            f'movl %{reg}, %eax\n'
+            'popq %rbx\n'
+            'retq\n') & 0xFFFFFFFF)
+    return tuple(regs)
+
+
+def _x86_xcr0() -> int:
+    """XCR0 by XGETBV, the state the OS saves."""
+    return _x86_jit(
+        'xorl %ecx, %ecx\n'
+        'xgetbv\n'
+        'shlq $32, %rdx\n'
+        'orq %rdx, %rax\n'
+        'retq\n')
+
+
+def _x86_has_feature(feat: str) -> bool:
+    """feat is sse, sse2, sse4, avx, avx2, avx512, aes, popcnt or bmi2."""
+    max_leaf = _x86_cpuid(0, 0)[0]
+    _a1, _b1, ecx1, edx1 = _x86_cpuid(1, 0)
+    ebx7 = _x86_cpuid(7, 0)[1] if max_leaf >= 7 else 0
+
+    def bit(v: int, n: int) -> bool:
+        return bool((v >> n) & 1)
+
+    def os_avx() -> bool:
+        # AVX state is usable when the OS enabled XSAVE and saves the XMM and YMM state
+        return bit(ecx1, 27) and (_x86_xcr0() & 0x6) == 0x6
+
+    if feat == 'sse':
+        return bit(edx1, 25)
+    if feat == 'sse2':
+        return bit(edx1, 26)
+    if feat == 'sse4':
+        return bit(ecx1, 19) and bit(ecx1, 20)
+    if feat == 'aes':
+        return bit(ecx1, 25)
+    if feat == 'popcnt':
+        return bit(ecx1, 23)
+    if feat == 'avx':
+        return bit(ecx1, 28) and os_avx()
+    if feat == 'avx2':
+        return bit(ebx7, 5) and bit(ecx1, 28) and os_avx()
+    if feat == 'avx512':
+        # AVX512F, and the OS saves the opmask and ZMM state as well
+        return bit(ebx7, 16) and bit(ecx1, 28) and os_avx() and (_x86_xcr0() & 0xE0) == 0xE0
+    if feat == 'bmi2':
+        return bit(ebx7, 8)
+    return False
+
+
 class IDEKAVM:
     """
     IDEKA comptime virtual machine.
@@ -394,16 +566,16 @@ class IDEKAVM:
         self._io_next_handle: int                = 1
         # Registered comptime functions: name -> List[Instr]
         self._functions: Dict[str, List[Instr]]  = {}
-        self._function_overloads: Dict[str, list] = {}
         # Source file path - used by compiler.import.* for relative path resolution
         self.source_file: str = source_file
         # FVMCodegen class injected by the host compiler for use in compiler.import.*
         self._codegen_class = None
         # Compiler macros (#def constants) from the host preprocessor
         self._compiler_constants: dict = {}
+        self._compiler_reflection: list = []
         # Pending LLVM emission results accumulated during execute()
         self.emit_results: List[Any] = []
-        # Per-instruction VM tracing, toggled via compiler.fvm.trace.begin()/end()
+        # Per-instruction VM tracing, toggled via compiler.idkvm.trace.begin()/end()
         self._trace_enabled: bool = False
         self._trace_remaining: int = 0
         # Locals snapshot from the most recently executed top-level block
@@ -528,16 +700,16 @@ class IDEKAVM:
         elif op == Op.OVER:       self._push(self.stack[-2])
 
         # Arithmetic
-        elif op == Op.ADD:        self._binop(lambda a, b: a + b)
-        elif op == Op.SUB:        self._binop(lambda a, b: a - b)
-        elif op == Op.MUL:        self._binop(lambda a, b: a * b)
+        elif op == Op.ADD:        self._binop(lambda a, b: a + b, arith=True)
+        elif op == Op.SUB:        self._binop(lambda a, b: a - b, arith=True)
+        elif op == Op.MUL:        self._binop(lambda a, b: a * b, arith=True)
         elif op == Op.DIV:        self._binop_div()
-        elif op == Op.MOD:        self._binop(lambda a, b: a % b)
+        elif op == Op.MOD:        self._binop(lambda a, b: a % b, arith=True)
         elif op == Op.NEG:        self._unop(lambda a: -a)
-        elif op == Op.POW:        self._binop(lambda a, b: a ** b)
+        elif op == Op.POW:        self._binop(lambda a, b: a ** b, arith=True)
         elif op == Op.ABS:        self._unop(lambda a: abs(a))
-        elif op == Op.MIN:        self._binop(lambda a, b: a if a < b else b)
-        elif op == Op.MAX:        self._binop(lambda a, b: a if a > b else b)
+        elif op == Op.MIN:        self._binop(lambda a, b: a if a < b else b, arith=True)
+        elif op == Op.MAX:        self._binop(lambda a, b: a if a > b else b, arith=True)
         elif op == Op.CLAMP:      self._op_clamp()
 
         # Bitwise
@@ -667,6 +839,7 @@ class IDEKAVM:
         elif op == Op.EMIT_TYPE:   self._op_emit_type()
         elif op == Op.EMITIDEKA:             self._op_emitideka(o[0], o[1])
         elif op == Op.COMPILER_FVM_DUMP:    self._op_compiler_fvm_dump()
+        elif op == Op.COMPILER_FVM_BINDUMP: self._op_compiler_fvm_bindump()
         elif op == Op.COMPILER_FVM_TRACE_BEGIN:
             self._trace_enabled = True
             self._trace_remaining = 2000
@@ -683,7 +856,7 @@ class IDEKAVM:
         elif op == Op.COMPILER_SYMTABLE_LOOKUP:   self._op_compiler_symtable_lookup(o[0])
         elif op == Op.COMPILER_SYMTABLE_FUNCINFO: self._op_compiler_symtable_funcinfo(o[0])
         elif op == Op.COMPILER_TARGET_GET:  self._op_compiler_target_get(o[0])
-        elif op == Op.EXTERN_DECL:            self._extern_protos[o[0]] = o[1]
+        elif op == Op.EXTERN_DECL:            self._extern_protos[o[0]] = (o[1], tuple(o[2]) if len(o) > 2 else ())
         elif op == Op.INLINE_ASM:            self._op_inline_asm(o[0], o[1], o[2], o[3], o[4])
 
         else:
@@ -706,10 +879,26 @@ class IDEKAVM:
             raise VMError('Stack underflow')
         return self.stack[-1]
 
-    def _binop(self, fn):
+    def _arith_tag(self, a, b):
+        """Result tag of float arithmetic: a double operand makes a double, else a float
+        operand makes a float (the usual arithmetic conversions); None for integers."""
+        if a.tag == TTag.DOUBLE or b.tag == TTag.DOUBLE:
+            return TTag.DOUBLE
+        if a.tag == TTag.FLOAT or b.tag == TTag.FLOAT:
+            return TTag.FLOAT
+        return None
+
+    def _binop(self, fn, arith=False):
         b = self._pop()
         a = self._pop()
         tag = a.tag
+        if arith:
+            _ft = self._arith_tag(a, b)
+            if _ft is not None:
+                # float arithmetic: a float result is single precision
+                result = fn(a.data, b.data)
+                self._push(Val(_ft, _f32(float(result)) if _ft == TTag.FLOAT else float(result)))
+                return
         # BYTES + int: pointer arithmetic -- pin bytes to native memory and return PTR
         if tag == TTag.BYTES and b.tag in (TTag.INT, TTag.UINT, TTag.LONG, TTag.ULONG):
             raw = a.data if isinstance(a.data, (bytes, bytearray)) else str(a.data).encode('utf-8')
@@ -754,7 +943,11 @@ class IDEKAVM:
         a = self._pop()
         if b.data == 0:
             raise VMError('Division by zero in comptime')
-        if a.tag in (TTag.FLOAT, TTag.DOUBLE):
+        _ft = self._arith_tag(a, b)
+        if _ft is not None:
+            _q = a.data / b.data
+            self._push(Val(_ft, _f32(_q) if _ft == TTag.FLOAT else _q))
+        elif a.tag in (TTag.FLOAT, TTag.DOUBLE):
             self._push(Val(a.tag, a.data / b.data))
         else:
             self._push(Val(a.tag, self._wrap_int(a.tag, int(a.data / b.data))))
@@ -800,7 +993,7 @@ class IDEKAVM:
             else:
                 raise VMError(f'Unknown comptime function: {name!r}')
         if name in self._extern_protos:
-            ret_tag = self._extern_protos[name]
+            ret_tag, _param_tags = self._extern_protos[name]
             args = [self._pop() for _ in range(argc)]
             args.reverse()
             # Resolve symbol: check explicitly loaded libs first, then C runtime
@@ -829,15 +1022,42 @@ class IDEKAVM:
                         continue
             if sym is None:
                 raise VMError(f'extern: symbol {name!r} not found in any loaded library')
-            c_args = [self._val_to_ctype(a) for a in args]
+            # An argument takes the declared parameter type (sqrt(2.0) passes a double
+            # although the literal is a float). Past the declared parameters, the C default
+            # promotion of a variadic call applies: a float is passed as a double.
+            c_args = []
+            for _i, _a in enumerate(args):
+                if _i < len(_param_tags):
+                    _a = self._coerce_extern_arg(_a, _param_tags[_i])
+                elif _a.tag == TTag.FLOAT:
+                    _a = Val(TTag.DOUBLE, float(_a.data))
+                c_args.append(self._val_to_ctype(_a))
             try:
-                # Force c_void_p restype so ctypes returns full pointer-width value
-                sym.restype = ctypes.c_void_p
+                # c_void_p returns the full pointer-width rax; a float or double
+                # comes back in xmm0, so it needs its own restype
+                if ret_tag == TTag.FLOAT:
+                    sym.restype = ctypes.c_float
+                elif ret_tag == TTag.DOUBLE:
+                    sym.restype = ctypes.c_double
+                else:
+                    sym.restype = ctypes.c_void_p
                 _raw = sym(*c_args)
-                result = int(_raw) if _raw is not None else 0
-                # Reinterpret as signed if needed
-                if ret_tag in (TTag.INT, TTag.LONG) and result > 0x7FFFFFFFFFFFFFFF:
+                if ret_tag in (TTag.FLOAT, TTag.DOUBLE):
+                    result = float(_raw)
+                else:
+                    result = int(_raw) if _raw is not None else 0
+                # The value of the declared return type: rax holds more than the
+                # callee defined for a type narrower than 64 bits
+                if ret_tag == TTag.INT:
+                    result = ((result & 0xFFFFFFFF) ^ 0x80000000) - 0x80000000
+                elif ret_tag == TTag.UINT:
+                    result = result & 0xFFFFFFFF
+                elif ret_tag == TTag.LONG and result > 0x7FFFFFFFFFFFFFFF:
                     result = result - 0x10000000000000000
+                elif ret_tag in (TTag.BYTE, TTag.CHAR):
+                    result = result & 0xFF
+                elif ret_tag == TTag.BOOL:
+                    result = int((result & 0xFF) != 0)
             except Exception as e:
                 raise VMError(f'extern call {name!r}: {e}')
             if ret_tag == TTag.VOID:
@@ -848,8 +1068,12 @@ class IDEKAVM:
                     self._os_ptrs.add(addr)
                     # Zero-initialize: IDEKA default behavior
                     # We track size from the call args if possible; use arg[0] as size hint
+                    # Only an integer first argument is a size: a pointer or a string
+                    # argument (memcpy, strchr) is not, and zeroing by it would wipe memory.
                     try:
-                        _sz = int(args[0].data) if args else 0
+                        _sz = (int(args[0].data)
+                               if args and args[0].tag in (TTag.INT, TTag.UINT, TTag.LONG, TTag.ULONG)
+                               else 0)
                         if _sz > 0:
                             ctypes.memset(addr, 0, _sz)
                     except Exception:
@@ -900,37 +1124,8 @@ class IDEKAVM:
                     return score
                 best = max(_arity_matches, key=_sig_score)
                 name = best
-            # else: no arity matches, fall through to TTag dispatch below
-        # Overload dispatch: if multiple overloads registered, pick best match by arg TTag.
-        _overloads = self._function_overloads
-        instrs = None
-        if name in _overloads and len(_overloads[name]) > 1:
-            _ttag_to_dt = {
-                TTag.BOOL: 'bool', TTag.BYTE: 'byte', TTag.CHAR: 'char',
-                TTag.INT: 'sint', TTag.UINT: 'uint',
-                TTag.LONG: 'slong', TTag.ULONG: 'ulong',
-                TTag.DATA: 'data', TTag.PTR: 'ptr', TTag.VOID: 'void',
-            }
-            arg_tags = [_ttag_to_dt.get(a.tag, '?') for a in args]
-            best = None
-            best_score = -1
-            for _params, _instrs in _overloads[name]:
-                if len(_params) != len(args):
-                    continue
-                score = 0
-                for i, p in enumerate(_params):
-                    pt = str(getattr(getattr(p, 'type_spec', None), 'base_type', '')).split('.')[-1].lower()
-                    if arg_tags[i] == pt:
-                        score += 2
-                    elif arg_tags[i] in ('data', 'ulong', 'uint', 'sint', 'slong') and pt in ('data', 'ulong', 'uint', 'sint', 'slong'):
-                        score += 1
-                if score > best_score:
-                    best_score = score
-                    best = _instrs
-            if best is not None:
-                instrs = best
-        if instrs is None:
-            instrs = self._functions[name]
+            # else: no arity matches, the plain name is called
+        instrs = self._functions[name]
         # if name in ('strlen', 'win_print') or 'strlen' in name or 'win_print' in name or ('print' in name and 'console' in name):
         #     import sys as _sys; _sys.stderr.write(f'[DEBUG CALL] {name} argc={argc} args={args}\n'); _sys.stderr.flush()
         frame  = CallFrame(
@@ -986,6 +1181,11 @@ class IDEKAVM:
                 byte_val = 0
             self._push(Val(TTag.BYTE, byte_val))
             return
+        # A heap address (above every slot number): the byte at addr
+        if addr >= len(self.frames[-1].locals):
+            raw = self.heap.read(addr, 1)
+            self._push(Val(TTag.BYTE, raw[0]))
+            return
         # Slot-based deref (small integer = slot index)
         slot = addr
         val = self.frames[-1].locals[slot]
@@ -998,6 +1198,14 @@ class IDEKAVM:
         val     = self._pop()
         ptr_val = self._pop()
         slot    = int(ptr_val.data)
+        if slot >= len(self.frames[-1].locals) and not self._ptr_is_os(slot):
+            # A heap address (above every slot number): the low byte of val
+            self.heap.write(slot, bytes([int(val.data) & 0xFF]))
+            return
+        if self._ptr_is_os(slot):
+            # an OS pointer: the low byte of val
+            self._os_write_byte(slot, int(val.data) & 0xFF)
+            return
         self.frames[-1].locals[slot] = val
 
     def _op_rot(self):
@@ -1140,6 +1348,12 @@ class IDEKAVM:
         val     = self._pop()
         ptr_val = self._pop()
         ptr     = int(ptr_val.data) & 0xFFFFFFFFFFFFFFFF
+        # The declared type of the destination dictates the stored representation,
+        # whatever tag the source value (e.g. a float literal) carries.
+        if tag in (TTag.FLOAT, TTag.DOUBLE) and val.tag != tag and not isinstance(val.data, (bytes, bytearray, str)):
+            val = Val(tag, float(val.data))
+        elif tag in (TTag.INT, TTag.UINT, TTag.LONG, TTag.ULONG, TTag.BYTE, TTag.CHAR) and isinstance(val.data, float):
+            val = Val(tag, int(val.data))
         raw     = self._val_to_bytes(val, byte_size, type_name=type_name)
         if self._ptr_is_os(ptr):
             ctypes.memmove(ctypes.c_void_p(ptr), raw, len(raw))
@@ -1210,6 +1424,8 @@ class IDEKAVM:
         sv  = self._pop()
         if sv.tag == TTag.STRUCT:
             new_fields = dict(sv.meta.get('fields', {}))
+            if field not in new_fields:
+                raise VMError(f'STRUCT_STORE: field {field!r} not found in struct {sv.data!r}')
             new_fields[field] = val
             # if field in ('frontier', 'base', 'capacity'):
             #     import sys as _sys; _sys.stderr.write(f'[DEBUG STRUCT_STORE] {sv.data}.{field} = {val}\n'); _sys.stderr.flush()
@@ -1787,7 +2003,7 @@ class IDEKAVM:
             self._push(out_val)
 
     # ------------------------------------------------------------------
-    # compiler.fvm.loadlib
+    # compiler.idkvm.loadlib
     # ------------------------------------------------------------------
 
     def _op_compiler_loadlib(self):
@@ -1804,7 +2020,7 @@ class IDEKAVM:
                 try:
                     lib = ctypes.CDLL(lib_file)
                 except OSError as e:
-                    raise VMError(f'compiler.fvm.loadlib: cannot load {lib_file!r}: {e}')
+                    raise VMError(f'compiler.idkvm.loadlib: cannot load {lib_file!r}: {e}')
         else:
             candidates = []
             if ext:
@@ -1819,7 +2035,7 @@ class IDEKAVM:
                 except OSError:
                     continue
             if lib is None:
-                raise VMError(f'compiler.fvm.loadlib: cannot load {name!r}')
+                raise VMError(f'compiler.idkvm.loadlib: cannot load {name!r}')
         if not hasattr(self, '_asm_libs'):
             self._asm_libs = {}
         self._asm_libs[name] = lib
@@ -1905,7 +2121,7 @@ class IDEKAVM:
             raise VMError(f'compiler.io.writefile: {e}')
 
     def _op_compiler_fvm_setbp(self):
-        """compiler.fvm.setbp() -- comptime breakpoint.
+        """compiler.idkvm.setbp() -- comptime breakpoint.
         Prints the current stack and locals, then waits for a keypress."""
         import sys as _sys
         frame = self.frames[-1] if self.frames else None
@@ -1940,10 +2156,9 @@ class IDEKAVM:
         _sys.stderr.write('\n')
         _sys.stderr.flush()
 
-    def _op_compiler_fvm_dump(self):
-        path_val = self._pop()
-        path     = self._read_vm_string(path_val)
-        path     = path.replace('\\', '/')
+    def _dump_collect(self):
+        """The instructions a dump covers: every finished comptime block followed by the
+        part of the running block that came before the dump call, jumps rebased."""
         current_ip     = self.frames[0].ip if self.frames else 0
         current_instrs = self.frames[0].instructions if self.frames else []
         before_dump = [i for i in current_instrs[:current_ip - 2] if i.op != Op.HALT]
@@ -1952,12 +2167,31 @@ class IDEKAVM:
             all_instrs.extend(_rebase_block(block, len(all_instrs)))
         if before_dump:
             all_instrs.extend(_rebase_block(before_dump, len(all_instrs)))
+        return all_instrs
+
+    def _op_compiler_fvm_dump(self):
+        path_val = self._pop()
+        path     = self._read_vm_string(path_val)
+        path     = path.replace('\\', '/')
+        all_instrs = self._dump_collect()
         text = serialise_fvm(all_instrs, self._comptime_log_locals, self._functions, self.struct_layouts)
         try:
             with open(path, 'w', encoding='utf-8') as fh:
                 fh.write(text)
         except OSError as e:
-            raise VMError(f'compiler.fvm.dump: {e}')
+            raise VMError(f'compiler.idkvm.dump: {e}')
+
+    def _op_compiler_fvm_bindump(self):
+        path_val = self._pop()
+        path     = self._read_vm_string(path_val)
+        path     = path.replace('\\', '/')
+        all_instrs = self._dump_collect()
+        try:
+            data = serialise_fvm_bin(all_instrs, self._comptime_log_locals, self._functions, self.struct_layouts)
+            with open(path, 'wb') as fh:
+                fh.write(data)
+        except OSError as e:
+            raise VMError(f'compiler.idkvm.bindump: {e}')
 
     def _op_compiler_symtable(self, kind_filter: Optional[str]):
         """
@@ -1967,15 +2201,6 @@ class IDEKAVM:
         compiler.symbol_table.functions -> kind_filter='function'
         etc.
         """
-        st = getattr(self, '_compiler_symbol_table', None)
-        if st is None:
-            # No symbol table injected -- push empty IDKC_SYMTABLE
-            self._push(Val(TTag.STRUCT, 'IDKC_SYMTABLE', meta={'fields': {
-                'entries': Val(TTag.INT, 0),
-                'entry':   Val(TTag.ARRAY, 0, meta={'elem_type': 'IDKC_SYMENTRY', 'count': 0, 'elem_size': 1, 'elements': []}),
-            }}))
-            return
-
         _KIND_MAP = {
             'functions':   'function',
             'structs':     'struct',
@@ -1991,27 +2216,11 @@ class IDEKAVM:
             'contracts':   'contract',
         }
         resolved_kind = _KIND_MAP.get(kind_filter) if kind_filter else None
-
         entries = []
-        # st may be the module symbol_table object; iterate its entries
-        # It exposes entries via _symbol_table dict: name -> SymbolEntry
-        sym_dict = getattr(st, '_symbol_table', {})
-        for sym_name, sym_entry in sym_dict.items():
-            kind = getattr(sym_entry, 'kind', '') or ''
-            if resolved_kind is not None and kind != resolved_kind:
+        for rec in self._compiler_reflection:
+            if resolved_kind is not None and rec['kind'] != resolved_kind:
                 continue
-            ns = getattr(sym_entry, 'namespace', '') or ''
-            # Build IDKC_TYPESYS struct for this entry
-            type_info = getattr(sym_entry, 'type_system', None)
-            typesys_val = self._build_idkc_typesys(type_info)
-            entry_val = Val(TTag.STRUCT, 'IDKC_SYMENTRY', meta={'fields': {
-                'name': Val(TTag.BYTES, sym_name.encode('utf-8')),
-                'kind': Val(TTag.BYTES, kind.encode('utf-8')),
-                'type': typesys_val,
-                'ns':   Val(TTag.BYTES, ns.encode('utf-8')),
-            }})
-            entries.append(entry_val)
-
+            entries.append(self._symentry_val(rec))
         entry_array = Val(TTag.ARRAY, len(entries), meta={
             'elem_type': 'IDKC_SYMENTRY',
             'count': len(entries),
@@ -2022,6 +2231,33 @@ class IDEKAVM:
             'entries': Val(TTag.INT, len(entries)),
             'entry':   entry_array,
         }}))
+
+    def _symentry_val(self, rec) -> Val:
+        """IDKC_SYMENTRY for one reflection record (None gives the zeroed entry)."""
+        if rec is None:
+            return Val(TTag.STRUCT, 'IDKC_SYMENTRY', meta={'fields': {
+                'name': Val(TTag.BYTES, b''),
+                'kind': Val(TTag.BYTES, b''),
+                'type': self._build_idkc_typesys(None),
+                'ns':   Val(TTag.BYTES, b''),
+            }})
+        return Val(TTag.STRUCT, 'IDKC_SYMENTRY', meta={'fields': {
+            'name': Val(TTag.BYTES, rec['name'].encode('utf-8')),
+            'kind': Val(TTag.BYTES, rec['kind'].encode('utf-8')),
+            'type': self._build_idkc_typesys(rec['type']),
+            'ns':   Val(TTag.BYTES, rec['ns'].encode('utf-8')),
+        }})
+
+    def _reflect_find(self, name: str, kind: Optional[str] = None) -> list:
+        """Reflection records matching a bare or fully qualified name, in declaration order."""
+        out = []
+        for rec in self._compiler_reflection:
+            if kind is not None and rec['kind'] != kind:
+                continue
+            full = rec['ns'] + '::' + rec['name'] if rec['ns'] else rec['name']
+            if rec['name'] == name or full == name:
+                out.append(rec)
+        return out
 
     def _op_compiler_target_get(self, prop: str):
         """Push the value of a compiler.target.<prop> property."""
@@ -2079,18 +2315,11 @@ class IDEKAVM:
         arch = _arch_from_triple(triple)
         is_x86 = arch in ('x86_64', 'x86')
 
-        # Detect CPU features via cpufeature if available, else assume false
+        # CPU features of the host by CPUID, the way the instruction set defines them
         def _has_feature(feat: str) -> bool:
             if not is_x86:
                 return False
-            try:
-                import cpufeature
-                return bool(getattr(cpufeature, feat.upper(), False))
-            except ImportError:
-                pass
-            # Fallback: check compiler_constants for __HAVE_<FEAT>__
-            key = f'__HAVE_{feat.upper()}__'
-            return bool(int(cc.get(key, '0') or '0'))
+            return _x86_has_feature(feat)
 
         _bool_props = {
             'has_sse', 'has_sse2', 'has_sse4', 'has_avx',
@@ -2141,72 +2370,49 @@ class IDEKAVM:
         if name is None:
             name_val = self._pop()
             name = self._read_vm_string(name_val)
-        st = getattr(self, '_compiler_symbol_table', None)
-        sym_dict = getattr(st, '_symbol_table', {}) if st else {}
-        sym_entry = sym_dict.get(name)
-        if sym_entry is None:
-            # Return zero/empty IDKC_SYMENTRY
-            self._push(Val(TTag.STRUCT, 'IDKC_SYMENTRY', meta={'fields': {
-                'name': Val(TTag.BYTES, b''),
-                'kind': Val(TTag.BYTES, b''),
-                'type': self._build_idkc_typesys(None),
-                'ns':   Val(TTag.BYTES, b''),
-            }}))
-            return
-        kind = getattr(sym_entry, 'kind', '') or ''
-        ns   = getattr(sym_entry, 'namespace', '') or ''
-        type_info = getattr(sym_entry, 'type_system', None)
-        self._push(Val(TTag.STRUCT, 'IDKC_SYMENTRY', meta={'fields': {
-            'name': Val(TTag.BYTES, name.encode('utf-8')),
-            'kind': Val(TTag.BYTES, kind.encode('utf-8')),
-            'type': self._build_idkc_typesys(type_info),
-            'ns':   Val(TTag.BYTES, ns.encode('utf-8')),
-        }}))
+        found = self._reflect_find(name)
+        self._push(self._symentry_val(found[0] if found else None))
 
     def _op_compiler_symtable_funcinfo(self, name: str):
         """
         compiler.symbol_table.funcinfo(name) -> IDKC_FUNCINFO
+        Flags are OR'd across the overloads, parameters and return type come from the first.
         """
         if name is None:
             name_val = self._pop()
             name = self._read_vm_string(name_val)
-        st = getattr(self, '_compiler_symbol_table', None)
-        sym_dict = getattr(st, '_symbol_table', {}) if st else {}
-        sym_entry = sym_dict.get(name)
-        func_node = getattr(sym_entry, 'node', None) if sym_entry else None
+        overloads = [r['node'] for r in self._reflect_find(name, 'function')]
+        first = overloads[0] if overloads else None
 
         param_entries = []
-        if func_node is not None:
-            for param in getattr(func_node, 'parameters', []):
-                ts = getattr(param, 'type_spec', None)
-                pname = getattr(param, 'name', '') or ''
-                param_val = Val(TTag.STRUCT, 'IDKC_PARAM', meta={'fields': {
-                    'name': Val(TTag.BYTES, pname.encode('utf-8')),
-                    'type': self._build_idkc_typesys(ts),
-                }})
-                param_entries.append(param_val)
-
+        if first is not None:
+            for param in first.parameters:
+                param_entries.append(Val(TTag.STRUCT, 'IDKC_PARAM', meta={'fields': {
+                    'name': Val(TTag.BYTES, (param.name or '').encode('utf-8')),
+                    'type': self._build_idkc_typesys(param.type_spec),
+                }}))
         param_array = Val(TTag.ARRAY, len(param_entries), meta={
             'elem_type': 'IDKC_PARAM',
             'count': len(param_entries),
             'elem_size': 1,
             'elements': param_entries,
         })
-        ret_ts = getattr(func_node, 'return_type', None) if func_node else None
-        cc = getattr(func_node, 'calling_convention', '') or ''
+        cc = (first.calling_conv or '') if first is not None else ''
+        def _any(pred) -> int:
+            return int(any(pred(f) for f in overloads))
         self._push(Val(TTag.STRUCT, 'IDKC_FUNCINFO', meta={'fields': {
             'param_count':   Val(TTag.INT,  len(param_entries)),
             'params':        param_array,
-            'return_type':   self._build_idkc_typesys(ret_ts),
+            'return_type':   self._build_idkc_typesys(first.return_type if first is not None else None),
             'calling_conv':  Val(TTag.BYTES, cc.encode('utf-8')),
-            'is_variadic':   Val(TTag.BOOL, int(getattr(func_node, 'is_variadic', False) if func_node else False)),
-            'is_recursive':  Val(TTag.BOOL, int(getattr(func_node, 'is_recursive', False) if func_node else False)),
-            'is_inline':     Val(TTag.BOOL, int(getattr(func_node, 'is_inline', False) if func_node else False)),
-            'no_mangle':     Val(TTag.BOOL, int(getattr(func_node, 'no_mangle', False) if func_node else False)),
-            'has_effect':    Val(TTag.BOOL, int(getattr(func_node, 'has_effect', False) if func_node else False)),
-            'has_attenuate': Val(TTag.BOOL, int(getattr(func_node, 'has_attenuate', False) if func_node else False)),
-            'pre_contracts': Val(TTag.INT,  len(getattr(func_node, 'pre_contracts', []) if func_node else [])),
-            'post_contracts':Val(TTag.INT,  len(getattr(func_node, 'post_contracts', []) if func_node else [])),
+            'is_variadic':   Val(TTag.BOOL, _any(lambda f: f.is_variadic)),
+            'is_recursive':  Val(TTag.BOOL, _any(lambda f: f.is_recursive)),
+            'is_inline':     Val(TTag.BOOL, _any(lambda f: f.is_inline)),
+            'no_mangle':     Val(TTag.BOOL, _any(lambda f: f.no_mangle)),
+            'has_effect':    Val(TTag.BOOL, _any(lambda f: f.effect_annotation is not None)),
+            'has_attenuate': Val(TTag.BOOL, _any(lambda f: f.attenuate_annotation is not None)),
+            'pre_contracts': Val(TTag.INT,  first.pre_contracts if first is not None else 0),
+            'post_contracts':Val(TTag.INT,  first.post_contracts if first is not None else 0),
         }}))
 
     def _build_idkc_typesys(self, ts) -> Val:
@@ -2255,9 +2461,9 @@ class IDEKAVM:
             'alignment':      Val(TTag.INT,  int(getattr(ts, 'alignment',   0) or 0)),
             'endianness':     Val(TTag.INT,  int(getattr(ts, 'endianness',  0) or 0)),
             'storage_class':  Val(TTag.BYTES, sc_str.encode('utf-8')),
-            'is_dict':        Val(TTag.BOOL, int(getattr(ts, 'is_dict',         False))),
-            'dict_key_type':  Val(TTag.BYTES, (getattr(ts, 'dict_key_type',   '') or '').encode('utf-8')),
-            'dict_value_type':Val(TTag.BYTES, (getattr(ts, 'dict_value_type', '') or '').encode('utf-8')),
+            'is_dict':        Val(TTag.BOOL, int(bt_str == 'dict')),
+            'dict_key_type':  Val(TTag.BYTES, str(getattr(ts, 'dict_key_type', None) or '').encode('utf-8')),
+            'dict_value_type':Val(TTag.BYTES, str(getattr(ts, 'dict_value_type', None) or '').encode('utf-8')),
         }})
 
     def _op_compiler_import_stdlib(self):
@@ -2452,7 +2658,8 @@ class IDEKAVM:
         def _collect_extern_decls(instrs):
             for instr in instrs:
                 if instr.op == Op.EXTERN_DECL:
-                    self._extern_protos[instr.operands[0]] = instr.operands[1]
+                    _o = instr.operands
+                    self._extern_protos[_o[0]] = (_o[1], tuple(_o[2]) if len(_o) > 2 else ())
         _collect_extern_decls(cg._instructions)
         for fn_instrs in cg.compiled_functions.values():
             _collect_extern_decls(fn_instrs)
@@ -2560,6 +2767,10 @@ class IDEKAVM:
             result = val.data.encode('utf-8')
         elif val.tag == TTag.CHAR:
             result = chr(int(val.data)).encode('utf-8')
+        elif val.tag == TTag.FLOAT:
+            result = _float2str(val.data).encode('utf-8')
+        elif val.tag == TTag.DOUBLE or isinstance(val.data, float):
+            result = _dbl2str(val.data).encode('utf-8')
         else:
             result = str(int(val.data)).encode('utf-8')
         self._push(Val(TTag.BYTES, result))
@@ -2587,7 +2798,7 @@ class IDEKAVM:
         if target in (TTag.INT, TTag.UINT, TTag.LONG, TTag.ULONG, TTag.BYTE, TTag.CHAR, TTag.DATA):
             self._push(Val(target, int(d)))
         elif target == TTag.FLOAT:
-            self._push(Val(target, float(d)))
+            self._push(Val(target, _f32(float(d))))
         elif target == TTag.DOUBLE:
             self._push(Val(target, float(d)))
         elif target == TTag.BOOL:
@@ -2876,19 +3087,6 @@ class IDEKAVM:
         }
         if type_name in _defaults:
             return _defaults[type_name]
-        # data{N} / i8..i64 / u8..u64
-        if type_name.startswith('i') or type_name.startswith('u'):
-            try:
-                bits = int(type_name[1:])
-                return bits // 8
-            except ValueError:
-                pass
-        if type_name.startswith('be') or type_name.startswith('le'):
-            try:
-                bits = int(type_name[2:])
-                return bits // 8
-            except ValueError:
-                pass
         raise VMError(f'Unknown type size for: {type_name!r}')
 
     def _bytes_to_val(self, raw: bytes, tag: TTag, byte_size: int) -> Any:
@@ -2967,6 +3165,16 @@ class IDEKAVM:
             return result.decode('utf-8', errors='replace')
         raise VMError(f'_read_vm_string: cannot read string from {val}')
 
+    def _coerce_extern_arg(self, val: Val, ptag: TTag) -> Val:
+        """Convert a numeric argument to the declared parameter type of an extern."""
+        if val.tag in (TTag.BYTES, TTag.PTR) or isinstance(val.data, (bytes, bytearray, str)):
+            return val
+        if ptag in (TTag.FLOAT, TTag.DOUBLE):
+            return Val(ptag, float(val.data))
+        if ptag in (TTag.INT, TTag.UINT, TTag.LONG, TTag.ULONG, TTag.BYTE, TTag.CHAR, TTag.BOOL, TTag.PTR):
+            return Val(ptag, int(val.data))
+        return val
+
     def _val_to_ctype(self, val: Val):
         tag = val.tag
         if tag in (TTag.INT,):            return ctypes.c_int32(int(val.data))
@@ -2978,7 +3186,11 @@ class IDEKAVM:
         if tag == TTag.BOOL:              return ctypes.c_bool(bool(val.data))
         if tag == TTag.BYTE:              return ctypes.c_uint8(int(val.data))
         if tag == TTag.PTR:               return ctypes.c_void_p(int(val.data) & 0xFFFFFFFFFFFFFFFF)
-        if tag in (TTag.BYTES,):          return ctypes.c_void_p(0)
+        if tag == TTag.CHAR:              return ctypes.c_uint8(int(val.data))
+        if tag in (TTag.BYTES,):
+            # a NUL terminated copy; the caller keeps the returned object alive for the call
+            raw = val.data if isinstance(val.data, (bytes, bytearray)) else str(val.data).encode('utf-8')
+            return ctypes.c_char_p(bytes(raw))
         raise VMError(f'_val_to_ctype: unhandled tag {tag}')
 
 
@@ -3081,7 +3293,7 @@ def _serialise_instr(instr) -> str:
         Op.FFI_FREE,
         Op.COMPILER_PRINT, Op.COMPILER_PRINTLN, Op.COMPILER_INPUT,
         Op.COMPILER_READFILE, Op.COMPILER_WRITEFILE,
-        Op.COMPILER_LOADLIB,
+        Op.COMPILER_LOADLIB, Op.COMPILER_FVM_BINDUMP,
         Op.STR_LEN, Op.STR_CAT, Op.STR_SLICE, Op.STR_EQ, Op.STR_FIND,
         Op.INT_TO_STR, Op.STR_TO_INT,
         Op.ASSERT, Op.WARN, Op.PANIC,
@@ -3097,7 +3309,8 @@ def _serialise_instr(instr) -> str:
         return f'{op.name} {o[0]}'
 
     if op == Op.EXTERN_DECL:
-        return f'EXTERN_DECL {o[0]} {o[1].name}'
+        _ptags = ''.join(f' {t.name}' for t in (o[2] if len(o) > 2 else ()))
+        return f'EXTERN_DECL {o[0]} {o[1].name}{_ptags}'
 
     if op == Op.PUSH:
         return f'PUSH {_serialise_val(o[0])}'
@@ -3200,7 +3413,7 @@ def serialise_fvm(
     Serialise a set of VM instructions and function definitions to .fvm text.
     This is the inverse of parse_fvm_source().
     """
-    lines = ['# Generated by compiler.fvm.dump', '']
+    lines = ['# Generated by compiler.idkvm.dump', '']
 
     # Struct layouts
     for layout in (struct_layouts or {}).values():
@@ -3230,6 +3443,552 @@ def serialise_fvm(
     return '\n'.join(lines) + '\n'
 
 
+
+
+# ---------------------------------------------------------------------------
+# IDKB binary format (compiler.idkvm.bindump), loaded by idkvm in place of .fvm text
+#
+#   "IDKB" u8 version (2) u8 flags (1: the payload is compressed) varint raw_length payload
+#
+#   The payload is raw_length bytes, stored as they are or compressed with the LZSS of
+#   _lz_compress, and holds the string table and then the body:
+#
+#   varint nstrings { varint length, bytes }       the string table
+#   varint nstructs { str name, str endian, varint total_size, varint total_bits,
+#                     varint nfields { str name, u8 ttag, varint offset, varint size } }
+#   varint nfuncs   { str name, varint ninstr, instr... }
+#   varint main_locals, varint ninstr, instr...
+#
+#   varint = unsigned LEB128, 7 bits per byte, the low bits first, the high bit set when
+#            another byte follows; ivarint = the zigzag of a signed 64 bit value
+#            ((v << 1) ^ (v >> 63)) as a varint
+#   str    = varint index into the string table (every name and string is stored once there,
+#            in the order of first use)
+#   instr  = u8 opcode (the position of the Op in its enum) + operands by shape:
+#           I   ivarint                  S   str
+#           SI  str, ivarint             TI  u8 ttag, ivarint
+#           TS  u8 ttag, u8 has_str, [str]   (CAST, BITCAST)
+#           IT  ivarint, u8 ttag         (FFI_CALL)
+#           X   str, u8 ret ttag, varint n, u8 ttag * n   (EXTERN_DECL)
+#           J   ivarint default, varint n, ivarint * n    (JTABLE)
+#           V   value                    (PUSH)
+#           A   str, str, ivarint, ivarint, varint n, str * n   (INLINE_ASM)
+#           E   str, varint n, { str, ivarint } * n             (EMITIDEKA)
+#           Z   nothing; an op with no shape here is written bare like the text dump does
+#   value = u8 ttag then BYTES: str; BOOL: u8; FLOAT/DOUBLE: f64 (8 bytes, little endian);
+#           VOID: nothing;
+#           PTR: ivarint data, u8 flags (1 stack_slot, 2 struct_type, 4 field_bit_offsets,
+#           8 fields, 16 elements), then struct_type str, field_bit_offsets varint n {str, ivarint},
+#           fields varint n {str, value}, elements str elem_type, ivarint count, varint n value*;
+#           STRUCT, ARRAY, DATA, ENUM, FFI_LIB, FFI_SYM, FILE: the text of the data as str,
+#           written like the text dump writes it and refused on load like the text loader
+#           refuses it (they are runtime values);
+#           ULONG: varint; any other tag: ivarint
+#
+#   Compression is used when it makes the payload smaller (flags bit 0).
+# ---------------------------------------------------------------------------
+
+FVM_BIN_MAGIC   = b'IDKB'
+FVM_BIN_VERSION = 2
+
+_BIN_I  = {Op.JMP, Op.JIF, Op.JNF, Op.LOCAL_GET, Op.LOCAL_SET, Op.TAIL_SELF, Op.EMIT_GLOBAL,
+           Op.TRY_BEGIN, Op.CALL_PTR, Op.ROTL, Op.ROTR, Op.BITREV, Op.CLZ, Op.CTZ}
+_BIN_S  = {Op.SIZEOF, Op.ALIGNOF, Op.ENDIANOF, Op.STRUCT_NEW, Op.STRUCT_LOAD, Op.STRUCT_STORE,
+           Op.ENUM_NEW, Op.GLOBAL_GET, Op.GLOBAL_SET, Op.FFI_LOAD, Op.FFI_SYM}
+_BIN_SI = {Op.CALL, Op.ARRAY_NEW}
+_BIN_TI = {Op.LOAD, Op.STORE}
+_BIN_TS = {Op.CAST, Op.BITCAST}
+
+_TTAGS = list(TTag)
+_OP_LIST = list(Op)
+# the tags a value operand can not be loaded back as (the type tag map of _parse_fvm_val)
+_BIN_OPAQUE = {TTag.DATA, TTag.STRUCT, TTag.ENUM, TTag.ARRAY, TTag.FFI_LIB, TTag.FFI_SYM, TTag.FILE}
+
+
+def _bin_shape(op) -> str:
+    if op in _BIN_I:  return 'I'
+    if op in _BIN_S:  return 'S'
+    if op in _BIN_SI: return 'SI'
+    if op in _BIN_TI: return 'TI'
+    if op in _BIN_TS: return 'TS'
+    if op == Op.FFI_CALL:    return 'IT'
+    if op == Op.EXTERN_DECL: return 'X'
+    if op == Op.JTABLE:      return 'J'
+    if op == Op.PUSH:        return 'V'
+    if op == Op.INLINE_ASM:  return 'A'
+    if op == Op.EMITIDEKA:    return 'E'
+    return 'Z'
+
+
+def _vu(n: int) -> bytes:
+    """Unsigned LEB128."""
+    out = bytearray()
+    while True:
+        b = n & 0x7F
+        n >>= 7
+        if n:
+            out.append(b | 0x80)
+        else:
+            out.append(b)
+            return bytes(out)
+
+
+def _bin_i64(v: int) -> bytes:
+    """A signed 64 bit integer as a zigzag varint."""
+    if not -(1 << 63) <= v < (1 << 63):
+        raise VMError(f'compiler.idkvm.bindump: integer {v} does not fit in 64 bits')
+    return _vu(((v << 1) ^ (v >> 63)) & 0xFFFFFFFFFFFFFFFF)
+
+
+# The string table of the file being written: the text of every name and string, once, in
+# the order of first use. A string in the body is its index.
+_bin_strings: Dict[bytes, int] = {}
+
+
+def _bin_str(s) -> bytes:
+    b = bytes(s if isinstance(s, (bytes, bytearray)) else str(s).encode('utf-8'))
+    if b not in _bin_strings:
+        _bin_strings[b] = len(_bin_strings)
+    return _vu(_bin_strings[b])
+
+
+def _bin_val(v) -> bytes:
+    tag = v.tag
+    d   = v.data
+    out = bytes([_TTAGS.index(tag)])
+    if tag == TTag.BYTES:
+        return out + _bin_str(d)
+    if tag == TTag.BOOL:
+        return out + bytes([1 if d else 0])
+    if tag in (TTag.FLOAT, TTag.DOUBLE):
+        return out + struct.pack('<d', float(d))
+    if tag == TTag.VOID:
+        return out
+    if tag in _BIN_OPAQUE:
+        return out + _bin_str(str(d))
+    if tag == TTag.ULONG:
+        if not 0 <= d < (1 << 64):
+            raise VMError(f'compiler.idkvm.bindump: integer {d} does not fit in 64 bits')
+        return out + _vu(d)
+    out += _bin_i64(int(d))
+    if tag != TTag.PTR:
+        return out
+    meta  = v.meta or {}
+    flags = 0
+    body  = b''
+    if meta.get('stack_slot'):
+        flags |= 1
+    if 'struct_type' in meta:
+        flags |= 2
+        body += _bin_str(meta['struct_type'])
+    offs = meta.get('field_bit_offsets')
+    if offs:
+        flags |= 4
+        body += _vu(len(offs))
+        for fname, foff in offs.items():
+            body += _bin_str(fname) + _bin_i64(foff)
+    if 'fields' in meta:
+        flags |= 8
+        body += _vu(len(meta['fields']))
+        for fname, fval in meta['fields'].items():
+            body += _bin_str(fname) + _bin_val(fval)
+    if 'elements' in meta:
+        flags |= 16
+        elems = meta['elements']
+        body += _bin_str(meta.get('elem_type', 'int'))
+        body += _bin_i64(meta.get('count', len(elems)))
+        body += _vu(len(elems))
+        for ev in elems:
+            body += _bin_val(ev)
+    return out + bytes([flags]) + body
+
+
+def _bin_instr(instr) -> bytes:
+    op    = instr.op
+    o     = instr.operands
+    out   = bytes([_OP_LIST.index(op)])
+    shape = _bin_shape(op)
+    if shape == 'Z':
+        return out
+    if shape == 'I':
+        return out + _bin_i64(o[0])
+    if shape == 'S':
+        return out + _bin_str(o[0])
+    if shape == 'SI':
+        return out + _bin_str(o[0]) + _bin_i64(o[1])
+    if shape == 'TI':
+        return out + bytes([_TTAGS.index(o[0])]) + _bin_i64(o[1])
+    if shape == 'TS':
+        has = len(o) > 1 and o[1]
+        out += bytes([_TTAGS.index(o[0]), 1 if has else 0])
+        return out + (_bin_str(o[1]) if has else b'')
+    if shape == 'IT':
+        return out + _bin_i64(o[0]) + bytes([_TTAGS.index(o[1])])
+    if shape == 'X':
+        ptags = o[2] if len(o) > 2 else ()
+        out += _bin_str(o[0]) + bytes([_TTAGS.index(o[1])]) + _vu(len(ptags))
+        return out + bytes(_TTAGS.index(t) for t in ptags)
+    if shape == 'J':
+        out += _bin_i64(o[0]) + _vu(len(o[1]))
+        return out + b''.join(_bin_i64(a) for a in o[1])
+    if shape == 'V':
+        return out + _bin_val(o[0])
+    if shape == 'A':
+        out += _bin_str(o[0]) + _bin_str(o[1]) + _bin_i64(o[2]) + _bin_i64(o[3])
+        out += _vu(len(o[4]))
+        return out + b''.join(_bin_str(n) for n in o[4])
+    out += _bin_str(o[0]) + _vu(len(o[1]))
+    return out + b''.join(_bin_str(n) + _bin_i64(s) for n, s in o[1])
+
+
+_LZ_WINDOW = 4096     # farthest back a match reaches
+_LZ_MIN    = 3        # shortest match
+_LZ_MAX    = 18       # longest match
+_LZ_CHAIN  = 64       # candidates tried per position
+
+
+def _lz_hash(a: int, b: int, c: int) -> int:
+    return ((a << 8) ^ (b << 4) ^ c) & 0xFFF
+
+
+def _lz_compress(d: bytes) -> bytes:
+    """
+    LZSS. The output is groups of one control byte and up to eight items, the lowest bit of
+    the control byte first. A clear bit is a literal byte; a set bit is a match of two bytes:
+    the low 8 bits of (offset - 1), then the high 4 bits of (offset - 1) above (length - 3).
+    The longest match wins, the nearest on a tie; at most _LZ_CHAIN candidates of the three
+    byte hash chain are tried. Every position is entered into the chains, matched or not.
+    """
+    n    = len(d)
+    head = [-1] * 4096
+    prev = [-1] * n
+    out  = bytearray()
+    ctl  = 0
+    nbit = 0
+    grp  = bytearray()
+
+    def enter(p: int):
+        if p + 2 < n:
+            h = _lz_hash(d[p], d[p + 1], d[p + 2])
+            prev[p] = head[h]
+            head[h] = p
+
+    i = 0
+    while i < n:
+        best = 0
+        boff = 0
+        if i + 2 < n:
+            c    = head[_lz_hash(d[i], d[i + 1], d[i + 2])]
+            maxl = min(_LZ_MAX, n - i)
+            tried = 0
+            while c >= 0 and tried < _LZ_CHAIN and i - c <= _LZ_WINDOW:
+                k = 0
+                while k < maxl and d[c + k] == d[i + k]:
+                    k += 1
+                if k > best:
+                    best = k
+                    boff = i - c
+                    if best == maxl:
+                        break
+                c = prev[c]
+                tried += 1
+        if best >= _LZ_MIN:
+            ctl |= 1 << nbit
+            grp.append((boff - 1) & 0xFF)
+            grp.append((((boff - 1) >> 8) << 4) | (best - _LZ_MIN))
+            for k in range(best):
+                enter(i + k)
+            i += best
+        else:
+            grp.append(d[i])
+            enter(i)
+            i += 1
+        nbit += 1
+        if nbit == 8:
+            out.append(ctl)
+            out += grp
+            ctl = 0
+            nbit = 0
+            grp = bytearray()
+    if nbit:
+        out.append(ctl)
+        out += grp
+    return bytes(out)
+
+
+def _lz_decompress(c: bytes, raw_len: int) -> bytes:
+    out = bytearray()
+    p = 0
+    while len(out) < raw_len:
+        if p >= len(c):
+            raise VMError('.idkb: unexpected end of file')
+        ctl = c[p]
+        p += 1
+        for bit in range(8):
+            if len(out) >= raw_len:
+                break
+            if (ctl >> bit) & 1:
+                if p + 2 > len(c):
+                    raise VMError('.idkb: unexpected end of file')
+                off = (c[p] | ((c[p + 1] >> 4) << 8)) + 1
+                n   = (c[p + 1] & 15) + _LZ_MIN
+                p += 2
+                if off > len(out) or len(out) + n > raw_len:
+                    raise VMError('.idkb: damaged data')
+                for _ in range(n):
+                    out.append(out[-off])
+            else:
+                if p >= len(c):
+                    raise VMError('.idkb: unexpected end of file')
+                out.append(c[p])
+                p += 1
+    return bytes(out)
+
+
+def serialise_fvm_bin(
+    instructions:    'List[Instr]',
+    local_count:     int,
+    functions:       'Dict[str, List[Instr]]',
+    struct_layouts:  'Dict[str, StructLayout]' = None,
+) -> bytes:
+    """
+    Serialise a set of VM instructions and function definitions to the IDKB
+    binary format. The same content as serialise_fvm, the same HALT rule.
+    """
+    layouts = list((struct_layouts or {}).values())
+    _bin_strings.clear()
+    out = _vu(len(layouts))
+    for layout in layouts:
+        out += _bin_str(layout.name) + _bin_str(layout.endian)
+        out += _vu(layout.total_size) + _vu(layout.total_bits)
+        out += _vu(len(layout.fields))
+        for fname, fttag, foff, fsz in layout.fields:
+            out += _bin_str(fname) + bytes([_TTAGS.index(fttag)]) + _vu(foff) + _vu(fsz)
+
+    out += _vu(len(functions))
+    for name, instrs in functions.items():
+        out += _bin_str(name) + _vu(len(instrs))
+        out += b''.join(_bin_instr(i) for i in instrs)
+
+    main = list(instructions)
+    if not main or main[-1].op != Op.HALT:
+        main.append(Instr(Op.HALT, []))
+    out += _vu(local_count) + _vu(len(main))
+    out += b''.join(_bin_instr(i) for i in main)
+
+    # string table, then the body; the whole is stored compressed when that is smaller
+    table = _vu(len(_bin_strings)) + b''.join(_vu(len(s)) + s for s in _bin_strings)
+    raw   = table + out
+    comp  = _lz_compress(raw)
+    if len(comp) < len(raw):
+        return FVM_BIN_MAGIC + bytes([FVM_BIN_VERSION, 1]) + _vu(len(raw)) + comp
+    return FVM_BIN_MAGIC + bytes([FVM_BIN_VERSION, 0]) + _vu(len(raw)) + raw
+
+
+class _BinReader:
+    def __init__(self, data: bytes, lenient: bool = False):
+        self.d = data
+        self.p = 0
+        # lenient: a runtime value operand is kept as its text instead of refused (decompile)
+        self.lenient = lenient
+        self.strs: List[bytes] = []
+
+    def take(self, n: int) -> bytes:
+        if n < 0 or self.p + n > len(self.d):
+            raise VMError('.idkb: unexpected end of file')
+        b = self.d[self.p:self.p + n]
+        self.p += n
+        return b
+
+    def u8(self) -> int:  return self.take(1)[0]
+
+    def u32(self) -> int:
+        """An unsigned varint (a count, size or index), at most 64 bits."""
+        v = 0
+        shift = 0
+        while True:
+            b = self.u8()
+            v |= (b & 0x7F) << shift
+            if not b & 0x80:
+                return v
+            shift += 7
+            if shift > 63:
+                raise VMError('.idkb: damaged data')
+
+    def i64(self) -> int:
+        u = self.u32()
+        v = (u >> 1) ^ -(u & 1)
+        if not -(1 << 63) <= v < (1 << 63):
+            raise VMError('.idkb: damaged data')
+        return v
+
+    def f64(self) -> float: return struct.unpack('<d', self.take(8))[0]
+
+    def raw(self) -> bytes:
+        i = self.u32()
+        if i >= len(self.strs):
+            raise VMError('.idkb: damaged data')
+        return self.strs[i]
+    def str(self) -> str:
+        try:
+            return self.raw().decode('utf-8')
+        except UnicodeDecodeError:
+            raise VMError('.idkb: invalid text')
+
+    def ttag(self) -> TTag:
+        i = self.u8()
+        if i >= len(_TTAGS):
+            raise VMError(f'.idkb: unknown type tag {i}')
+        return _TTAGS[i]
+
+    def val(self) -> Val:
+        tag = self.ttag()
+        if tag in _BIN_OPAQUE:
+            if self.lenient:
+                return Val(tag, self.str())
+            raise VMError(f'.idkb: unknown type tag {tag.value!r}')
+        if tag == TTag.BYTES:
+            return Val(tag, self.raw())
+        if tag == TTag.BOOL:
+            return Val(tag, 1 if self.u8() else 0)
+        if tag in (TTag.FLOAT, TTag.DOUBLE):
+            return Val(tag, self.f64())
+        if tag == TTag.VOID:
+            return Val(tag, 0)
+        if tag == TTag.ULONG:
+            return Val(tag, self.u32())
+        data = self.i64()
+        meta = {}
+        if tag == TTag.PTR:
+            flags = self.u8()
+            if flags & 1:
+                meta['stack_slot'] = True
+            if flags & 2:
+                meta['struct_type'] = self.str()
+            if flags & 4:
+                meta['field_bit_offsets'] = {}
+                for _ in range(self.u32()):
+                    k = self.str()
+                    meta['field_bit_offsets'][k] = self.i64()
+            if flags & 8:
+                meta['fields'] = {}
+                for _ in range(self.u32()):
+                    k = self.str()
+                    meta['fields'][k] = self.val()
+            if flags & 16:
+                meta['elem_type'] = self.str()
+                meta['count'] = self.i64()
+                meta['elements'] = [self.val() for _ in range(self.u32())]
+        return Val(tag, data, meta)
+
+    def instr(self) -> Instr:
+        i = self.u8()
+        if i >= len(_OP_LIST):
+            raise VMError(f'.idkb: unknown opcode {i}')
+        op    = _OP_LIST[i]
+        shape = _bin_shape(op)
+        if shape == 'Z':  return Instr(op, [])
+        if shape == 'I':  return Instr(op, [self.i64()])
+        if shape == 'S':  return Instr(op, [self.str()])
+        if shape == 'SI':
+            s = self.str()
+            return Instr(op, [s, self.i64()])
+        if shape == 'TI':
+            t = self.ttag()
+            return Instr(op, [t, self.i64()])
+        if shape == 'TS':
+            t = self.ttag()
+            return Instr(op, [t, self.str()] if self.u8() else [t])
+        if shape == 'IT':
+            a = self.i64()
+            return Instr(op, [a, self.ttag()])
+        if shape == 'X':
+            name = self.str()
+            ret  = self.ttag()
+            return Instr(op, [name, ret, [self.ttag() for _ in range(self.u32())]])
+        if shape == 'J':
+            default = self.i64()
+            return Instr(op, [default, [self.i64() for _ in range(self.u32())]])
+        if shape == 'V':
+            return Instr(op, [self.val()])
+        if shape == 'A':
+            body = self.str()
+            cons = self.str()
+            nin  = self.i64()
+            nout = self.i64()
+            return Instr(op, [body, cons, nin, nout, [self.str() for _ in range(self.u32())]])
+        src = self.str()
+        binds = []
+        for _ in range(self.u32()):
+            n = self.str()
+            binds.append((n, self.i64()))
+        return Instr(op, [src, binds])
+
+
+def parse_fvm_binary(data: bytes, lenient: bool = False, strings_out: Optional[list] = None):
+    """
+    Parse an IDKB file into (instructions, local_count, functions, struct_layouts),
+    the same result parse_fvm_source gives for the text form.
+    """
+    if data[:4] != FVM_BIN_MAGIC:
+        raise VMError('.idkb: bad magic')
+    if len(data) < 6:
+        raise VMError('.idkb: unexpected end of file')
+    if data[4] != FVM_BIN_VERSION:
+        raise VMError(f'.idkb: unsupported version {data[4]}')
+    hdr = _BinReader(data, lenient)
+    hdr.p = 6
+    raw_len = hdr.u32()
+    body = data[hdr.p:]
+    if data[5] & 1:
+        body = _lz_decompress(body, raw_len)
+    elif len(body) != raw_len:
+        raise VMError('.idkb: damaged data')
+    r = _BinReader(body, lenient)
+    for _ in range(r.u32()):
+        r.strs.append(r.take(r.u32()))
+    if strings_out is not None:
+        strings_out.extend(r.strs)
+    struct_layouts: Dict[str, StructLayout] = {}
+    for _ in range(r.u32()):
+        name   = r.str()
+        endian = r.str()
+        size   = r.u32()
+        bits   = r.u32()
+        fields = []
+        for _ in range(r.u32()):
+            fname = r.str()
+            fttag = r.ttag()
+            foff  = r.u32()
+            fsz   = r.u32()
+            fields.append((fname, fttag, foff, fsz))
+        struct_layouts[name] = StructLayout(name=name, fields=fields, total_size=size,
+                                            endian=endian, total_bits=bits)
+    functions: Dict[str, List[Instr]] = {}
+    for _ in range(r.u32()):
+        name = r.str()
+        functions[name] = [r.instr() for _ in range(r.u32())]
+    local_count = r.u32()
+    instructions = [r.instr() for _ in range(r.u32())]
+    return instructions, local_count, functions, struct_layouts
+
+
+def compile_fvm_text(source: str) -> bytes:
+    """
+    Compile .fvm text to an IDKB file, the inverse of decompile_fvm_bin. The same binary a
+    compiler.idkvm.bindump of that point writes.
+    """
+    instructions, local_count, functions, struct_layouts = parse_fvm_source(source)
+    return serialise_fvm_bin(instructions, local_count, functions, struct_layouts)
+
+
+def decompile_fvm_bin(data: bytes) -> str:
+    """
+    Decompile an IDKB file back to .fvm text, the exact text serialise_fvm gives for the
+    same content. Runtime value operands, which a load refuses, are shown as their text.
+    """
+    instructions, local_count, functions, struct_layouts = parse_fvm_binary(data, True)
+    return serialise_fvm(instructions, local_count, functions, struct_layouts)
 
 
 # ---------------------------------------------------------------------------
@@ -3572,7 +4331,7 @@ def _parse_operands(op: Op, raw_tokens: List[str], lineno: int) -> list:
         Op.FFI_FREE,
         Op.COMPILER_PRINT, Op.COMPILER_PRINTLN, Op.COMPILER_INPUT,
         Op.COMPILER_READFILE, Op.COMPILER_WRITEFILE,
-        Op.COMPILER_FVM_DUMP,
+        Op.COMPILER_FVM_DUMP, Op.COMPILER_FVM_BINDUMP,
         Op.COMPILER_LOADLIB,
         Op.COMPILER_IMPORT_STDLIB, Op.COMPILER_IMPORT_LOCAL, Op.COMPILER_FPM_PACKAGE,
         Op.COMPILER_FVM_TRACE_BEGIN, Op.COMPILER_FVM_TRACE_END,
@@ -3632,7 +4391,7 @@ def _parse_operands(op: Op, raw_tokens: List[str], lineno: int) -> list:
             raise FVMParseError('EXTERN_DECL requires name and ret_tag', lineno)
         ttag_map = {t.name: t for t in TTag}
         ret_tag = ttag_map.get(raw_tokens[1].upper(), TTag.VOID)
-        return [raw_tokens[0], ret_tag]
+        return [raw_tokens[0], ret_tag, [ttag_map.get(t.upper(), TTag.VOID) for t in raw_tokens[2:]]]
     if op in _type_name_op:
         if not raw_tokens:
             raise FVMParseError(f'{op.name} requires a type name operand', lineno)
@@ -3719,27 +4478,342 @@ def _parse_operands(op: Op, raw_tokens: List[str], lineno: int) -> list:
 # CLI entry point
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Lint of emitted source: Allman braces, four space indentation, normal spacing
+# ---------------------------------------------------------------------------
+
+_LINT_TYPES = frozenset(('byte', 'char', 'bool', 'int', 'uint', 'long', 'ulong', 'short', 'ushort',
+                         'float', 'double', 'void', 'data', 'i8', 'i16', 'i32', 'i64',
+                         'u8', 'u16', 'u32', 'u64'))
+# words that are followed by a space before '(' and that do not end an operand
+_LINT_KW = frozenset(('if', 'while', 'for', 'switch', 'case', 'return', 'in', 'is', 'and', 'or',
+                      'not', 'else', 'elif', 'catch', 'throw', 'assert'))
+_LINT_UNARY = frozenset(('-', '+', '*', '&', '@', '!', '~'))
+
+
+def _lint_tokens(text: str) -> List[str]:
+    """Atoms of emitted source: runs between white space, strings kept whole."""
+    out = []
+    i = 0
+    n = len(text)
+    while i < n:
+        if text[i] in ' \t\r\n':
+            i += 1
+            continue
+        j = i
+        while j < n and text[j] not in ' \t\r\n':
+            if text[j] in '"\'':
+                q = text[j]
+                j += 1
+                while j < n and text[j] != q:
+                    j += 2 if text[j] == '\\' else 1
+                j += 1
+            else:
+                j += 1
+        out.append(text[i:min(j, n)])
+        i = j
+    return out
+
+
+def _lint_operand(tok: Optional[str]) -> bool:
+    """True when tok can end an operand."""
+    if tok is None or tok in _LINT_KW:
+        return False
+    if tok in (')', ']', '{}'):
+        return True
+    c = tok[0]
+    return c.isalnum() or c == '_' or c in '"\''
+
+
+def lint_IDEKA_source(text: str, depth: int):
+    """Formats one piece of emitted source. depth is the block depth the piece starts at;
+    returns (lines, depth at the end)."""
+    toks = _lint_tokens(text)
+    lines: List[str] = []
+    cur = ''
+    parts: List[str] = []
+    last = None
+    last_unary = False
+    last_cast = False
+    last_ptr = False
+    parens: List[tuple] = []
+    paren = 0
+
+    def flush():
+        nonlocal cur, parts, last, last_unary, last_cast, last_ptr, parens
+        if cur:
+            lines.append('    ' * depth + cur)
+        cur = ''
+        parts = []
+        last = None
+        last_unary = last_cast = last_ptr = False
+        parens = []
+
+    def add(t: str):
+        nonlocal cur, last, last_unary, last_cast, last_ptr
+        unary = False
+        ptr = False
+        cast = False
+        if t == '*' and last is not None and (last in _LINT_TYPES or last_ptr):
+            ptr = True
+        elif t in _LINT_UNARY and (not _lint_operand(last) or last_cast):
+            unary = True
+        if last is None or last_unary or last_cast:
+            sp = False
+        elif t in (',', ';', ')', ']', '.', '::') or last in ('(', '[', '.', '::'):
+            sp = False
+        elif t == '(':
+            sp = not _lint_operand(last) or last in _LINT_KW
+        elif t == '[':
+            sp = not (_lint_operand(last) or last_ptr)
+        elif ptr:
+            sp = False
+        elif t in ('++', '--') and _lint_operand(last):
+            sp = False
+        elif last_ptr and t in (')', '[', ',', ';', '>'):
+            sp = False
+        else:
+            sp = True
+        if t == '(':
+            parens.append((len(parts) + 1, _lint_operand(last)))
+        elif t == ')' and parens:
+            start, after_operand = parens.pop()
+            inner = parts[start:]
+            if not after_operand and inner and (
+                    (len(inner) == 1 and inner[0] in _LINT_TYPES) or
+                    (len(inner) > 1 and (inner[0] in _LINT_TYPES or _lint_operand(inner[0]))
+                     and all(x == '*' for x in inner[1:]))):
+                cast = True
+        cur += (' ' if sp else '') + t
+        parts.append(t)
+        last = t
+        last_unary = unary
+        last_cast = cast
+        last_ptr = ptr
+
+    i = 0
+    n = len(toks)
+    paren = 0
+    while i < n:
+        t = toks[i]
+        if t == '{' and paren == 0:
+            if i + 1 < n and toks[i + 1] == '}':
+                add('{}')
+                i += 2
+                continue
+            flush()
+            lines.append('    ' * depth + '{')
+            depth += 1
+        elif t == '}' and paren == 0:
+            flush()
+            depth = max(depth - 1, 0)
+            cur = '}'
+            parts = ['}']
+            last = '}'
+            nxt = toks[i + 1] if i + 1 < n else None
+            if nxt == ';':
+                cur += ';'
+                i += 1
+                flush()
+            elif nxt != 'if':
+                flush()
+        elif t == ';' and paren == 0:
+            add(t)
+            flush()
+        else:
+            if t == '(':
+                paren += 1
+            elif t == ')' and paren > 0:
+                paren -= 1
+            add(t)
+        i += 1
+    flush()
+    return lines, depth
+
+
+def strings_fvm(raw: bytes) -> bytes:
+    """The string table of an IDKB file, or of the IDKB form of .fvm text: one string per line in
+    order of first use, with \\, newline, return, tab and other control bytes escaped."""
+    strs: List[bytes] = []
+    if raw[:4] == FVM_BIN_MAGIC:
+        parse_fvm_binary(raw, True, strs)
+    else:
+        compile_fvm_text(raw.decode('utf-8'))
+        strs = list(_bin_strings)
+    out = bytearray()
+    for s in strs:
+        for c in s:
+            if c == 92:
+                out += b'\\\\'
+            elif c == 10:
+                out += b'\\n'
+            elif c == 13:
+                out += b'\\r'
+            elif c == 9:
+                out += b'\\t'
+            elif c < 32 or c == 127:
+                out += b'\\x%02x' % c
+            else:
+                out.append(c)
+        out.append(10)
+    return bytes(out)
+
+
+def inspect_fvm(path: str, raw: bytes) -> str:
+    """A summary of an IDKB or .fvm file: format, sizes, structs, functions and instruction counts."""
+    def pl(n, word):
+        return f'{n} {word}' + ('' if n == 1 else 's')
+
+    out = [f'file: {path}']
+    if raw[:4] == FVM_BIN_MAGIC:
+        instructions, local_count, functions, layouts = parse_fvm_binary(raw, True)
+        hdr = _BinReader(raw)
+        hdr.p = 6
+        raw_len = hdr.u32()
+        body = raw[hdr.p:]
+        if raw[5] & 1:
+            body = _lz_decompress(body, raw_len)
+        out.append(f'format: IDKB version {raw[4]} ({"compressed" if raw[5] & 1 else "stored"})')
+        out.append(f'size: {pl(len(raw), "byte")}')
+        out.append(f'payload: {pl(raw_len, "byte")}')
+        out.append(f'strings: {_BinReader(body).u32()}')
+    else:
+        instructions, local_count, functions, layouts = parse_fvm_source(raw.decode('utf-8'))
+        out.append('format: IDKVM text')
+        out.append(f'size: {pl(len(raw), "byte")}')
+    out.append(f'structs: {len(layouts)}')
+    for lay in layouts.values():
+        out.append(f'  {lay.name}  size {pl(lay.total_size, "byte")}, {pl(lay.total_bits, "bit")}, {pl(len(lay.fields), "field")}')
+    out.append(f'functions: {len(functions)}')
+    for name, instrs in functions.items():
+        out.append(f'  {name}  {pl(len(instrs), "instruction")}')
+    out.append(f'main: {pl(local_count, "local")}, {pl(len(instructions), "instruction")}')
+    out.append(f'instructions: {len(instructions) + sum(len(v) for v in functions.values())}')
+    return '\n'.join(out) + '\n'
+
+
 def _fvm_main():
     import sys as _sys
 
     if len(_sys.argv) < 2:
         print('IDEKA VM')
         print('Usage: python idkvm.py <program.fvm>')
+        print('       python idkvm.py <program.idkb>')
+        print('       python idkvm.py <program.fvm> -o <out.idkb>')
+        print('       python idkvm.py <program.idkb> -o <out.fvm>')
+        print('       python idkvm.py --compile <program.fvm> [out.idkb]')
+        print('       python idkvm.py --decompile <program.idkb> [out.fvm]')
+        print('       python idkvm.py --inspect <program.fvm|program.idkb>')
+        print('       python idkvm.py --strings <program.fvm|program.idkb>')
         print()
-        print('Runs a .fvm opcode file on the IDEKA Virtual Machine.')
+        print('Runs a .fvm opcode file or an IDKB binary on the IDEKA Virtual Machine.')
+        print('The file type is detected from its contents (IDKB binaries start with IDKB).')
+        print()
+        print('Convert: -o writes the converted file instead of running: .fvm text becomes an IDKB')
+        print('binary and an IDKB binary becomes .fvm text, which parses back to the same binary.')
+        print()
+        print('Compile: --compile turns .fvm text into an IDKB binary, written to out.idkb, to the')
+        print('-o file, or to program.idkb next to the input when no output is given.')
+        print()
+        print('Decompile: --decompile prints an IDKB binary as .fvm text, or writes it to out.fvm.')
+        print()
+        print('Inspect: --inspect prints the format, sizes, structs, functions and instruction counts.')
+        print()
+        print('Strings: --strings prints the string table, one escaped string per line in order of first use.')
         _sys.exit(0)
 
-    path = _sys.argv[1]
+    mode = 'run'
+    src = None
+    out = None
+    oflag = False
+    args = _sys.argv[1:]
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a in ('-c', '--compile'):
+            mode = 'compile'
+        elif a in ('-d', '--decompile'):
+            mode = 'decompile'
+        elif a in ('-i', '--inspect'):
+            mode = 'inspect'
+        elif a in ('-s', '--strings'):
+            mode = 'strings'
+        elif a == '-o':
+            i += 1
+            if i >= len(args):
+                print('fvm: -o needs a file', file=_sys.stderr)
+                _sys.exit(1)
+            out = args[i]
+            oflag = True
+        elif src is None:
+            src = a
+        elif out is None:
+            out = a
+        i += 1
+    if mode == 'run' and oflag:
+        mode = 'convert'
+    if src is None:
+        what = {'compile': '--compile needs a .fvm file', 'decompile': '--decompile needs an IDKB file',
+                'inspect': '--inspect needs a file', 'strings': '--strings needs a file', 'convert': '-o needs an input file'}.get(mode, 'no input file')
+        print(f'fvm: {what}', file=_sys.stderr)
+        _sys.exit(1)
+
+    if mode != 'run':
+        try:
+            with open(src, 'rb') as fh:
+                raw = fh.read()
+        except OSError as e:
+            print(f'fvm: cannot open {src!r}: {e}', file=_sys.stderr)
+            _sys.exit(1)
+        binary = raw[:4] == FVM_BIN_MAGIC
+        if mode == 'convert':
+            mode = 'decompile' if binary else 'compile'
+        try:
+            if mode == 'inspect':
+                _sys.stdout.write(inspect_fvm(src, raw))
+                _sys.exit(0)
+            if mode == 'strings':
+                _sys.stdout.flush()
+                _sys.stdout.buffer.write(strings_fvm(raw))
+                _sys.stdout.flush()
+                _sys.exit(0)
+            if mode == 'compile':
+                data = compile_fvm_text(raw.decode('utf-8'))
+                if out is None:
+                    out = os.path.splitext(src)[0] + '.idkb'
+                wmode, payload = 'wb', data
+            else:
+                text = decompile_fvm_bin(raw)
+                wmode, payload = 'w', text
+        except (FVMParseError, VMError) as e:
+            print(f'fvm: parse error in {src}: {e}', file=_sys.stderr)
+            _sys.exit(1)
+        if out is None:
+            _sys.stdout.write(payload)
+            _sys.exit(0)
+        try:
+            with open(out, wmode, **({} if wmode == 'wb' else {'encoding': 'utf-8'})) as fh:
+                fh.write(payload)
+        except OSError as e:
+            print(f'fvm: cannot write {out!r}: {e}', file=_sys.stderr)
+            _sys.exit(1)
+        _sys.exit(0)
+
+    path = src
     try:
-        with open(path, 'r', encoding='utf-8') as fh:
-            source = fh.read()
+        with open(path, 'rb') as fh:
+            raw = fh.read()
     except OSError as e:
         print(f'fvm: cannot open {path!r}: {e}', file=_sys.stderr)
         _sys.exit(1)
 
+    # the IDKB magic selects the binary form, anything else is .fvm text
     try:
-        instructions, local_count, functions, struct_layouts = parse_fvm_source(source)
-    except FVMParseError as e:
+        if raw[:4] == FVM_BIN_MAGIC:
+            instructions, local_count, functions, struct_layouts = parse_fvm_binary(raw)
+        else:
+            instructions, local_count, functions, struct_layouts = parse_fvm_source(raw.decode('utf-8'))
+    except (FVMParseError, VMError) as e:
         print(f'fvm: parse error in {path}: {e}', file=_sys.stderr)
         _sys.exit(1)
 
@@ -3763,6 +4837,7 @@ def _fvm_main():
         print(f'fvm: runtime error: {e}', file=_sys.stderr)
         _sys.exit(1)
 
+    lint_depth = 0
     for entry in vm.emit_results:
         kind = entry[0]
         if kind == 'const':
@@ -3772,7 +4847,9 @@ def _fvm_main():
         elif kind == 'type':
             print(f'[emit:type] {entry[1]}')
         elif kind == 'IDEKA':
-            print(f'[emit:IDEKA] {entry[1]}')
+            IDEKA_lines, lint_depth = lint_IDEKA_source(entry[1], lint_depth)
+            for fl in IDEKA_lines:
+                print(f'[emit:IDEKA] {fl}')
 
 
 if __name__ == '__main__':

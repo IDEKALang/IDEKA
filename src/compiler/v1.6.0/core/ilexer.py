@@ -526,12 +526,12 @@ class Token:
         return self.type.name
 
 class LexError(ValueError):
-    """A lexical error with its position: message is the text without the location."""
     def __init__(self, message: str, line: int, column: int):
         super().__init__(f"{message} at line {line}, col {column}")
         self.message = message
         self.line = line
         self.column = column
+
 
 class IDEKALexer:
     def __init__(self, source_code: str):
@@ -1229,6 +1229,8 @@ class IDEKALexer:
                         self.position = saved_pos
                         self.line = saved_line
                         self.column = saved_col
+                        # not followed by a block: an ordinary name (compiler.idkvm.dump)
+                        token.type = TokenType.IDENTIFIER
                 
                 continue
             

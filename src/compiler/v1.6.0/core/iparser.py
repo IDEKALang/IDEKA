@@ -35,8 +35,8 @@ try:
 except ImportError:
     # If running from different location, try alternate paths
     try:
-        from .ipreprocess import FXPreprocessor
-        from .ilexer import IDEKALexer
+        from .fpreprocess import FXPreprocessor
+        from .flexer import IDEKALexer
     except ImportError:
         raise ImportError("Could not import FXPreprocessor or IDEKALexer")
 
@@ -3301,6 +3301,7 @@ class IDEKAParser:
         # Resolve contract(s): def foo(int x) -> int : NonZero, LessThan(y,x) { ... }
         contract_stmts = []
         _pre_contract_names = []
+        _post_contract_names = []
         _pre_contract_arities = []
         if self.expect(TokenType.COLON):
             self.advance()
@@ -3555,7 +3556,9 @@ class IDEKAParser:
         func_def = FunctionDef(name, real_parameters, return_type, body, is_const,
                                is_volatile, is_prototype, no_mangle, is_variadic, calling_conv,
                                is_recursive, is_inline, is_deprecated, effect_ann, attenuate_ann,
-                               error_type=error_type, is_async=is_async, async_uses=async_uses).set_location(tok.line, tok.column)
+                               error_type=error_type, is_async=is_async, async_uses=async_uses,
+                               pre_contracts=len(_pre_contract_names),
+                               post_contracts=len(_post_contract_names)).set_location(tok.line, tok.column)
 
         # Register 'as operator' if present
         if _as_op_symbol is not None:

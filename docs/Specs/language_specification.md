@@ -2197,32 +2197,17 @@ def main() -> int
 
     switch (e.#)
     {
-        case (ErrorUnionEnum.INT_ACTIVE)
-        {
-            print("Integer active in error union!\n");
-        }
-        case (ErrorUnionEnum.LONG_ACTIVE)
-        {
-            print("Long active in error union!\n");
-        }
-        case (ErrorUnionEnum.BOOL_ACTIVE)
-        {
-            print("Bool active in error union!\n");
-        }
-        case (ErrorUnionEnum.CHAR_ACTIVE)
-        {
-            print("Char active in error union!\n");
-        }
-        case (ErrorUnionEnum.FLOAT_ACTIVE)
-        {
-            print("Float active in error union!\n");
-        }
-        case (ErrorUnionEnum.DOUBLE_ACTIVE)
-        {
-            print("Double active in error union!\n");
-        }
+        case (ErrorUnionEnum.INT_ACTIVE) -> print("Integer active in error union!\n");
 
-        default { print("No active tag set!\n"); };
+        case (ErrorUnionEnum.LONG_ACTIVE) -> print("Long active in error union!\n");
+
+        case (ErrorUnionEnum.BOOL_ACTIVE) -> print("Bool active in error union!\n");
+
+        case (ErrorUnionEnum.CHAR_ACTIVE) -> print("Char active in error union!\n");
+
+        case (ErrorUnionEnum.FLOAT_ACTIVE) -> print("Float active in error union!\n");
+
+        case (ErrorUnionEnum.DOUBLE_ACTIVE) -> print("Double active in error union!\n");
     };
 
     return 0;
@@ -2311,6 +2296,8 @@ switch (e)
     };
 };
 ```
+
+If a case contains only one statement, the braces can be omitted, similar to a single-statement `if`.
 
 ---
 

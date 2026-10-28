@@ -973,6 +973,8 @@ class FunctionDef(ASTNode):
     error_type: Optional[TypeSystem] = None  # error channel type: def f() -> int ^| ErrType
     is_async: bool = False                   # async foo() -> T {}
     async_uses: List['AsyncTagUse'] = field(default_factory=list)  # #<Tag>(this, ...) clauses
+    pre_contracts: int = 0                   # count of pre-contracts applied: -> rtype : A, B
+    post_contracts: int = 0                  # count of post-contracts applied: } : A, B
 
     # Map IDEKA calling-convention keywords to LLVM CC strings
     _CALLING_CONV_MAP: ClassVar[dict] = {

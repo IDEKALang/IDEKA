@@ -367,7 +367,20 @@ def _object_def_codegen_type_only(node, module: ir.Module):
         return opaque_struct
 
     # Create member types and register struct
-    member_types, member_names = ObjectTypeHandler.create_member_types(node.members, module)
+    # Register the identified type before its members are resolved so a member can hold
+    # a pointer to its own object (A* next)
+    if not hasattr(module, '_struct_types'):
+        module._struct_types = {}
+    _self_registered = node.name not in module._struct_types
+    if _self_registered:
+        module._struct_types[node.name] = ir.global_context.get_identified_type(node.name)
+    try:
+        member_types, member_names = ObjectTypeHandler.create_member_types(node.members, module)
+    except Exception:
+        # A failed attempt must not leave the empty type behind for other objects to resolve
+        if _self_registered:
+            del module._struct_types[node.name]
+        raise
     struct_type = ObjectTypeHandler.create_struct_type(node.name, member_types, member_names, module)
     fields = ObjectTypeHandler.calculate_field_layout(node.members, member_types)
     ObjectTypeHandler.create_vtable(node.name, fields, module)
@@ -535,7 +548,7 @@ class CodegenVisitor:
         # Comptime locals persisted across blocks: name -> Val
         self._comptime_locals: dict = {}
         # Persistent VM instance reused across all comptime blocks so that
-        # _comptime_log accumulates the full history for compiler.fvm.dump
+        # _comptime_log accumulates the full history for compiler.idkvm.dump
         self._comptime_vm = None
 
     # ------------------------------------------------------------------
@@ -7154,8 +7167,9 @@ class CodegenVisitor:
 
     def visit_SwitchStatement(self, node, builder, module):
         from iast import Literal, Identifier, TypeOf, MemberAccess, UnaryOp
-        # typeof() returns a deduplicated global pointer, not an integer. A switch on it
-        # switches on the type ids instead (see _visit_switch_typeof).
+        # typeof() returns a deduplicated global pointer, not an integer.
+        # LLVM switch requires an integer discriminant, so lower
+        # switch(typeof(x)) as a pointer-equality if/else-if chain instead.
         if isinstance(node.expression, TypeOf):
             return self._visit_switch_typeof(node, builder, module)
 
@@ -8163,7 +8177,20 @@ class CodegenVisitor:
                         type_spec=None, llvm_type=opaque_struct, llvm_value=None)
                 return opaque_struct
 
-            member_types, member_names = ObjectTypeHandler.create_member_types(node.members, module)
+            # Register the identified type before its members are resolved so a member can hold
+            # a pointer to its own object (A* next), as visit_StructDef does
+            if not hasattr(module, '_struct_types'):
+                module._struct_types = {}
+            _self_registered = node.name not in module._struct_types
+            if _self_registered:
+                module._struct_types[node.name] = ir.global_context.get_identified_type(node.name)
+            try:
+                member_types, member_names = ObjectTypeHandler.create_member_types(node.members, module)
+            except Exception:
+                # A failed attempt must not leave the empty type behind for other objects to resolve
+                if _self_registered:
+                    del module._struct_types[node.name]
+                raise
             struct_type = ObjectTypeHandler.create_struct_type(node.name, member_types, member_names, module)
             fields = ObjectTypeHandler.calculate_field_layout(node.members, member_types)
             ObjectTypeHandler.create_vtable(node.name, fields, module)
@@ -10258,7 +10285,9 @@ class CodegenVisitor:
                             and _tmpl_refs(stmt, _t.name.split('__tmpl__')[0]):
                         _tmpl_emitted.add(id(_t))
                         self.visit(_t, builder, module)
+            self._ct_top_stmt = stmt
             self.visit(stmt, builder, module)
+            self._ct_top_stmt = None
             # Also flush after the last namespace in case all statements are namespaces.
             if _stmt_idx == _last_ns_idx:
                 for _t in _tmpl_instances:
@@ -10580,6 +10609,74 @@ class CodegenVisitor:
     # Comptime block execution
     # ------------------------------------------------------------------
 
+    def _build_reflection(self, module):
+        """
+        Records for compiler.symbol_table: one per declaration of the top level statements that
+        precede the statement holding the running comptime block, in source order. Each record
+        is a dict with name, kind, ns, type (TypeSystem or None) and node.
+        """
+        from iast import (FunctionDef, FunctionDefStatement, StructDef, StructDefStatement,
+                          ObjectDef, ObjectDefStatement, UnionDef, UnionDefStatement,
+                          EnumDef, EnumDefStatement, NamespaceDef, NamespaceDefStatement,
+                          ExternBlock, VariableDeclaration, TraitDef, InterfaceDef,
+                          EffectDef, ContractDef, ConstraDef)
+        stmts = getattr(module, '_program_statements', [])
+        top = getattr(self, '_ct_top_stmt', None)
+        if top is not None:
+            for _i, _s in enumerate(stmts):
+                if _s is top:
+                    stmts = stmts[:_i]
+                    break
+        recs = []
+
+        def add(name, kind, ns, ts, node):
+            recs.append({'name': name, 'kind': kind, 'ns': ns, 'type': ts, 'node': node})
+
+        def walk_ns(nsd, ns):
+            full = f"{ns}::{nsd.name}" if ns else nsd.name
+            add(nsd.name, 'namespace', ns, None, nsd)
+            for f in nsd.functions:
+                add(f.name, 'function', full, f.return_type, f)
+            for st in nsd.structs:
+                add(st.name, 'struct', full, None, st)
+            for ob in nsd.objects:
+                add(ob.name, 'object', full, None, ob)
+            for en in nsd.enums:
+                add(en.name, 'enum', full, None, en)
+            for un in nsd.unions:
+                add(un.name, 'union', full, None, un)
+            for eb in nsd.extern_blocks:
+                for f in eb.declarations:
+                    add(f.name, 'function', full, f.return_type, f)
+            for v in nsd.variables:
+                add(v.name, 'variable', full, v.type_spec, v)
+            for nn in nsd.nested_namespaces:
+                walk_ns(nn, full)
+
+        for s in stmts:
+            if isinstance(s, FunctionDefStatement): s = s.function_def
+            elif isinstance(s, StructDefStatement): s = s.struct_def
+            elif isinstance(s, ObjectDefStatement): s = s.object_def
+            elif isinstance(s, UnionDefStatement): s = s.union_def
+            elif isinstance(s, EnumDefStatement): s = s.enum_def
+            elif isinstance(s, NamespaceDefStatement): s = s.namespace_def
+            if isinstance(s, FunctionDef): add(s.name, 'function', '', s.return_type, s)
+            elif isinstance(s, StructDef): add(s.name, 'struct', '', None, s)
+            elif isinstance(s, ObjectDef): add(s.name, 'object', '', None, s)
+            elif isinstance(s, UnionDef): add(s.name, 'union', '', None, s)
+            elif isinstance(s, EnumDef): add(s.name, 'enum', '', None, s)
+            elif isinstance(s, TraitDef): add(s.name, 'trait', '', None, s)
+            elif isinstance(s, InterfaceDef): add(s.name, 'interface', '', None, s)
+            elif isinstance(s, NamespaceDef): walk_ns(s, '')
+            elif isinstance(s, ExternBlock):
+                for f in s.declarations:
+                    add(f.name, 'function', '', f.return_type, f)
+            elif isinstance(s, VariableDeclaration): add(s.name, 'variable', '', s.type_spec, s)
+            elif isinstance(s, EffectDef): add(s.name, 'effect', '', None, s)
+            elif isinstance(s, ContractDef): add(s.name, 'contract', '', None, s)
+            elif isinstance(s, ConstraDef): add(s.name, 'constraint', '', None, s)
+        return recs
+
     def visit_ComptimeBlock(self, node, builder: ir.IRBuilder, module: ir.Module):
         """
         Execute a comptime block via idkvm.py, then splice any emitideka emissions
@@ -10637,7 +10734,13 @@ class CodegenVisitor:
         # Compile comptime block to VM bytecode
         cg = FVMCodegen(known_functions=self._comptime_functions,
                         known_struct_layouts=self._comptime_struct_layouts,
-                        program_statements=getattr(module, '_program_statements', []))
+                        program_statements=getattr(module, '_program_statements', []),
+                        type_alias_specs=getattr(module, '_type_alias_specs', {}))
+        # enums of the program are visible to the block (Color.BLUE and Color-typed locals)
+        for _en, _ev in getattr(module, '_enum_types', {}).items():
+            if _ev:
+                cg._enum_names.add(_en)
+                cg._enum_values[_en] = {_k: int(_v) for _k, _v in _ev.items()}
         if hasattr(module, '_macros'):
             cg._macro_table.update(module._macros)
         if hasattr(module, '_parser_macros'):
@@ -10650,6 +10753,8 @@ class CodegenVisitor:
             err_node = e.source_node if isinstance(e, _FVMErr) and isinstance(e.source_node, _ASTNode) else node
             import traceback as _tb; _tb.print_exc()
             raise IDEKACodegenError(f'comptime codegen failed: {e}', err_node, module)
+
+            open(_os.environ['FVMDUMP'] + '.names', 'a').write(chr(10).join(k + '=' + str(v.data) for k, v in captured_scope.items()) + chr(10) + '=====' + chr(10))
 
         # Build struct layouts from module for VM struct access
         struct_layouts = {}
@@ -10679,7 +10784,7 @@ class CodegenVisitor:
                     pass
 
         # Execute - reuse the persistent VM so _comptime_log accumulates
-        # across all blocks, enabling compiler.fvm.dump to see the full history.
+        # across all blocks, enabling compiler.idkvm.dump to see the full history.
         # Extract source file path from line map so compiler.import.* can resolve paths
         _line_map = getattr(module, '_IDEKA_line_map', None)
         _source_file = None
@@ -10755,21 +10860,15 @@ class CodegenVisitor:
             self._comptime_vm._codegen_class = FVMCodegen
             if hasattr(module, '_IDEKA_compiler_macros'):
                 self._comptime_vm._compiler_constants = module._IDEKA_compiler_macros
-                self._comptime_vm._compiler_symbol_table = module.symbol_table
         else:
             self._comptime_vm.struct_layouts.update({**struct_layouts, **cg._struct_layouts})
             if _source_file and not self._comptime_vm.source_file:
                 self._comptime_vm.source_file = _source_file
         vm = self._comptime_vm
+        vm._compiler_reflection = self._build_reflection(module)
         # Register all comptime functions: previously accumulated + newly compiled
         self._comptime_functions.update(cg.compiled_functions)
         self._comptime_struct_layouts.update(cg._struct_layouts)
-        # Merge overload table from codegen into VM
-        if hasattr(cg, 'compiled_overloads'):
-            for _ov_name, _ov_list in cg.compiled_overloads.items():
-                if _ov_name not in vm._function_overloads:
-                    vm._function_overloads[_ov_name] = []
-                vm._function_overloads[_ov_name].extend(_ov_list)
         for fn_name, fn_instrs in self._comptime_functions.items():
             vm.register_function(fn_name, fn_instrs)
         # Snapshot emit_results length before execution so we only process

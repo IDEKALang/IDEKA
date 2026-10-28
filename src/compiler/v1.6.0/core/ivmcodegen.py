@@ -100,27 +100,6 @@ def _datatype_to_ttag(dt: DataType) -> TTag:
     return _map.get(dt, TTag.INT)
 
 
-# Integer/float type aliases defined via `as` that must not be treated as structs.
-_PRIM_ALIAS_TTAG: dict = {
-    'i8':  TTag.INT,  'i16': TTag.INT,  'i32': TTag.INT,  'i64': TTag.LONG,
-    'u8':  TTag.UINT, 'u16': TTag.UINT, 'u32': TTag.UINT, 'u64': TTag.ULONG,
-    'f32': TTag.FLOAT, 'f64': TTag.DOUBLE,
-    'size_t': TTag.ULONG, 'ssize_t': TTag.LONG,
-    'uintptr_t': TTag.ULONG, 'intptr_t': TTag.LONG,
-    'ptrdiff_t': TTag.LONG,
-}
-
-def _prim_alias_ttag(name: str):
-    """Return TTag for a known integer/float alias, or None if it is a real struct type."""
-    t = _PRIM_ALIAS_TTAG.get(name)
-    if t is not None:
-        return t
-    # data{N} aliases: i<bits> / u<bits> patterns
-    if name and name[0] in ('i', 'u') and name[1:].isdigit():
-        return TTag.LONG if name[0] == 'i' else TTag.ULONG
-    return None
-
-
 def _instr(op: Op, *operands) -> Instr:
     return Instr(op, list(operands))
 
@@ -174,8 +153,12 @@ class FVMCodegen:
 
     def __init__(self, known_functions: Dict[str, list] = None,
                  known_struct_layouts: Dict[str, Any] = None,
-                 program_statements: list = None):
+                 program_statements: list = None,
+                 type_alias_specs: Dict[str, Any] = None):
         self._instructions: List[Instr] = []
+        # name -> TypeSpec of the `as` aliases the compiler has declared so far
+        # (module._type_alias_specs); a variable of an alias type takes its type
+        self._type_alias_specs: Dict[str, Any] = type_alias_specs or {}
         # Full top-level program statement list (module._program_statements),
         # used by _visit_deprecate to scan for lingering references to a
         # namespace marked with `deprecate`, mirroring icodegen.py's
@@ -199,7 +182,6 @@ class FVMCodegen:
         self._continue_stack: List[List[int]] = []
         # Compiled comptime functions: name -> List[Instr]
         self.compiled_functions: Dict[str, List[Instr]] = {}
-        self.compiled_overloads: Dict[str, list] = {}
         # Previously accumulated comptime functions (from prior blocks) for lookup
         self._known_functions: Dict[str, list] = known_functions or {}
         # Maps local variable name -> declared type name (for type function resolution)
@@ -219,6 +201,7 @@ class FVMCodegen:
         self._excluded_namespaces: set = set()
         # Known enum type names (must not be treated as structs)
         self._enum_names: set = set()
+        self._enum_values: Dict[str, Dict[str, int]] = {}
         # Current source line being compiled, stamped onto emitted instructions
         self._current_src_line: int = 0
         # Expression macro definitions registered at comptime codegen time
@@ -256,6 +239,10 @@ class FVMCodegen:
         # Set/cleared in _visit_object_def per method, used by _visit_method_call to
         # identify the caller type for whitelist checks (mirrors module._current_object_name).
         self._current_object_name: str = None
+        # True while compiling the body of an object method. A method returns TWO values,
+        # the (possibly mutated) 'this' and then its own return value, so the call site can
+        # write 'this' back into the receiver and still use the return value.
+        self._is_method_body: bool = False
         # Stack of per-block defer lists. Each entry is a list of deferred
         # statements (DeferStatement.body or [DeferStatement.expression]) for
         # the body currently being compiled by _visit_body. Mirrors
@@ -294,6 +281,15 @@ class FVMCodegen:
         initialised with a PUSH / LOCAL_SET pair.
         """
         captured_scope = captured_scope or {}
+
+        # The structs of the program are known to the comptime code: the layout of each
+        # top level struct definition is defined unless the codegen already knows it
+        from iast import StructDef as _SD, StructDefStatement as _SDS
+        for _ps in self._program_statements:
+            if isinstance(_ps, _SDS):
+                _ps = _ps.struct_def
+            if isinstance(_ps, _SD) and _ps.name not in self._struct_layouts:
+                self._visit_struct_def(_ps)
 
         # Pre-allocate captured scope variables as read-only locals
         for name, val in captured_scope.items():
@@ -590,10 +586,12 @@ class FVMCodegen:
             fn_cg._using_namespaces = list(self._using_namespaces)
             fn_cg._struct_layouts   = dict(self._struct_layouts)
             fn_cg._enum_names       = set(self._enum_names)
+            fn_cg._enum_values = dict(self._enum_values)
             fn_cg._macro_table      = dict(self._macro_table)
             fn_cg._macros_compiling = set(self._macros_compiling)
             fn_cg._local_types      = dict(self._local_types)
             fn_cg._local_typespecs  = dict(self._local_typespecs)
+            fn_cg._type_alias_specs = self._type_alias_specs
             fn_cg.compiled_functions = dict(self.compiled_functions)
             # Propagate interface state so _visit_method_call can enforce
             # whitelists for calls made from inside this method body.
@@ -602,6 +600,7 @@ class FVMCodegen:
             fn_cg._passinto_whitelist  = self._passinto_whitelist
             fn_cg._returnto_whitelist  = self._returnto_whitelist
             fn_cg._current_object_name = node.name  # mirrors module._current_object_name
+            fn_cg._is_method_body = True
             # Propagate trait/object-trait data so _visit_has_expression works
             # inside method bodies. Mirrors fcodegen's module._object_traits.
             fn_cg._trait_registry  = self._trait_registry
@@ -637,6 +636,7 @@ class FVMCodegen:
                 # mutated) this so the caller can store it back. Matches
                 # fcodegen's implicit method_builder.ret(func.args[0]) for __init.
                 fn_cg._emit(_instr(Op.LOCAL_GET, 0))
+                fn_cg._emit(_instr(Op.PUSH, Val(TTag.VOID, 0)))
                 fn_cg._emit(_instr(Op.RET))
 
             func_key = f"{node.name}.{method.name}"
@@ -954,6 +954,20 @@ class FVMCodegen:
             self._visit_expr(node.initial_value)
             self._emit(_instr(Op.LOCAL_SET, slot))
 
+    def _declared_float_ttag(self, ts):
+        """FLOAT or DOUBLE when ts declares a plain float or double scalar, else None.
+        The declared type dictates the representation, whatever tag the value carries
+        (a float literal is tagged FLOAT, a double variable is not)."""
+        if ts is None or getattr(ts, 'is_pointer', False) or getattr(ts, 'is_array', False):
+            return None
+        if getattr(ts, 'custom_typename', None):
+            return None
+        if ts.base_type == DataType.FLOAT:
+            return TTag.FLOAT
+        if ts.base_type == DataType.DOUBLE:
+            return TTag.DOUBLE
+        return None
+
     def _visit_var_decl(self, node: VariableDeclaration):
         slot = self._alloc_local(node.name)
         # Track local storage class - local variables cannot escape scope
@@ -1068,6 +1082,7 @@ class FVMCodegen:
                     self._visit_expr(arg)
                 argc = 1 + len(node.initial_value.arguments)
                 self._emit(_instr(Op.CALL, node.initial_value.name, argc))
+                self._emit(_instr(Op.POP))      # the return value of __init, 'this' stays
                 self._emit(_instr(Op.DUP))
                 self._emit(_instr(Op.LOCAL_SET, slot))
                 self._emit(_instr(Op.GLOBAL_SET, node.name))
@@ -1098,13 +1113,16 @@ class FVMCodegen:
                         if isinstance(elem, _SL2) and elem.struct_type is None:
                             elem.struct_type = elem_type_name
                 self._visit_expr(node.initial_value)
+                _dft = self._declared_float_ttag(node.type_spec)
+                if _dft is not None:
+                    self._emit(_instr(Op.CAST, _dft))
             # If the declared type is a pointer to a named struct (e.g. BlockEntry* entry = ...),
             # tag the result with CAST PTR typename so STRUCT_LOAD can read fields through it.
             if (node.type_spec is not None and
                     getattr(node.type_spec, 'is_pointer', False) and
                     getattr(node.type_spec, 'custom_typename', None) and
                     node.type_spec.custom_typename not in self._enum_names and
-                    _prim_alias_ttag(node.type_spec.custom_typename) is None):
+                    self._alias_ttag(node.type_spec.custom_typename) is None):
                 self._emit(_instr(Op.CAST, TTag.PTR, node.type_spec.custom_typename))
         else:
             # Zero-initialise (all IDEKA variables are zero-init by default)
@@ -1118,11 +1136,16 @@ class FVMCodegen:
                 _elem_ttag = _datatype_to_ttag(
                     node.type_spec.base_type if node.type_spec.base_type is not None else DataType.SINT
                 )
-                self._emit(_instr(Op.ARRAY_NEW, _elem_ttag, _arr_sz))
+                # ARRAY_NEW takes the element type NAME (the VM maps it with _str_to_ttag
+                # and sizes it with _type_byte_size), never a TTag
+                _elem_name = {TTag.INT: 'int', TTag.UINT: 'uint', TTag.LONG: 'long',
+                              TTag.ULONG: 'ulong', TTag.FLOAT: 'float', TTag.DOUBLE: 'double',
+                              TTag.BOOL: 'bool', TTag.BYTE: 'byte', TTag.CHAR: 'char'}.get(_elem_ttag, 'int')
+                self._emit(_instr(Op.ARRAY_NEW, _elem_name, _arr_sz))
             elif (node.type_spec is not None and
                     node.type_spec.custom_typename is not None):
                 _ctn = node.type_spec.custom_typename
-                _prim = _prim_alias_ttag(_ctn)
+                _prim = self._alias_ttag(_ctn)
                 if _prim is not None:
                     self._emit(_instr(Op.PUSH, Val(_prim, 0)))
                 elif _ctn in self._enum_names:
@@ -1146,12 +1169,49 @@ class FVMCodegen:
     # Assignment
     # ------------------------------------------------------------------
 
+    def _emit_var_get(self, name: str):
+        """Read a variable the way _visit_identifier does: outer globals, then the local slot, then the block global."""
+        if name in self._outer_globals:
+            self._emit(_instr(Op.GLOBAL_GET, name))
+        elif name in self._locals:
+            self._emit(_instr(Op.LOCAL_GET, self._locals[name]))
+        elif name in self._block_globals:
+            self._emit(_instr(Op.GLOBAL_GET, name))
+        else:
+            self._emit(_instr(Op.LOCAL_GET, self._alloc_local(name)))
+
+    def _emit_var_set(self, name: str):
+        """Write the value on top of the stack back to a variable, keeping the local slot and its global mirror in step."""
+        if name in self._outer_globals:
+            self._emit(_instr(Op.GLOBAL_SET, name))
+        elif name in self._locals:
+            if name in self._block_globals:
+                self._emit(_instr(Op.DUP))
+                self._emit(_instr(Op.LOCAL_SET, self._locals[name]))
+                self._emit(_instr(Op.GLOBAL_SET, name))
+            else:
+                self._emit(_instr(Op.LOCAL_SET, self._locals[name]))
+        elif name in self._block_globals:
+            self._emit(_instr(Op.GLOBAL_SET, name))
+        else:
+            self._emit(_instr(Op.LOCAL_SET, self._alloc_local(name)))
+
     def _visit_assignment(self, node: Assignment):
         if isinstance(node.target, Identifier):
             name = node.target.name
             self._check_const_assign(name, node, 'assignment')
+            if name in self._heap_vars and len(self._heap_vars[name]) == 2:
+                # heap scalar: the slot holds the pointer, so the value is STOREd through it
+                _hv_ttag, _hv_bytes = self._heap_vars[name]
+                self._emit(_instr(Op.LOCAL_GET, self._locals[name]))
+                self._visit_expr(node.value)
+                self._emit(_instr(Op.STORE, _hv_ttag, _hv_bytes))
+                return
+            _dft = self._declared_float_ttag(self._local_typespecs.get(name))
             if name in self._outer_globals:
                 self._visit_expr(node.value)
+                if _dft is not None:
+                    self._emit(_instr(Op.CAST, _dft))
                 self._emit(_instr(Op.GLOBAL_SET, name))
                 return
             if self._is_function_body:
@@ -1160,6 +1220,8 @@ class FVMCodegen:
                 # namespace would let same-named locals in other functions
                 # (or other calls to this function) alias each other.
                 self._visit_expr(node.value)
+                if _dft is not None:
+                    self._emit(_instr(Op.CAST, _dft))
                 slot = self._alloc_local(name)
                 self._emit(_instr(Op.LOCAL_SET, slot))
                 return
@@ -1168,6 +1230,8 @@ class FVMCodegen:
             # separate fn_cg instances) can access them via GLOBAL_GET.
             self._block_globals.add(name)
             self._visit_expr(node.value)
+            if _dft is not None:
+                self._emit(_instr(Op.CAST, _dft))
             slot = self._alloc_local(name)
             self._emit(_instr(Op.DUP))
             self._emit(_instr(Op.LOCAL_SET, slot))
@@ -1192,18 +1256,26 @@ class FVMCodegen:
                 tag_slot = self._alloc_local(tag_slot_name)
                 self._visit_expr(node.value)
                 self._emit(_instr(Op.LOCAL_SET, tag_slot))
+            elif (isinstance(node.target.object, Identifier)
+                    and node.target.object.name in self._heap_vars
+                    and len(self._heap_vars[node.target.object.name]) == 2
+                    and self._heap_vars[node.target.object.name][0] == TTag.STRUCT
+                    and node.target.object.name in self._locals):
+                # heap struct: the slot holds the pointer, so the updated struct is STOREd
+                # back through it, the slot keeps the pointer
+                var_name = node.target.object.name
+                _hv_ttag, _hv_bytes = self._heap_vars[var_name]
+                self._emit(_instr(Op.LOCAL_GET, self._locals[var_name]))
+                self._visit_expr(node.target.object)  # LOAD the current struct
+                self._visit_expr(node.value)
+                self._emit(_instr(Op.STRUCT_STORE, node.target.member))
+                self._emit(_instr(Op.STORE, _hv_ttag, _hv_bytes))
             elif isinstance(node.target.object, Identifier):
                 var_name = node.target.object.name
-                is_global = (var_name in self._block_globals or
-                             var_name in self._outer_globals)
                 self._visit_expr(node.target.object)  # push current struct
                 self._visit_expr(node.value)
                 self._emit(_instr(Op.STRUCT_STORE, node.target.member))
-                if is_global:
-                    self._emit(_instr(Op.GLOBAL_SET, var_name))  # write back to global
-                else:
-                    slot = self._alloc_local(var_name)
-                    self._emit(_instr(Op.LOCAL_SET, slot))  # write back to local
+                self._emit_var_set(var_name)  # write back to the local and its global mirror
             else:
                 # Complex lhs: e.g. tbl[idx].field = val
                 # If the object is an ArrayAccess into a known struct-pointer,
@@ -1355,11 +1427,13 @@ class FVMCodegen:
         counter_slot = self._alloc_local(counter_name)
 
         # Evaluate start/end/fill once into locals
+        # each name is allocated before the next is made: _fresh_tmp numbers
+        # by the local count, so three names made first would be one slot
         start_name = self._fresh_tmp()
-        end_name   = self._fresh_tmp()
-        fill_name  = self._fresh_tmp()
         start_slot = self._alloc_local(start_name)
+        end_name   = self._fresh_tmp()
         end_slot   = self._alloc_local(end_name)
+        fill_name  = self._fresh_tmp()
         fill_slot  = self._alloc_local(fill_name)
 
         self._visit_expr(node.start)
@@ -1417,6 +1491,9 @@ class FVMCodegen:
         self._visit_expr(node.value)
         # Emit the base operator
         self._emit_binary_op_for_compound(node.op_token)
+        _dft = self._declared_float_ttag(self._local_typespecs.get(name))
+        if _dft is not None:
+            self._emit(_instr(Op.CAST, _dft))
         # Store result
         self._emit(_instr(Op.LOCAL_SET, slot))
 
@@ -1639,7 +1716,9 @@ class FVMCodegen:
             return True
         if name in self._locals:
             self._emit(_instr(Op.LOCAL_GET, self._locals[name]))
-            if name in self._heap_vars:
+            # A heap scalar auto-dereferences. A heap array (a three entry record) names
+            # its base pointer, the way an array decays to a pointer.
+            if name in self._heap_vars and len(self._heap_vars[name]) == 2:
                 ttag, byte_size = self._heap_vars[name]
                 self._emit(_instr(Op.LOAD, ttag, byte_size))
             return True
@@ -1757,22 +1836,12 @@ class FVMCodegen:
                 # struct.field++ / struct.field-- on a simple identifier receiver
                 var_name  = node.operand.object.name
                 field     = node.operand.member
-                is_global = (var_name in self._block_globals or
-                             var_name in self._outer_globals)
                 delta     = Val(TTag.INT, 1)
                 arith     = Op.ADD if op == Operator.INCREMENT else Op.SUB
                 def _emit_get():
-                    if is_global:
-                        self._emit(_instr(Op.GLOBAL_GET, var_name))
-                    else:
-                        slot = self._alloc_local(var_name)
-                        self._emit(_instr(Op.LOCAL_GET, slot))
+                    self._emit_var_get(var_name)
                 def _emit_set():
-                    if is_global:
-                        self._emit(_instr(Op.GLOBAL_SET, var_name))
-                    else:
-                        slot = self._alloc_local(var_name)
-                        self._emit(_instr(Op.LOCAL_SET, slot))
+                    self._emit_var_set(var_name)
                 if node.is_postfix:
                     # push old field value for expression result
                     _emit_get()
@@ -2222,6 +2291,18 @@ class FVMCodegen:
             self._emit(_instr(Op.LOCAL_GET, slot))
             self._emit(_instr(Op.CAST, TTag.ULONG))
             return True
+        if isinstance(node.pointer, Literal):
+            # a number, a bool or a char is never a pointer (fcodegen: Cannot dereference non-pointer type)
+            raise FVMCodegenError('Cannot dereference non-pointer type', node)
+        if isinstance(node.pointer, _Id):
+            # a variable declared with a plain scalar type is never a pointer
+            _dts = self._local_typespecs.get(node.pointer.name)
+            if (_dts is not None and not _dts.custom_typename and not _dts.is_pointer
+                    and not _dts.pointer_depth and not _dts.is_array
+                    and _dts.base_type in (DataType.SINT, DataType.UINT, DataType.SLONG, DataType.ULONG,
+                                           DataType.FLOAT, DataType.DOUBLE, DataType.BOOL,
+                                           DataType.BYTE, DataType.CHAR)):
+                raise FVMCodegenError('Cannot dereference non-pointer type', node)
         self._visit_expr(node.pointer)
         self._emit(_instr(Op.LOCAL_DEREF))
         return True
@@ -2268,6 +2349,11 @@ class FVMCodegen:
         # Variable address
         if name in self._locals:
             slot = self._locals[name]
+            if name in self._heap_vars:
+                # A heap variable's slot holds the pointer to its storage, which is the
+                # address of the variable (a slot-index PTR would address the pointer itself)
+                self._emit(_instr(Op.LOCAL_GET, slot))
+                return True
             # In fcodegen, @x on a pointer/noopstr local loads the pointer value
             # (equivalent to loading from the alloca).  In the VM, that means the
             # local already holds the BYTES/PTR value -- emit LOCAL_GET so that
@@ -2276,7 +2362,7 @@ class FVMCodegen:
             _is_ptr_type = (
                 (ts is not None and (getattr(ts, 'is_pointer', False) or
                                      getattr(ts, 'pointer_depth', 0)))
-                or self._local_types.get(name) in ('noopstr', 'byte', 'char')
+                or self._alias_is_ptr(self._local_types.get(name))
             )
             if _is_ptr_type:
                 # import sys as _sys; _sys.stderr.write(f'[DEBUG ADDROF] {name!r} -> LOCAL_GET {slot} (_local_types={self._local_types.get(name)!r} ts={ts})\n'); _sys.stderr.flush()
@@ -2459,16 +2545,18 @@ class FVMCodegen:
             'compiler.io.readfile':          Op.COMPILER_READFILE,
             'compiler__io__writefile':       Op.COMPILER_WRITEFILE,
             'compiler.io.writefile':         Op.COMPILER_WRITEFILE,
-            'compiler.fvm.dump':             Op.COMPILER_FVM_DUMP,
-            'compiler__fvm__dump':           Op.COMPILER_FVM_DUMP,
-            'compiler.fvm.loadlib':          Op.COMPILER_LOADLIB,
-            'compiler__fvm__loadlib':        Op.COMPILER_LOADLIB,
-            'compiler.fvm.trace.begin':      Op.COMPILER_FVM_TRACE_BEGIN,
-            'compiler__fvm__trace__begin':   Op.COMPILER_FVM_TRACE_BEGIN,
-            'compiler.fvm.trace.end':        Op.COMPILER_FVM_TRACE_END,
-            'compiler__fvm__trace__end':     Op.COMPILER_FVM_TRACE_END,
-            'compiler.fvm.setbp':            Op.COMPILER_FVM_SETBP,
-            'compiler__fvm__setbp':          Op.COMPILER_FVM_SETBP,
+            'compiler.idkvm.dump':             Op.COMPILER_FVM_DUMP,
+            'compiler__idkvm__dump':           Op.COMPILER_FVM_DUMP,
+            'compiler.idkvm.bindump':          Op.COMPILER_FVM_BINDUMP,
+            'compiler__idkvm__bindump':        Op.COMPILER_FVM_BINDUMP,
+            'compiler.idkvm.loadlib':          Op.COMPILER_LOADLIB,
+            'compiler__idkvm__loadlib':        Op.COMPILER_LOADLIB,
+            'compiler.idkvm.trace.begin':      Op.COMPILER_FVM_TRACE_BEGIN,
+            'compiler__idkvm__trace__begin':   Op.COMPILER_FVM_TRACE_BEGIN,
+            'compiler.idkvm.trace.end':        Op.COMPILER_FVM_TRACE_END,
+            'compiler__idkvm__trace__end':     Op.COMPILER_FVM_TRACE_END,
+            'compiler.idkvm.setbp':            Op.COMPILER_FVM_SETBP,
+            'compiler__idkvm__setbp':          Op.COMPILER_FVM_SETBP,
             'compiler.import.stdlib':        Op.COMPILER_IMPORT_STDLIB,
             'compiler__import__stdlib':      Op.COMPILER_IMPORT_STDLIB,
             'compiler.import.local':         Op.COMPILER_IMPORT_LOCAL,
@@ -2532,14 +2620,15 @@ class FVMCodegen:
             'compiler.io.console.input':    Op.COMPILER_INPUT,
             'compiler.io.readfile':       Op.COMPILER_READFILE,
             'compiler.io.writefile':      Op.COMPILER_WRITEFILE,
-            'compiler.fvm.dump':          Op.COMPILER_FVM_DUMP,
+            'compiler.idkvm.dump':          Op.COMPILER_FVM_DUMP,
+            'compiler.idkvm.bindump':       Op.COMPILER_FVM_BINDUMP,
             'compiler.import.stdlib':     Op.COMPILER_IMPORT_STDLIB,
             'compiler.import.local':      Op.COMPILER_IMPORT_LOCAL,
             'compiler.fpm.package':       Op.COMPILER_FPM_PACKAGE,
-            'compiler.fvm.loadlib':        Op.COMPILER_LOADLIB,
-            'compiler.fvm.trace.begin':     Op.COMPILER_FVM_TRACE_BEGIN,
-            'compiler.fvm.trace.end':       Op.COMPILER_FVM_TRACE_END,
-            'compiler.fvm.setbp':           Op.COMPILER_FVM_SETBP,
+            'compiler.idkvm.loadlib':        Op.COMPILER_LOADLIB,
+            'compiler.idkvm.trace.begin':     Op.COMPILER_FVM_TRACE_BEGIN,
+            'compiler.idkvm.trace.end':       Op.COMPILER_FVM_TRACE_END,
+            'compiler.idkvm.setbp':           Op.COMPILER_FVM_SETBP,
         }
         _PUSHES = {Op.COMPILER_INPUT, Op.COMPILER_READFILE}
 
@@ -2632,15 +2721,14 @@ class FVMCodegen:
                     # Write it back into the receiver variable so mutations
                     # are visible to the caller -- structs are by value in
                     # the VM; this mirrors fcodegen's pointer-based mutation.
-                    # Stack after CALL: [this_mutated]
-                    # DUP x2 so we have three copies: LOCAL_SET and GLOBAL_SET
-                    # consume two, one remains as the pushed return value for
-                    # _visit_expr_stmt to POP.
+                    # Stack after CALL: [this_mutated, return_value]. SWAP and DUP
+                    # give two copies of this: LOCAL_SET and GLOBAL_SET consume them
+                    # and the return value stays as the value of the expression.
                     recv_slot = self._alloc_local(recv_name)
-                    self._emit(_instr(Op.DUP))          # [this, this]
-                    self._emit(_instr(Op.DUP))          # [this, this, this]
-                    self._emit(_instr(Op.LOCAL_SET, recv_slot))  # [this, this]
-                    self._emit(_instr(Op.GLOBAL_SET, recv_name)) # [this]
+                    self._emit(_instr(Op.SWAP))         # [ret, this]
+                    self._emit(_instr(Op.DUP))          # [ret, this, this]
+                    self._emit(_instr(Op.LOCAL_SET, recv_slot))  # [ret, this]
+                    self._emit(_instr(Op.GLOBAL_SET, recv_name)) # [ret]
                     return True
 
             # Check if this is a type function call: receiver_var.method_name(args)
@@ -2713,6 +2801,7 @@ class FVMCodegen:
         fn_cg._using_namespaces   = list(self._using_namespaces)
         fn_cg._struct_layouts     = dict(self._struct_layouts)
         fn_cg._enum_names         = set(self._enum_names)
+        fn_cg._enum_values = dict(self._enum_values)
         fn_cg._macro_table        = dict(self._macro_table)
         fn_cg._macros_compiling   = set(self._macros_compiling)
         fn_cg._local_types        = dict(self._local_types)
@@ -3531,6 +3620,7 @@ class FVMCodegen:
         fn_cg._using_namespaces = list(self._using_namespaces)
         fn_cg._struct_layouts = dict(self._struct_layouts)
         fn_cg._enum_names = set(self._enum_names)
+        fn_cg._enum_values = dict(self._enum_values)
         fn_cg._macro_table = dict(self._macro_table)
         fn_cg._macros_compiling = set(self._macros_compiling)
         fn_cg._local_types = dict(self._local_types)
@@ -3584,6 +3674,7 @@ class FVMCodegen:
         fn_cg._using_namespaces = list(self._using_namespaces)
         fn_cg._struct_layouts = dict(self._struct_layouts)
         fn_cg._enum_names = set(self._enum_names)
+        fn_cg._enum_values = dict(self._enum_values)
         fn_cg._macro_table = dict(self._macro_table)
         fn_cg._macros_compiling = set(self._macros_compiling)
         fn_cg._local_types = dict(self._local_types)
@@ -3621,23 +3712,25 @@ class FVMCodegen:
         from itypesys import DataType as _DT
         if ts is None:
             return 32
+        if ts.is_pointer:
+            # a pointer is 64 bits whatever its pointee declares (byte* carries a width of 8)
+            return 64
         if ts.bit_width is not None:
             return ts.bit_width
-        if ts.is_pointer:
-            return 64
         if ts.is_array and ts.array_size and ts.base_type is not None:
             elem_bits = self._type_bit_width_base(ts.base_type, ts)
             arr_size = ts.array_size
             if hasattr(arr_size, 'value'):  # Literal node
                 arr_size = int(arr_size.value)
             return elem_bits * int(arr_size)
-        if ts.base_type is not None:
-            return self._type_bit_width_base(ts.base_type, ts)
         if ts.custom_typename is not None:
-            # Nested struct - look up in our own registry
+            # A named struct: its layout dictates the width, whatever base type the
+            # parser attached to a named type (DATA, which has no width)
             layout = self._struct_layouts.get(ts.custom_typename)
             if layout is not None:
                 return layout.total_bits if layout.total_bits else layout.total_size * 8
+        if ts.base_type is not None:
+            return self._type_bit_width_base(ts.base_type, ts)
         return 32
 
     def _type_bit_width_base(self, base_type, ts=None) -> int:
@@ -3651,6 +3744,21 @@ class FVMCodegen:
         }
         return _map.get(base_type, 32)
 
+    def _alias_is_ptr(self, name) -> bool:
+        """True when name is a declared `as` alias of a pointer or an array type."""
+        spec = self._type_alias_specs.get(name) if name else None
+        return spec is not None and bool(getattr(spec, 'is_pointer', False) or
+                                         getattr(spec, 'pointer_depth', 0) or
+                                         getattr(spec, 'is_array', False))
+
+    def _alias_ttag(self, name):
+        """TTag of a declared `as` alias of a built in type, None for any other name."""
+        spec = self._type_alias_specs.get(name)
+        if spec is None:
+            return None
+        t = self._type_ttag_from_ts(spec)
+        return None if t == TTag.STRUCT else t
+
     def _type_ttag_from_ts(self, ts) -> TTag:
         """Map a TypeSystem to the closest VM TTag."""
         from itypesys import DataType as _DT
@@ -3659,7 +3767,7 @@ class FVMCodegen:
         if ts.is_pointer:
             return TTag.PTR
         if ts.custom_typename is not None:
-            _prim = _prim_alias_ttag(ts.custom_typename)
+            _prim = self._alias_ttag(ts.custom_typename)
             if _prim is not None:
                 return _prim
             return TTag.STRUCT
@@ -3887,6 +3995,10 @@ class FVMCodegen:
                 self._visit_expr(node.object)
                 self._emit(_instr(Op.STRUCT_LOAD, node.member))
                 return True
+            # Enum value: Color.BLUE is the constant of that member
+            if var_name in self._enum_values and node.member in self._enum_values[var_name]:
+                self._emit(_instr(Op.PUSH, Val(TTag.INT, self._enum_values[var_name][node.member])))
+                return True
             # Check for compiler.symbol_table intrinsic (property, not a call)
             dotted = self._flatten_dotted_name(node)
             if dotted is not None:
@@ -3941,6 +4053,7 @@ class FVMCodegen:
         Also guards the LLVM codegen from visiting this node.
         """
         self._enum_names.add(node.name)
+        self._enum_values[node.name] = {n: int(v) for n, v in node.values.items()}
         for name, value in node.values.items():
             slot = self._alloc_local(name)
             self._emit(_instr(Op.PUSH, Val(TTag.INT, int(value))))
@@ -3977,7 +4090,9 @@ class FVMCodegen:
         """
         for decl in (node.declarations or []):
             ret_ttag = self._type_ttag_from_ts(decl.return_type) if decl.return_type is not None else TTag.VOID
-            self._emit(_instr(Op.EXTERN_DECL, decl.name, ret_ttag))
+            _ptags = [self._type_ttag_from_ts(p.type_spec) if p.type_spec is not None else TTag.VOID
+                      for p in (decl.parameters or [])]
+            self._emit(_instr(Op.EXTERN_DECL, decl.name, ret_ttag, _ptags))
 
     def _visit_namespace_def(self, node: NamespaceDef, prefix: str = ''):
         """
@@ -4005,6 +4120,7 @@ class FVMCodegen:
             fn_cg._using_namespaces = list(self._using_namespaces)
             fn_cg._struct_layouts = dict(self._struct_layouts)
             fn_cg._enum_names = set(self._enum_names)
+            fn_cg._enum_values = dict(self._enum_values)
             fn_cg._macro_table = dict(self._macro_table)
             fn_cg._macros_compiling = set(self._macros_compiling)
             fn_cg._local_types = dict(self._local_types)
@@ -4040,11 +4156,6 @@ class FVMCodegen:
             for _k, _v in fn_cg.compiled_functions.items():
                 if _k not in self.compiled_functions:
                     self.compiled_functions[_k] = _v
-            for _k, _v in fn_cg.compiled_overloads.items():
-                if _k not in self.compiled_overloads:
-                    self.compiled_overloads[_k] = _v
-                else:
-                    self.compiled_overloads[_k].extend(_v)
             mangled = f'{ns_name}__{func.name}'
             # Build a param-type signature for overload discrimination.
             # e.g. fmalloc(size_t) -> fmalloc__, fmalloc(ulong) -> fmalloc__
@@ -4073,11 +4184,6 @@ class FVMCodegen:
             #     for _i, _ins in enumerate(fn_cg._instructions[:10]):
             #         _sys.stderr.write(f'  {_i}: {_ins.op.name} {_ins.operands}\n')
             #     _sys.stderr.flush()
-            # Register overload table for runtime dispatch by arg types.
-            for reg_name in (mangled, func.name):
-                if reg_name not in self.compiled_overloads:
-                    self.compiled_overloads[reg_name] = []
-                self.compiled_overloads[reg_name].append((func.parameters, fn_cg._instructions))
             # Plain name: first overload wins as default.
             if mangled not in self.compiled_functions:
                 self.compiled_functions[mangled] = fn_cg._instructions
@@ -4266,6 +4372,7 @@ class FVMCodegen:
                     fn_cg._using_namespaces   = list(self._using_namespaces)
                     fn_cg._struct_layouts     = dict(self._struct_layouts)
                     fn_cg._enum_names         = set(self._enum_names)
+                    fn_cg._enum_values = dict(self._enum_values)
                     fn_cg._macro_table        = dict(self._macro_table)
                     fn_cg._macros_compiling   = set(self._macros_compiling)
                     fn_cg._local_types        = dict(self._local_types)
@@ -4359,10 +4466,13 @@ class FVMCodegen:
             raise FVMCodegenError(
                 f"fvmcodegen: local variable '{node.value.name}' cannot escape scope (returned from function)",
                 node)
-        if node.value is not None:
-            self._visit_expr(node.value)
-        else:
+        if node.value is None or not self._visit_expr(node.value):
+            # no value (or a call that leaves none, e.g. compiler.io.console.println)
             self._emit(_instr(Op.PUSH, Val(TTag.VOID, 0)))
+        if self._is_method_body:
+            # [value] -> [this, value]: the caller stores 'this' back into the receiver
+            self._emit(_instr(Op.LOCAL_GET, 0))
+            self._emit(_instr(Op.SWAP))
         # A return exits every enclosing block, so run all pending `defer`
         # statements (innermost scope first) now, after the return value
         # has been computed and pushed but before RET consumes it. Each
