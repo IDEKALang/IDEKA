@@ -1,0 +1,39 @@
+// Author: Karac V. Thweatt
+
+// Networking Library - Windows Sockets API (Winsock2)
+// Provides minimal TCP/UDP socket functionality for Windows
+// No object usage - structs and functions only
+
+#ifndef IDEKA_STANDARD
+#def IDEKA_STANDARD 1;
+#endif;
+
+#ifndef IDEKA_STANDARD_NET
+#def IDEKA_STANDARD_NET 1;
+
+#ifndef IDEKA_STANDARD_TYPES
+#import <types.idk>;
+#endif;
+#ifndef IDEKA_STANDARD_MEMORY
+#import <runtime\memory.idk>;
+#endif;
+
+#ifndef IDEKA_STANDARD_SOCKETS
+#import <builtins\socket_object_raw.idk>;
+#endif;
+
+// Time value for timeouts (different on Windows - uses milliseconds as DWORD)
+struct timeval
+{
+    i32 tv_sec,          // Seconds
+        tv_usec;         // Microseconds
+};
+
+namespace standard
+{
+    namespace net
+    {
+    };
+};
+
+#endif;

@@ -1,0 +1,137 @@
+///
+    metademo.fx -- a CLI calculator whose dispatch is built entirely
+    at compile time via comptime + emitideka.
+///
+
+#import <standard.idk>;
+
+using standard::io::console;
+
+macro clamp(v, lo, hi)
+{
+    (v if (v > lo) else lo) if ((v if (v > lo) else lo) < hi) else hi
+};
+
+macro ct_fact(n)
+{
+    n * ct_fact(n - 1) if (n > 1) else 1
+};
+
+macro named_print(val)
+{
+    println(f"{$val} = {val}")
+};
+
+#def NUM_OPS 4;
+
+comptime
+{
+    byte*[NUM_OPS] op_names = ["add", "sub", "mul", "div"],
+                   op_syms  = ["+",   "-",   "*",   "/"],
+                   op_exprs = ["a + b", "a - b", "a * b", "a / b"];
+
+    compiler.io.console.println("[comptime] generating op handlers...");
+
+    int i;
+    byte* nm, expr;
+    while (i < NUM_OPS)
+    {
+        nm   = op_names[i];
+        expr = op_exprs[i];
+        compiler.io.console.println(f"[comptime]   op_{nm}");
+        emitideka
+        {
+            def ~$i"op_{}":{nm} (int a, int b) -> int { return ~$expr; };
+        };
+        i++;
+    };
+
+    compiler.io.console.println("[comptime] generating dispatch...");
+    emitideka { def dispatch(int id, int a, int b) -> int;  };
+    emitideka
+    {
+        def dispatch(int id, int a, int b) -> int
+        {
+            switch (id)
+            {
+    }#;
+
+    int j, jv;
+    while (j < NUM_OPS)
+    {
+        nm = op_names[j];
+        jv = j;
+        emitideka
+        {
+                case (~$f"{jv}") { return ~$i"op_{}":{nm;} (a, b); }
+        };
+        j++;
+    };
+
+    emitideka
+    {
+                default { return -1; };
+           #};
+       #};
+    };
+
+    emitideka
+    {
+        byte*[NUM_OPS] g_op_names = [g"add", g"sub", g"mul", g"div"],
+                       g_op_syms  = [g"+",   g"-",   g"*",   g"/"];
+    };
+
+    int fingerprint = ct_fact(6);
+    compiler.io.console.println(f"[comptime] fingerprint = {fingerprint}");
+    emitideka { int g_fingerprint = ~$f"{fingerprint}"; };
+    compiler.io.console.println("[comptime] done.");
+
+    compiler.idkvm.dump("test15.ivm");
+};
+
+def usage(byte* prog) -> void
+{
+    println(f"usage: {prog} <op> <a> <b>");
+    println(g"ops:");
+    int i = 0;
+    while (i < NUM_OPS)
+    {
+        println(f"  {g_op_names[i]}  ({g_op_syms[i]})");
+        i++;
+    };
+    println(f"build fingerprint: {g_fingerprint}");
+};
+
+def find_op(byte* name, int len) -> int
+{
+    int i, j, match;
+    byte* candidate;
+    while (i < NUM_OPS)
+    {
+        candidate = g_op_names[i];
+        j = 0; match = 1;
+        while (j < len)
+        {
+            { match = 0; break; } if (name[j] != candidate[j]);
+            j++;
+        };
+        { return i; } if (match == 1);
+        i++;
+    };
+    return -1;
+};
+
+def main() -> int
+{
+    int demo = clamp(42, 0, 100);
+    named_print(demo);
+    byte* prog = g"metademo";
+    byte* op_name = g"div";
+    int op_len = 3, a = 21, b = 3;
+    int op_id = find_op(op_name, op_len);
+    if (op_id < 0) { println(g"unknown op"); usage(prog); return 1; };
+    int result = dispatch(op_id, a, b);
+    println(f"{a} {g_op_syms[op_id]} {b} = {result}");
+    println(f"stored in '{$result}': {result}");
+    return 0;
+};

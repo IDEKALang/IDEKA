@@ -1,0 +1,25 @@
+#import <standard.idk>;
+
+using standard::io::console;
+
+int a = 5, b = 10, c = 20;
+
+def main() -> int
+{
+    int* pa = @a,
+         pb = @b,
+         pc = @c;
+
+    println(a);
+
+    int*[] piarr = [pa, pb, pc];
+
+    print(i"{} {} {}"
+    :{
+        *piarr[0];
+        *piarr[1];
+        *piarr[2];
+    });
+
+	return 0;
+};

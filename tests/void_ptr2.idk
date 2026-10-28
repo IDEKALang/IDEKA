@@ -1,0 +1,11 @@
+#import <standard.idk>;
+
+struct x
+{
+    void* test = STDLIB_GVP;
+};
+
+def main() -> int
+{
+	return 0;
+};

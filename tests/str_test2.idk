@@ -1,0 +1,17 @@
+#import <standard.idk>;
+
+using standard::io::console;
+
+def main() -> int
+{
+	byte[] x = "test",
+		   y = "ing",
+           z = x + y;
+
+    heap byte[5] a = "test",
+                 b = "ing!";
+    heap byte[9] c = a + b;
+
+	println(c);
+	return 0;
+};

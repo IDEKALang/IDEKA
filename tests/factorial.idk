@@ -1,0 +1,16 @@
+#import <standard.idk>;
+
+using standard::io::console;
+
+macro factorial(n)
+{
+    n * factorial(--n) if (n > 1) else n
+};
+
+def main() -> int
+{
+    int x = factorial(5);
+    println(x);
+
+    return 0;
+};

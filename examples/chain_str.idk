@@ -1,0 +1,11 @@
+#import <standard.idk>;
+
+using standard::io::console;
+
+def main() -> int
+{
+	println() <- "Testing examples\\chain_str.idk!";
+
+	system() <- "pause";
+	return 0;
+};

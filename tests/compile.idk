@@ -1,0 +1,32 @@
+#import <standard.idk>;
+
+using standard::io::console;
+
+def main(int argc, byte** argv) -> int
+{
+    if (argc > 2)
+    {
+        print("Too many arguments given.
+Usage: compile program.idk
+
+Invokes Python on the IDEKA compiler backend on program.idk");
+        return 0;
+    }
+    else if (argc == 2)
+    {
+        println(argv[0]);
+        println(argv[1]);
+        byte* command = f"python idkc.py {argv[0]}";
+        println(f"COMMAND: {command}");
+        system(command);
+        return 0;
+    }
+    else if (argc == 0)
+    {
+        print("Mock IDEKA Compiler, written in IDEKA. Calls Python on the IDEKA compiler.
+Usage: compile program.idk");
+        return 0;
+    };
+
+    return 0;
+};

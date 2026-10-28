@@ -1,0 +1,28 @@
+#import <standard.idk>;
+
+using standard::io::console;
+
+comptime
+{
+    compiler.io.console.print("Hello, stage 1!\n");
+	emitideka
+    {
+        comptime
+        {
+            compiler.io.console.print("Hello, stage 2!\n");
+            emitideka
+            {
+                def test() -> void
+                {
+                    println("Hello World!");
+                };
+            };
+        };
+    };
+};
+
+def main() -> int
+{
+    test();
+	return 0;
+};

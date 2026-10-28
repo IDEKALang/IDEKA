@@ -1,0 +1,16 @@
+#import <standard.idk>;
+
+using standard::io::console;
+
+struct mystr
+{
+};
+
+def main() -> int
+{
+	if (typeof(mystr) == typeof(struct))
+	{
+		print(f"Got {typeof(mystr)}!");
+	};
+	return 0;
+};

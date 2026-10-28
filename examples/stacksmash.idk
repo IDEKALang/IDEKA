@@ -1,0 +1,21 @@
+#def IDEKA_SHADOW_STACK 1;
+#import <standard.idk>;
+using standard::io::console;
+
+def test() -> void : FSS_Protect_Frame
+{
+    byte[16] buf;
+    // Compute distance from buf to canary and overwrite it directly
+    u64 buf_addr    = ulong(@buf[0]),
+        canary_addr = ulong(@__fss_canary_local);
+    u64* target     = (u64*)canary_addr;
+    *target = 0xDEADBEEFCAFEBABEu;
+    return;
+} : FSS_Cleanup_Frame;
+
+def main() -> int
+{
+    test();
+    println("Post-test message.");
+    return 0;
+};

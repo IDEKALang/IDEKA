@@ -1,0 +1,756 @@
+// Author: Karac V. Thweatt
+
+// datetime_test.idk - Test suite for standard::datetime (datetime.idk)
+//
+// Tests:
+//   Epoch round-trip (known Unix timestamps -> DateTime -> back)
+//   Epoch edge cases (epoch zero, negative, pre-epoch, year boundaries)
+//   Leap year predicate
+//   Days in month
+//   Day of week (Zeller cross-check against known dates)
+//   Day of year
+//   Arithmetic (add ms, add days, diff)
+//   Comparison (eq, lt, cmp)
+//   ISO formatting
+//   Date formatting
+//   Time formatting
+//   RFC 1123 formatting
+//   ISO parsing (all variants)
+//   Parse -> format round-trip
+//   Duration helpers
+//   Wall-clock sanity (year in plausible range)
+
+#import <standard.idk>;
+#import <datetime.idk>;
+
+using standard::io::console;
+using standard::datetime;
+using standard::strings;
+
+// ============================================================================
+// Test helpers
+// ============================================================================
+
+global int g_pass, g_fail;
+
+def pass(noopstr name) -> void
+{
+    print("  [PASS] \0");
+    println(name);
+    g_pass++;
+};
+
+def fail(noopstr name) -> void
+{
+    print("  [FAIL] \0");
+    println(name);
+    g_fail++;
+};
+
+// Compare two null-terminated byte strings.
+def streq(byte* a, byte* b) -> bool
+{
+    int i;
+    while (a[i] != 0 & b[i] != 0)
+    {
+        if (a[i] != b[i]) { return false; };
+        i++;
+    };
+    return a[i] == 0 & b[i] == 0;
+};
+
+// ============================================================================
+// Epoch round-trip tests
+// ============================================================================
+
+def test_epoch_roundtrip() -> void
+{
+    println("Epoch round-trip\0");
+
+    // Unix epoch zero -> 1970-01-01 00:00:00.000
+    DateTime dt;
+    dt = dt_from_unix_ms(0);
+    if (dt.year == 1970 & dt.month == 1 & dt.day == 1 &
+        dt.hour == 0 & dt.minute == 0 & dt.second == 0 & dt.ms == 0)
+    {
+        pass("epoch 0 -> 1970-01-01T00:00:00.000\0");
+    }
+    else { fail("epoch 0 -> 1970-01-01T00:00:00.000\0"); };
+
+    // 1970-01-01T00:00:00.000 -> 0 ms
+    if (dt_to_unix_ms(@dt) == 0)
+    {
+        pass("1970-01-01T00:00:00.000 -> epoch 0\0");
+    }
+    else { fail("1970-01-01T00:00:00.000 -> epoch 0\0"); };
+
+    // Known: 2001-09-09T01:46:40.000 = Unix second 1000000000
+    dt = dt_from_unix_sec(1000000000);
+    if (dt.year == 2001 & dt.month == 9 & dt.day == 9 &
+        dt.hour == 1 & dt.minute == 46 & dt.second == 40)
+    {
+        pass("1000000000s -> 2001-09-09T01:46:40\0");
+    }
+    else { fail("1000000000s -> 2001-09-09T01:46:40\0"); };
+
+    if (dt_to_unix_sec(@dt) == 1000000000)
+    {
+        pass("2001-09-09T01:46:40 -> 1000000000s\0");
+    }
+    else { fail("2001-09-09T01:46:40 -> 1000000000s\0"); };
+
+    // Known: 2000-01-01T00:00:00 = Unix second 946684800
+    dt = dt_from_unix_sec(946684800);
+    if (dt.year == 2000 & dt.month == 1 & dt.day == 1 &
+        dt.hour == 0 & dt.minute == 0 & dt.second == 0)
+    {
+        pass("946684800s -> 2000-01-01T00:00:00\0");
+    }
+    else { fail("946684800s -> 2000-01-01T00:00:00\0"); };
+
+    // Millisecond precision: 500ms offset
+    dt = dt_from_unix_ms(500);
+    if (dt.ms == 500 & dt.second == 0)
+    {
+        pass("500ms -> 0.500s within epoch day\0");
+    }
+    else { fail("500ms -> 0.500s within epoch day\0"); };
+
+    // 1999-12-31T23:59:59.999 = 946684799999ms
+    dt = dt_from_unix_ms(946684799999);
+    if (dt.year == 1999 & dt.month == 12 & dt.day == 31 &
+        dt.hour == 23 & dt.minute == 59 & dt.second == 59 & dt.ms == 999)
+    {
+        pass("946684799999ms -> 1999-12-31T23:59:59.999\0");
+    }
+    else { fail("946684799999ms -> 1999-12-31T23:59:59.999\0"); };
+
+    if (dt_to_unix_ms(@dt) == 946684799999)
+    {
+        pass("1999-12-31T23:59:59.999 -> 946684799999ms\0");
+    }
+    else { fail("1999-12-31T23:59:59.999 -> 946684799999ms\0"); };
+};
+
+// ============================================================================
+// Epoch edge cases
+// ============================================================================
+
+def test_epoch_edges() -> void
+{
+    println("Epoch edge cases\0");
+
+    DateTime dt;
+
+    // Negative epoch: 1969-12-31T23:59:59 = -1000ms
+    dt = dt_from_unix_ms(-1000);
+    if (dt.year == 1969 & dt.month == 12 & dt.day == 31 &
+        dt.hour == 23 & dt.minute == 59 & dt.second == 59)
+    {
+        pass("epoch -1000ms -> 1969-12-31T23:59:59\0");
+    }
+    else { fail("epoch -1000ms -> 1969-12-31T23:59:59\0"); };
+
+    // Start of 2024 (leap year)
+    dt = dt_from_unix_sec(1704067200);  // 2024-01-01T00:00:00
+    if (dt.year == 2024 & dt.month == 1 & dt.day == 1)
+    {
+        pass("1704067200s -> 2024-01-01\0");
+    }
+    else { fail("1704067200s -> 2024-01-01\0"); };
+
+    // 2024-02-29 exists (leap year): 2024-02-29T00:00:00 = 1709164800s
+    dt = dt_from_unix_sec(1709164800);
+    if (dt.year == 2024 & dt.month == 2 & dt.day == 29)
+    {
+        pass("1709164800s -> 2024-02-29 (leap day)\0");
+    }
+    else { fail("1709164800s -> 2024-02-29 (leap day)\0"); };
+
+    // 2100-02-28 is NOT a leap day (century rule)
+    dt = dt_from_unix_sec(4107456000);  // 2100-02-28T00:00:00
+    if (dt.year == 2100 & dt.month == 2 & dt.day == 28)
+    {
+        pass("4107542400s -> 2100-02-28 (non-leap century)\0");
+    }
+    else { fail("4107542400s -> 2100-02-28 (non-leap century)\0"); };
+};
+
+// ============================================================================
+// Leap year
+// ============================================================================
+
+def test_leap_year() -> void
+{
+    println("Leap year\0");
+
+    if (dt_is_leap(2000))  { pass("2000 is leap (400-year rule)\0"); }
+    else                   { fail("2000 is leap (400-year rule)\0"); };
+
+    if (!dt_is_leap(1900)) { pass("1900 not leap (century rule)\0"); }
+    else                   { fail("1900 not leap (century rule)\0"); };
+
+    if (dt_is_leap(2024))  { pass("2024 is leap\0"); }
+    else                   { fail("2024 is leap\0"); };
+
+    if (!dt_is_leap(2023)) { pass("2023 not leap\0"); }
+    else                   { fail("2023 not leap\0"); };
+
+    if (!dt_is_leap(2100)) { pass("2100 not leap (century, not 400)\0"); }
+    else                   { fail("2100 not leap (century, not 400)\0"); };
+
+    if (dt_is_leap(2400))  { pass("2400 is leap (400-year rule)\0"); }
+    else                   { fail("2400 is leap (400-year rule)\0"); };
+};
+
+// ============================================================================
+// Days in month
+// ============================================================================
+
+def test_days_in_month() -> void
+{
+    println("Days in month\0");
+
+    if (dt_days_in_month(2024, 2) == 29) { pass("Feb 2024 = 29 days (leap)\0"); }
+    else                                 { fail("Feb 2024 = 29 days (leap)\0"); };
+
+    if (dt_days_in_month(2023, 2) == 28) { pass("Feb 2023 = 28 days\0"); }
+    else                                 { fail("Feb 2023 = 28 days\0"); };
+
+    if (dt_days_in_month(2023, 1) == 31) { pass("Jan 2023 = 31 days\0"); }
+    else                                 { fail("Jan 2023 = 31 days\0"); };
+
+    if (dt_days_in_month(2023, 4) == 30) { pass("Apr 2023 = 30 days\0"); }
+    else                                 { fail("Apr 2023 = 30 days\0"); };
+
+    if (dt_days_in_month(2023, 12) == 31) { pass("Dec 2023 = 31 days\0"); }
+    else                                  { fail("Dec 2023 = 31 days\0"); };
+};
+
+// ============================================================================
+// Day of week (verified against known dates)
+// ============================================================================
+
+def test_day_of_week() -> void
+{
+    println("Day of week\0");
+
+    DateTime dt;
+    int dow;
+
+    // 1970-01-01 was a Thursday (4)
+    dt = dt_from_unix_ms(0);
+    if (dt_day_of_week(@dt) == 4) { pass("1970-01-01 = Thursday (4)\0"); }
+    else                          { fail("1970-01-01 = Thursday (4)\0"); };
+
+    // 2000-01-01 was a Saturday (6)
+    dt = dt_from_unix_sec(946684800);
+    if (dt_day_of_week(@dt) == 6) { pass("2000-01-01 = Saturday (6)\0"); }
+    else                          { fail("2000-01-01 = Saturday (6)\0"); };
+
+    // 2001-09-11 was a Tuesday (2)
+    dt = dt_from_unix_sec(1000166400);  // 2001-09-11T00:00:00
+    if (dt_day_of_week(@dt) == 2) { pass("2001-09-11 = Tuesday (2)\0"); }
+    else                          { fail("2001-09-11 = Tuesday (2)\0"); };
+
+    // 2024-01-01 was a Monday (1)
+    dt = dt_from_unix_sec(1704067200);
+    if (dt_day_of_week(@dt) == 1) { pass("2024-01-01 = Monday (1)\0"); }
+    else                          { fail("2024-01-01 = Monday (1)\0"); };
+
+    // 2024-02-29 was a Thursday (4)
+    dt = dt_from_unix_sec(1709164800);
+    if (dt_day_of_week(@dt) == 4) { pass("2024-02-29 = Thursday (4)\0"); }
+    else                          { fail("2024-02-29 = Thursday (4)\0"); };
+};
+
+// ============================================================================
+// Day of year
+// ============================================================================
+
+def test_day_of_year() -> void
+{
+    println("Day of year\0");
+
+    DateTime dt;
+
+    dt = dt_from_unix_sec(0);    // 1970-01-01
+    if (dt_day_of_year(@dt) == 1) { pass("1970-01-01 = day 1\0"); }
+    else                          { fail("1970-01-01 = day 1\0"); };
+
+    dt = dt_from_unix_sec(86400 * 31);  // 1970-02-01
+    if (dt_day_of_year(@dt) == 32) { pass("1970-02-01 = day 32\0"); }
+    else                           { fail("1970-02-01 = day 32\0"); };
+
+    // 2024-12-31 = day 366 (leap year)
+    dt = dt_from_unix_sec(1735603200);  // 2024-12-31T00:00:00
+    if (dt_day_of_year(@dt) == 366) { pass("2024-12-31 = day 366 (leap)\0"); }
+    else                            { fail("2024-12-31 = day 366 (leap)\0"); };
+
+    // 2023-12-31 = day 365 (non-leap)
+    dt = dt_from_unix_sec(1703980800);  // 2023-12-31T00:00:00
+    if (dt_day_of_year(@dt) == 365) { pass("2023-12-31 = day 365\0"); }
+    else                            { fail("2023-12-31 = day 365\0"); };
+};
+
+// ============================================================================
+// Arithmetic
+// ============================================================================
+
+def test_arithmetic() -> void
+{
+    println("Arithmetic\0");
+
+    DateTime base, result;
+    i64 diff;
+
+    // dt_add_ms: add 1 second
+    base   = dt_from_unix_ms(0);
+    result = dt_add_ms(@base, 1000);
+    if (result.second == 1 & result.ms == 0)
+    {
+        pass("add 1000ms -> second = 1\0");
+    }
+    else { fail("add 1000ms -> second = 1\0"); };
+
+    // dt_add_ms: add 1 day
+    base   = dt_from_unix_ms(0);
+    result = dt_add_ms(@base, 86400000);
+    if (result.year == 1970 & result.month == 1 & result.day == 2)
+    {
+        pass("add 86400000ms -> 1970-01-02\0");
+    }
+    else { fail("add 86400000ms -> 1970-01-02\0"); };
+
+    // dt_add_days: cross month boundary
+    base   = dt_from_unix_sec(946684800);  // 2000-01-01
+    result = dt_add_days(@base, 31);       // should be 2000-02-01
+    if (result.year == 2000 & result.month == 2 & result.day == 1)
+    {
+        pass("add 31 days from 2000-01-01 -> 2000-02-01\0");
+    }
+    else { fail("add 31 days from 2000-01-01 -> 2000-02-01\0"); };
+
+    // dt_add_days: cross year boundary
+    base   = dt_from_unix_sec(1703980800);  // 2023-12-31
+    result = dt_add_days(@base, 1);
+    if (result.year == 2024 & result.month == 1 & result.day == 1)
+    {
+        pass("add 1 day from 2023-12-31 -> 2024-01-01\0");
+    }
+    else { fail("add 1 day from 2023-12-31 -> 2024-01-01\0"); };
+
+    // dt_add_days: negative (subtract days)
+    base   = dt_from_unix_sec(946684800);  // 2000-01-01
+    result = dt_add_days(@base, -1);
+    if (result.year == 1999 & result.month == 12 & result.day == 31)
+    {
+        pass("subtract 1 day from 2000-01-01 -> 1999-12-31\0");
+    }
+    else { fail("subtract 1 day from 2000-01-01 -> 1999-12-31\0"); };
+
+    // dt_diff_ms: same point = 0
+    base = dt_from_unix_ms(0);
+    if (dt_diff_ms(@base, @base) == 0)
+    {
+        pass("diff same point = 0\0");
+    }
+    else { fail("diff same point = 0\0"); };
+
+    // dt_diff_ms: 1 hour apart
+    DateTime a, b;
+    a = dt_from_unix_ms(3600000);
+    b = dt_from_unix_ms(0);
+    if (dt_diff_ms(@a, @b) == 3600000)
+    {
+        pass("diff 1 hour apart = 3600000ms\0");
+    }
+    else { fail("diff 1 hour apart = 3600000ms\0"); };
+
+    // dt_diff_days: 1 year (non-leap 2023 = 365 days)
+    a = dt_from_unix_sec(1703980800);  // 2023-12-31
+    b = dt_from_unix_sec(1672531200);  // 2023-01-01
+    diff = dt_diff_days(@a, @b);
+    if (diff == 364)
+    {
+        pass("diff 2023-12-31 - 2023-01-01 = 364 days\0");
+    }
+    else { fail("diff 2023-12-31 - 2023-01-01 = 364 days\0"); };
+};
+
+// ============================================================================
+// Comparison
+// ============================================================================
+
+def test_comparison() -> void
+{
+    println("Comparison\0");
+
+    DateTime a, b, c;
+    a = dt_from_unix_ms(0);
+    b = dt_from_unix_ms(1000);
+    c = dt_from_unix_ms(0);
+
+    if (dt_eq(@a, @c))   { pass("dt_eq: same epoch\0"); }
+    else                 { fail("dt_eq: same epoch\0"); };
+
+    if (!dt_eq(@a, @b))  { pass("dt_eq: different epoch\0"); }
+    else                 { fail("dt_eq: different epoch\0"); };
+
+    if (dt_lt(@a, @b))   { pass("dt_lt: earlier < later\0"); }
+    else                 { fail("dt_lt: earlier < later\0"); };
+
+    if (!dt_lt(@b, @a))  { pass("dt_lt: later not < earlier\0"); }
+    else                 { fail("dt_lt: later not < earlier\0"); };
+
+    if (dt_cmp(@a, @b) < 0) { pass("dt_cmp: earlier < later -> negative\0"); }
+    else                     { fail("dt_cmp: earlier < later -> negative\0"); };
+
+    if (dt_cmp(@b, @a) > 0) { pass("dt_cmp: later > earlier -> positive\0"); }
+    else                     { fail("dt_cmp: later > earlier -> positive\0"); };
+
+    if (dt_cmp(@a, @c) == 0) { pass("dt_cmp: equal -> zero\0"); }
+    else                      { fail("dt_cmp: equal -> zero\0"); };
+};
+
+// ============================================================================
+// Formatting
+// ============================================================================
+
+def test_formatting() -> void
+{
+    println("Formatting\0");
+
+    DateTime dt;
+    byte[64] buf;
+    int n;
+
+    dt = dt_from_unix_ms(0);
+
+    // ISO
+    n = dt_format_iso(@dt, @buf[0], 64);
+    if (n == 24 & streq(@buf[0], "1970-01-01T00:00:00.000Z\0"))
+    {
+        pass("dt_format_iso epoch zero\0");
+    }
+    else { fail("dt_format_iso epoch zero\0"); };
+
+    // Date only
+    n = dt_format_date(@dt, @buf[0], 64);
+    if (n == 10 & streq(@buf[0], "1970-01-01\0"))
+    {
+        pass("dt_format_date epoch zero\0");
+    }
+    else { fail("dt_format_date epoch zero\0"); };
+
+    // Time only
+    n = dt_format_time(@dt, @buf[0], 64);
+    if (n == 12 & streq(@buf[0], "00:00:00.000\0"))
+    {
+        pass("dt_format_time epoch zero\0");
+    }
+    else { fail("dt_format_time epoch zero\0"); };
+
+    // Known datetime with all non-zero fields: 2001-09-09T01:46:40.000
+    dt = dt_from_unix_sec(1000000000);
+    n  = dt_format_iso(@dt, @buf[0], 64);
+    if (n == 24 & streq(@buf[0], "2001-09-09T01:46:40.000Z\0"))
+    {
+        pass("dt_format_iso 2001-09-09T01:46:40\0");
+    }
+    else { fail("dt_format_iso 2001-09-09T01:46:40\0"); };
+
+    // RFC 1123: 1970-01-01T00:00:00 -> "Thu, 01 Jan 1970 00:00:00 GMT"
+    dt = dt_from_unix_ms(0);
+    n  = dt_format_rfc1123(@dt, @buf[0], 64);
+    if (n == 29 & streq(@buf[0], "Thu, 01 Jan 1970 00:00:00 GMT\0"))
+    {
+        pass("dt_format_rfc1123 epoch zero\0");
+    }
+    else { fail("dt_format_rfc1123 epoch zero\0"); };
+
+    // RFC 1123: 2000-01-01 (Saturday)
+    dt = dt_from_unix_sec(946684800);
+    n  = dt_format_rfc1123(@dt, @buf[0], 64);
+    if (n == 29 & streq(@buf[0], "Sat, 01 Jan 2000 00:00:00 GMT\0"))
+    {
+        pass("dt_format_rfc1123 2000-01-01\0");
+    }
+    else { fail("dt_format_rfc1123 2000-01-01\0"); };
+
+    // Cap-too-small returns 0
+    n = dt_format_iso(@dt, @buf[0], 4);
+    if (n == 0) { pass("dt_format_iso cap too small -> 0\0"); }
+    else        { fail("dt_format_iso cap too small -> 0\0"); };
+};
+
+// ============================================================================
+// Parsing
+// ============================================================================
+
+def test_parsing() -> void
+{
+    println("Parsing\0");
+
+    DateTime dt;
+    bool ok;
+
+    // Date-only
+    ok = dt_parse_iso("1970-01-01\0", @dt);
+    if (ok & dt.year == 1970 & dt.month == 1 & dt.day == 1)
+    {
+        pass("parse \"1970-01-01\"\0");
+    }
+    else { fail("parse \"1970-01-01\"\0"); };
+
+    // Full ISO without Z
+    ok = dt_parse_iso("2001-09-09T01:46:40\0", @dt);
+    if (ok & dt.year == 2001 & dt.month == 9 & dt.day == 9 &
+        dt.hour == 1 & dt.minute == 46 & dt.second == 40 & dt.ms == 0)
+    {
+        pass("parse \"2001-09-09T01:46:40\"\0");
+    }
+    else { fail("parse \"2001-09-09T01:46:40\"\0"); };
+
+    // Full ISO with Z
+    ok = dt_parse_iso("2001-09-09T01:46:40Z\0", @dt);
+    if (ok & dt.year == 2001 & dt.month == 9 & dt.day == 9 &
+        dt.hour == 1 & dt.minute == 46 & dt.second == 40)
+    {
+        pass("parse \"2001-09-09T01:46:40Z\"\0");
+    }
+    else { fail("parse \"2001-09-09T01:46:40Z\"\0"); };
+
+    // Full ISO with milliseconds
+    ok = dt_parse_iso("1999-12-31T23:59:59.999\0", @dt);
+    if (ok & dt.year == 1999 & dt.month == 12 & dt.day == 31 &
+        dt.hour == 23 & dt.minute == 59 & dt.second == 59 & dt.ms == 999)
+    {
+        pass("parse \"1999-12-31T23:59:59.999\"\0");
+    }
+    else { fail("parse \"1999-12-31T23:59:59.999\"\0"); };
+
+    // Full ISO with milliseconds and Z
+    ok = dt_parse_iso("2024-02-29T12:00:00.500Z\0", @dt);
+    if (ok & dt.year == 2024 & dt.month == 2 & dt.day == 29 &
+        dt.hour == 12 & dt.minute == 0 & dt.second == 0 & dt.ms == 500)
+    {
+        pass("parse \"2024-02-29T12:00:00.500Z\"\0");
+    }
+    else { fail("parse \"2024-02-29T12:00:00.500Z\"\0"); };
+
+    // Malformed: wrong separator
+    ok = dt_parse_iso("2024/02/29\0", @dt);
+    if (!ok) { pass("parse rejects \"2024/02/29\"\0"); }
+    else     { fail("parse rejects \"2024/02/29\"\0"); };
+
+    // Malformed: letters in digits
+    ok = dt_parse_iso("ABCD-01-01\0", @dt);
+    if (!ok) { pass("parse rejects non-digit year\0"); }
+    else     { fail("parse rejects non-digit year\0"); };
+};
+
+// ============================================================================
+// Parse -> format round-trip
+// ============================================================================
+
+def test_roundtrip() -> void
+{
+    println("Parse -> format round-trip\0");
+
+    DateTime dt;
+    byte[64] buf;
+
+    // Parse an ISO string, format it back, compare.
+    dt_parse_iso("2024-02-29T12:34:56.789Z\0", @dt);
+    dt_format_iso(@dt, @buf[0], 64);
+    if (streq(@buf[0], "2024-02-29T12:34:56.789Z\0"))
+    {
+        pass("parse->format \"2024-02-29T12:34:56.789Z\"\0");
+    }
+    else { fail("parse->format \"2024-02-29T12:34:56.789Z\"\0"); };
+
+    // Epoch zero round-trip through parse.
+    dt_parse_iso("1970-01-01T00:00:00.000Z\0", @dt);
+    if (dt_to_unix_ms(@dt) == 0)
+    {
+        pass("parse \"1970-01-01T00:00:00.000Z\" -> unix epoch 0\0");
+    }
+    else { fail("parse \"1970-01-01T00:00:00.000Z\" -> unix epoch 0\0"); };
+};
+
+// ============================================================================
+// Duration helpers
+// ============================================================================
+
+def test_duration() -> void
+{
+    println("Duration\0");
+
+    Duration d;
+
+    // 1 hour 30 minutes 45 seconds 500ms = 5445500ms
+    d = dur_from_ms(5445500);
+
+    if (dur_hours(@d)   == 1) { pass("dur_hours: 1\0"); }
+    else                      { fail("dur_hours: 1\0"); };
+
+    if (dur_minutes(@d) == 90) { pass("dur_minutes total: 90\0"); }
+    else                       { fail("dur_minutes total: 90\0"); };
+
+    if (dur_seconds(@d) == 5445) { pass("dur_seconds total: 5445\0"); }
+    else                         { fail("dur_seconds total: 5445\0"); };
+
+    if (dur_hr_part(@d)  == 1)  { pass("dur_hr_part: 1\0"); }
+    else                        { fail("dur_hr_part: 1\0"); };
+
+    if (dur_min_part(@d) == 30) { pass("dur_min_part: 30\0"); }
+    else                        { fail("dur_min_part: 30\0"); };
+
+    if (dur_sec_part(@d) == 45) { pass("dur_sec_part: 45\0"); }
+    else                        { fail("dur_sec_part: 45\0"); };
+
+    if (dur_ms_part(@d)  == 500) { pass("dur_ms_part: 500\0"); }
+    else                         { fail("dur_ms_part: 500\0"); };
+
+    // dt_diff_ms -> Duration
+    DateTime a, b;
+    a = dt_from_unix_ms(5445500);
+    b = dt_from_unix_ms(0);
+    d = dur_from_ms(dt_diff_ms(@a, @b));
+    if (dur_hr_part(@d) == 1 & dur_min_part(@d) == 30 & dur_sec_part(@d) == 45)
+    {
+        pass("dt_diff_ms -> Duration parts\0");
+    }
+    else { fail("dt_diff_ms -> Duration parts\0"); };
+};
+
+// ============================================================================
+// Wall-clock sanity
+// ============================================================================
+
+def test_wall_clock() -> void
+{
+    println("Wall-clock sanity\0");
+
+    DateTime utc, loc;
+    byte[64] buf;
+
+    utc   = dt_now_utc();
+    loc = dt_now_loc();
+
+    // Year should be >= 2024 and < 2200 (loose sanity bounds).
+    if (utc.year >= 2024 & utc.year < 2200)
+    {
+        pass("dt_now_utc year in plausible range\0");
+    }
+    else { fail("dt_now_utc year in plausible range\0"); };
+
+    if (utc.month >= 1 & utc.month <= 12)
+    {
+        pass("dt_now_utc month 1-12\0");
+    }
+    else { fail("dt_now_utc month 1-12\0"); };
+
+    if (utc.day >= 1 & utc.day <= 31)
+    {
+        pass("dt_now_utc day 1-31\0");
+    }
+    else { fail("dt_now_utc day 1-31\0"); };
+
+    if (utc.hour >= 0 & utc.hour <= 23)
+    {
+        pass("dt_now_utc hour 0-23\0");
+    }
+    else { fail("dt_now_utc hour 0-23\0"); };
+
+    if (loc.year >= 2024 & loc.year < 2200)
+    {
+        pass("dt_now_loc year in plausible range\0");
+    }
+    else { fail("dt_now_loc year in plausible range\0"); };
+
+    // Print the current UTC time so the user can visually verify.
+    dt_format_iso(@utc, @buf[0], 64);
+    print("  Current UTC:   \0");
+    println(@buf[0]);
+
+    dt_format_rfc1123(@utc, @buf[0], 64);
+    print("  RFC 1123:      \0");
+    println(@buf[0]);
+
+    dt_format_date(@loc, @buf[0], 64);
+    print("  loc date:    \0");
+    println(@buf[0]);
+};
+
+// ============================================================================
+// Entry point
+// ============================================================================
+
+def main() -> int
+{
+    println("=== datetime.idk test suite ===\0");
+    print("\0");
+
+    println("--- Epoch round-trip ---\0");
+    test_epoch_roundtrip();
+    print("\0");
+
+    println("--- Epoch edge cases ---\0");
+    test_epoch_edges();
+    print("\0");
+
+    println("--- Leap year ---\0");
+    test_leap_year();
+    print("\0");
+
+    println("--- Days in month ---\0");
+    test_days_in_month();
+    print("\0");
+
+    println("--- Day of week ---\0");
+    test_day_of_week();
+    print("\0");
+
+    println("--- Day of year ---\0");
+    test_day_of_year();
+    print("\0");
+
+    println("--- Arithmetic ---\0");
+    test_arithmetic();
+    print("\0");
+
+    println("--- Comparison ---\0");
+    test_comparison();
+    print("\0");
+
+    println("--- Formatting ---\0");
+    test_formatting();
+    print("\0");
+
+    println("--- Parsing ---\0");
+    test_parsing();
+    print("\0");
+
+    println("--- Round-trip ---\0");
+    test_roundtrip();
+    print("\0");
+
+    println("--- Duration ---\0");
+    test_duration();
+    print("\0");
+
+    println("--- Wall-clock ---\0");
+    test_wall_clock();
+    print("\0");
+
+    println("--- Results ---\0");
+    print("Passed: \0");
+    println(g_pass);
+    print("Failed: \0");
+    println(g_fail);
+
+    if (g_fail == 0) { println("All tests passed.\0"); return 0; };
+    return 1;
+};

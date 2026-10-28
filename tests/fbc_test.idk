@@ -1,0 +1,101 @@
+// FBC Test -- Use-After-Free and Buffer Overflow
+
+#import <standard.idk>;
+
+// ---------------------------------------------------------------------------
+// Case 1: use_after_free via pointer dereference
+// Expected: [FBC] use_after_free on the *p line
+// ---------------------------------------------------------------------------
+def test_uaf_deref() -> int
+{
+    byte* p = (byte*)fmalloc((u64)64);
+    ffree((u64)p);
+    byte x = *p;
+    return (int)x;
+};
+
+// ---------------------------------------------------------------------------
+// Case 2: use_after_free via array index read
+// Expected: [FBC] use_after_free on the p[0] line
+// ---------------------------------------------------------------------------
+def test_uaf_array() -> int
+{
+    byte* p = (byte*)fmalloc((u64)32);
+    ffree((u64)p);
+    byte x = p[0];
+    return (int)x;
+};
+
+// ---------------------------------------------------------------------------
+// Case 3: use_after_free via array write through freed pointer
+// Expected: [FBC] use_after_free on the p[1] = ... line
+// ---------------------------------------------------------------------------
+def test_uaf_write() -> void
+{
+    byte* p = (byte*)fmalloc((u64)16);
+    ffree((u64)p);
+    p[1] = (byte)99;
+};
+
+// ---------------------------------------------------------------------------
+// Case 4: buffer_overflow on a stack array -- index known at compile time
+// Expected: [FBC] buffer_overflow on buf[8] (size is 8, valid range 0..7)
+// ---------------------------------------------------------------------------
+def test_bounds_stack() -> byte
+{
+    byte[8] buf;
+    buf[0] = (byte)0xAA;
+    byte x = buf[8];
+    return x;
+};
+
+// ---------------------------------------------------------------------------
+// Case 5: buffer_overflow on a heap allocation with constant size argument
+// Expected: [FBC] buffer_overflow on p[64] (size is 64, valid range 0..63)
+// ---------------------------------------------------------------------------
+def test_bounds_heap() -> byte
+{
+    byte* p = (byte*)fmalloc((u64)64);
+    byte x = p[64];
+    ffree((u64)p);
+    return x;
+};
+
+// ---------------------------------------------------------------------------
+// Case 6: clean path -- no violations expected
+// Expected: no FBC violations
+// ---------------------------------------------------------------------------
+def test_clean_path() -> byte
+{
+    byte* p = (byte*)fmalloc((u64)64);
+    p[0] = (byte)0xFF;
+    p[63] = (byte)0x01;
+    byte first = p[0];
+    ffree((u64)p);
+    return first;
+};
+
+// ---------------------------------------------------------------------------
+// Case 7: clean stack array -- all accesses in bounds
+// Expected: no FBC violations
+// ---------------------------------------------------------------------------
+def test_clean_stack() -> byte
+{
+    byte[8] buf;
+    buf[0] = (byte)10;
+    buf[7] = (byte)20;
+    byte x = buf[0];
+    return x;
+};
+
+def main() -> int
+{
+    test_uaf_deref();
+    test_uaf_array();
+    test_uaf_write();
+    test_bounds_stack();
+    test_bounds_heap();
+    test_clean_path();
+    test_clean_stack();
+    return 0;
+};

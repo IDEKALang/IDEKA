@@ -1,0 +1,20 @@
+// Example: Using the File I/O Library
+#import <standard.idk>, <ffifio.idk>;
+
+def main() -> int
+{
+    int bsize = 8192;
+    byte[8192] fbuf; // 8KB
+    noopstr f = "src\\stdlib\\builtins\\string_object_raw.idk\0";
+
+    int bytes_read = read_file(f, fbuf, bsize);
+    if (bytes_read > 0)
+    {
+        print("Successfully read IDEKA source file.\n\n\0");
+    };
+
+    print(fbuf);
+    print();
+
+    return 0;
+};

@@ -1,0 +1,23 @@
+#import <standard.idk>;
+
+using standard::io::console;
+
+#psub test(x,y) println(x); #
+                println(y);
+
+#ifdef TEST
+#else
+#endif;
+
+#def TEST 1;
+
+TEST;
+
+#psub test2();
+
+def main() -> int
+{
+    test("Hello", "world!");
+
+	return 0;
+};

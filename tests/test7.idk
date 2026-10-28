@@ -1,0 +1,28 @@
+#import <standard.idk>;
+
+using standard::io::console;
+
+comptime
+{
+    byte*[] types = ["int", "float", "long"];
+    byte* T;
+    for (int i = 0; i < 3; i++)
+    {
+        T = types[i];
+        emitideka
+        {
+            def print_typed(~$f"{T}" x) -> void
+            {
+                println(x);
+            };
+        };
+    };
+};
+
+def main() -> int
+{
+    print_typed(42);
+    print_typed(3.14f);
+    print_typed(999l);
+    return 0;
+};

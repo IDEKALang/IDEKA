@@ -1,0 +1,36 @@
+#import <standard.idk>;
+
+using standard::io::console;
+
+object A
+{
+    int x;
+    def __init() -> this { return this; };
+    def __expr() -> A*   { return this; };
+    def __exit() -> void {};
+
+    !+def add5() -> void { this.x += 5; };
+};
+
+object B : A
+{
+    int y;
+    def __init() -> this { return this; };
+    def __expr() -> A*   { return this; };
+    def __exit() -> void {};
+
+    def add5() -> void {};
+};
+
+def main() -> int
+{
+    B b();
+
+    b.y = 10;
+    b.x = 5;
+
+    b.add5();
+
+    println(b.x);
+    return 0;
+};

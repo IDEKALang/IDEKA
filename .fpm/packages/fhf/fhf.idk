@@ -1,0 +1,46 @@
+// Author: Karac V. Thweatt
+
+// fhf.idk
+//
+// IDEKA Hotpatch Framework (FHF) — Umbrella Header
+//
+// Import this single file to get the complete framework:
+//
+//   #import "fhf.idk";
+//
+// Module dependency order (each file guards against double-inclusion):
+//
+//   fhf_types.idk      — error codes, structs, constants
+//   fhf_crypto.idk     — HMAC-SHA256 signing and verification
+//   fhf_sym.idk        — symbol resolution (RVA / name / pattern / absaddr)
+//   fhf_tramp.idk      — trampoline pool management
+//   fhf_threads.idk    — thread suspension layer
+//   fhf_engine.idk     — atomic patch apply and rollback
+//   fhf_runtime.idk    — top-level manager (init / apply_bundle / rollback_all)
+//   fhf_bundle.idk     — programmatic bundle construction
+//   fhf_remote.idk     — TCP remote patch delivery (server + client)
+//
+// fhf_cli.idk is NOT included here because it defines main().
+// Compile fhf_cli.idk separately as the IDEKApatch executable.
+//
+// Minimum required imports before this file:
+//   #import "standard.idk";      — for io::console (print)
+//   #import "redcrypto.idk";     — for SHA256
+//   #import "threading.idk";     — for spinlocks (spin_lock / spin_unlock)
+//   #import "atomics.idk";       — for load32 / store32 / inc32 / dec32
+//   #import "redmemory.idk";     — for malloc / free / VirtualAlloc / etc.
+
+#ifndef FHF
+#def FHF 1;
+
+#import "fhf_types.idk";
+#import "fhf_crypto.idk";
+#import "fhf_sym.idk";
+#import "fhf_tramp.idk";
+#import "fhf_threads.idk";
+#import "fhf_engine.idk";
+#import "fhf_runtime.idk";
+#import "fhf_bundle.idk";
+#import "fhf_remote.idk";
+
+#endif; // FHF

@@ -1,0 +1,494 @@
+// trampoline_stress.idk
+//
+// Stress test for the IDEKA bytecode trampoline mechanism.
+//
+// Tests exercised:
+//
+//   1. Rapid retargeting      - patch the same stub thousands of times in a
+//                               tight loop, verifying the return value each
+//                               call so a stale patch is immediately caught.
+//
+//   2. Multi-stub independence - allocate N separate stubs simultaneously and
+//                               confirm each fires its own target without
+//                               cross-contamination.
+//
+//   3. Round-robin churn       - cycle through all targets in order across a
+//                               large number of iterations; validates that
+//                               repeated patch -> call -> verify is stable.
+//
+//   4. Accumulator chain       - feed the output of one trampoline call as
+//                               the input of the next, building a running
+//                               value that would diverge immediately if any
+//                               dispatch misfired.
+//
+//   5. Re-entrant stub reuse   - free a stub page and reallocate it, write a
+//                               fresh template, and confirm the new stub works
+//                               correctly after the old one is gone.
+
+#import <standard.idk>;
+
+using standard::io::console;
+
+// ============================================================================
+// Target functions
+// ============================================================================
+
+def op_double(ulong x)  -> ulong { return x * 2ul;       };
+def op_add100(ulong x)  -> ulong { return x + 100ul;     };
+def op_square(ulong x)  -> ulong { return x * x;              };
+def op_sub7(ulong x)    -> ulong { return x - 7ul;       };
+def op_xor(ulong x)     -> ulong { return x xor 0xDEADul;  };
+def op_identity(ulong x)-> ulong { return x;                  };
+
+// ============================================================================
+// Stub helpers  (identical to trampoline.idk)
+// ============================================================================
+
+def alloc_stub_page() -> ulong
+{
+    ulong page = VirtualAlloc(0, 4096, 0x3000, 0x40);
+    return page;
+};
+
+def write_stub(ulong page) -> void
+{
+    byte* p = (byte*)page;
+    p[0]  = 0x48b;
+    p[1]  = 0xB8b;
+    p[2..9] = {0x00b}; // SET NOTATION
+    p[10] = 0xFFb;
+    p[11] = 0xE0b;
+};
+
+def patch_target(ulong page, ulong target_addr) -> void
+{
+    byte* p = (byte*)page;
+    p[2] = (byte)(target_addr & 0xFFul);
+    p[3] = (byte)((target_addr >> 8ul)  & 0xFFul);
+    p[4] = (byte)((target_addr >> 16ul) & 0xFFul);
+    p[5] = (byte)((target_addr >> 24ul) & 0xFFul);
+    p[6] = (byte)((target_addr >> 32ul) & 0xFFul);
+    p[7] = (byte)((target_addr >> 40ul) & 0xFFul);
+    p[8] = (byte)((target_addr >> 48ul) & 0xFFul);
+    p[9] = (byte)((target_addr >> 56ul) & 0xFFul);
+};
+
+// ============================================================================
+// Simple pass/fail reporter
+// ============================================================================
+
+def pass(ulong got, ulong expected) -> bool
+{
+    if (got == expected)
+    {
+        print("    PASS (got ");
+        print(got);
+        print(")\n");
+        return true;
+    };
+
+    print("    FAIL  got=");
+    print(got);
+    print("  expected=");
+    print(expected);
+    print("\n");
+    return false;
+};
+
+// ============================================================================
+// TEST 1 - Rapid retargeting
+//
+// Patch and call 10 000 times, alternating between op_double and op_add100.
+// Input is always 3:
+//   op_double(3)  == 6
+//   op_add100(3)  == 103
+// Any stale-patch failure shows up immediately as a wrong return value.
+// ============================================================================
+
+def test_rapid_retarget() -> bool
+{
+    print("\n[TEST 1] Rapid retargeting (10 000 iterations)\n");
+
+    ulong page = alloc_stub_page(),
+          result;
+    write_stub(page);
+    def{}* fn(ulong) -> ulong = (byte*)page;
+
+    bool ok = true;
+    int  failures = 0;
+
+    for (int i = 0; i < 10000; i++)
+    {
+        result = 0;
+
+        if (i % 2 == 0)
+        {
+            patch_target(page, (ulong)@op_double);
+            result = fn(3);
+            if (result != 6ul)
+            {
+                failures = failures + 1;
+                ok = false;
+            };
+        };
+
+        if (i % 2 != 0)
+        {
+            patch_target(page, (ulong)@op_add100);
+            result = fn(3);
+            if (result != 103ul)
+            {
+                failures = failures + 1;
+                ok = false;
+            };
+        };
+    };
+
+    VirtualFree(page, 0, 0x8000);
+
+    if (ok)
+    {
+        print("    PASS - 0 failures in 10 000 calls\n");
+        return true;
+    };
+
+    print("    FAIL - ");
+    print(failures);
+    print(" mismatches\n");
+    return false;
+};
+
+// ============================================================================
+// TEST 2 - Multi-stub independence
+//
+// Allocate 6 stubs simultaneously, one per target.
+// Call them all, then shuffle targets across stubs and call again.
+// No stub should ever dispatch to another stub's target.
+// ============================================================================
+
+#psub write_stubs(a,b,c,d,e,f) write_stub(a); #
+                               write_stub(b); #
+                               write_stub(c); #
+                               write_stub(d); #
+                               write_stub(e); #
+                               write_stub(f);
+
+#psub patch_targets(a,b,c,d,e,f) patch_target(a, (ulong)@op_double);   #
+                                 patch_target(b, (ulong)@op_add100);   #
+                                 patch_target(c, (ulong)@op_square);   #
+                                 patch_target(d, (ulong)@op_sub7);     #
+                                 patch_target(e, (ulong)@op_xor);      #
+                                 patch_target(f, (ulong)@op_identity);
+
+def test_multi_stub() -> bool
+{
+    print("\n[TEST 2] Multi-stub independence (6 concurrent stubs)\n");
+
+    ulong p0 = alloc_stub_page(),
+          p1 = #",
+          p2 = #",
+          p3 = #",
+          p4 = #",
+          p5 = #";
+
+    write_stubs(p0,p1,p2,p3,p4,p5);
+
+    patch_targets(p0,p1,p2,p3,p4,p5);
+
+    def{}* f0(ulong) -> ulong = (@)p0,
+           f1(ulong) -> ulong = (@)p1,
+           f2(ulong) -> ulong = (@)p2,
+           f3(ulong) -> ulong = (@)p3,
+           f4(ulong) -> ulong = (@)p4,
+           f5(ulong) -> ulong = (@)p5;
+
+    bool ok = true;
+    ulong x = 10ul;
+    
+    // --- Round A: initial assignment ---
+    print("  Round A (initial patch):\n");
+
+    print("    f0(op_double,  10) -> ");
+    ok = pass(f0(x), 20ul)    & ok;
+
+    print("    f1(op_add100,  10) -> ");
+    ok = pass(f1(x), 110ul)   & ok;
+
+    print("    f2(op_square,  10) -> ");
+    ok = pass(f2(x), 100ul)   & ok;
+
+    print("    f3(op_sub7,    10) -> ");
+    ok = pass(f3(x), 3ul)     & ok;
+
+    print("    f4(op_xor,     10) -> ");
+    ok = pass(f4(x), 10ul xor 0xDEADul) & ok;
+
+    print("    f5(op_identity,10) -> ");
+    ok = pass(f5(x), 10ul)    & ok;
+
+    // --- Round B: cross-patch (rotate targets one slot) ---
+    print("  Round B (rotated patch):\n");
+
+    patch_target(p0, (ulong)@op_add100);
+    patch_target(p1, (ulong)@op_square);
+    patch_target(p2, (ulong)@op_sub7);
+    patch_target(p3, (ulong)@op_xor);
+    patch_target(p4, (ulong)@op_identity);
+    patch_target(p5, (ulong)@op_double);
+
+    print("    f0(op_add100,  10) -> ");
+    ok = pass(f0(x), 110ul)   & ok;
+
+    print("    f1(op_square,  10) -> ");
+    ok = pass(f1(x), 100ul)   & ok;
+
+    print("    f2(op_sub7,    10) -> ");
+    ok = pass(f2(x), 3ul)     & ok;
+
+    print("    f3(op_xor,     10) -> ");
+    ok = pass(f3(x), 10ul xor 0xDEADul) & ok;
+
+    print("    f4(op_identity,10) -> ");
+    ok = pass(f4(x), 10ul)    & ok;
+
+    print("    f5(op_double,  10) -> ");
+    ok = pass(f5(x), 20ul)    & ok;
+
+    VirtualFree(p0, 0, 0x8000);
+    VirtualFree(p1, 0, #");
+    VirtualFree(p2, 0, #");
+    VirtualFree(p3, 0, #");
+    VirtualFree(p4, 0, #");
+    VirtualFree(p5, 0, #");
+
+    return ok;
+};
+
+// ============================================================================
+// TEST 3 - Round-robin churn
+//
+// Cycle targets A->B->C->D->E->F->A... for 6 000 calls (1 000 full rotations).
+// Each call uses input 5 and checks the known result.
+// ============================================================================
+
+def test_round_robin() -> bool
+{
+    print("\n[TEST 3] Round-robin churn (6 000 calls, 1 000 rotations)\n");
+
+    ulong page = alloc_stub_page();
+    write_stub(page);
+    def{}* fn(ulong) -> ulong = (byte*)page;
+
+    bool ok       = true;
+    int  failures;
+    ulong x       = 5,
+          r;
+
+    for (int i = 0; i < 1000; i++)
+    {
+        r = 0;
+
+        // Slot 0 - op_double
+        patch_target(page, (ulong)@op_double);
+        r = fn(x);
+        if (r != 10ul) { failures = failures + 1; ok = false; };
+
+        // Slot 1 - op_add100
+        patch_target(page, (ulong)@op_add100);
+        r = fn(x);
+        if (r != 105ul) { failures = failures + 1; ok = false; };
+
+        // Slot 2 - op_square
+        patch_target(page, (ulong)@op_square);
+        r = fn(x);
+        if (r != 25ul) { failures = failures + 1; ok = false; };
+
+        // Slot 3 - op_sub7
+        patch_target(page, (ulong)@op_sub7);
+        r = fn(x);
+        if (r != (ulong)( (ulong)5 - (ulong)7 )) { failures = failures + 1; ok = false; };
+
+        // Slot 4 - op_xor
+        patch_target(page, (ulong)@op_xor);
+        r = fn(x);
+        if (r != (5ul xor 0xDEADul)) { failures = failures + 1; ok = false; };
+
+        // Slot 5 - op_identity
+        patch_target(page, (ulong)@op_identity);
+        r = fn(x);
+        if (r != 5ul) { failures = failures + 1; ok = false; };
+    };
+
+    VirtualFree(page, 0, 0x8000);
+
+    if (ok)
+    {
+        print("    PASS - 0 failures in 6 000 calls\n");
+        return true;
+    };
+
+    print("    FAIL - ");
+    print(failures);
+    print(" mismatches\n");
+    return false;
+};
+
+// ============================================================================
+// TEST 4 - Accumulator chain
+//
+// Start with seed = 1.
+// Each step: patch to the next target, call with current accumulator.
+// After N steps the accumulator must equal the manually computed value.
+//
+//   step 0: op_double(1)     = 2
+//   step 1: op_add100(2)     = 102
+//   step 2: op_square(102)   = 10404
+//   step 3: op_sub7(10404)   = 10397
+//   step 4: op_identity(10397) = 10397
+//   step 5: op_double(10397)  = 20794
+//   ... repeat pattern
+// ============================================================================
+
+def test_accumulator() -> bool
+{
+    print("\n[TEST 4] Accumulator chain\n");
+
+    ulong page = alloc_stub_page();
+    write_stub(page);
+    def{}* fn(ulong) -> ulong = (byte*)page;
+
+    // Manually compute the first 5-step chain so we have a known expected value.
+    ulong acc      = 1,
+          expected = 1;
+
+    // step 0
+    expected = expected * 2ul;
+    // step 1
+    expected = expected + 100ul;
+    // step 2
+    expected = expected * expected;
+    // step 3
+    expected = expected - 7ul;
+    // step 4
+    expected = expected;    // identity
+
+    print("  Manually computed 5-step expected: ");
+    print(expected);
+    print("\n");
+
+    // Now run via trampoline
+    patch_target(page, (ulong)@op_double);
+    acc = fn(acc);
+
+    patch_target(page, (ulong)@op_add100);
+    acc = fn(acc);
+
+    patch_target(page, (ulong)@op_square);
+    acc = fn(acc);
+
+    patch_target(page, (ulong)@op_sub7);
+    acc = fn(acc);
+
+    patch_target(page, (ulong)@op_identity);
+    acc = fn(acc);
+
+    print("  Trampoline chain result:           ");
+    print(acc);
+    print("\n  ");
+
+    bool ok = pass(acc, expected);
+
+    VirtualFree(page, 0, 0x8000);
+    return ok;
+};
+
+// ============================================================================
+// TEST 5 - Re-entrant stub reuse (free -> reallocate -> rewrite -> call)
+//
+// Allocate, use, free, then allocate again and write a fresh stub.
+// Proves the mechanism is not relying on any residual executable state
+// from the previous allocation.
+// ============================================================================
+
+def test_reuse() -> bool
+{
+    print("\n[TEST 5] Re-entrant stub reuse\n");
+
+    bool ok = true;
+
+    // --- First lifetime ---
+    ulong page = alloc_stub_page();
+    write_stub(page);
+    def{}* fn(ulong) -> ulong = (byte*)page;
+
+    patch_target(page, (ulong)@op_double);
+    ulong r1 = fn(9ul);
+    print("  First lifetime  op_double(9) -> ");
+    ok = pass(r1, 18ul) & ok;
+
+    VirtualFree(page, 0, 0x8000);
+
+    // --- Second lifetime (fresh allocation) ---
+    ulong page2 = alloc_stub_page();
+    write_stub(page2);
+    def{}* fn2(ulong) -> ulong = (byte*)page2;
+
+    patch_target(page2, (ulong)@op_square);
+    ulong r2 = fn2(9ul);
+    print("  Second lifetime op_square(9) -> ");
+    ok = pass(r2, 81ul) & ok;
+
+    patch_target(page2, (ulong)@op_add100);
+    ulong r3 = fn2(9ul);
+    print("  Repatch         op_add100(9) -> ");
+    ok = pass(r3, 109ul) & ok;
+
+    VirtualFree(page2, 0, 0x8000);
+
+    return ok;
+};
+
+// ============================================================================
+// Main
+// ============================================================================
+
+def main() -> int
+{
+    print("=== IDEKA Trampoline Stress Test ===\n");
+
+    bool t1 = test_rapid_retarget(),
+         t2 = test_multi_stub(),
+         t3 = test_round_robin(),
+         t4 = test_accumulator(),
+         t5 = test_reuse();
+
+    print("\n========================================\n");
+    print("Results:\n");
+
+    print("  Test 1 (rapid retarget)    : ");
+    if (t1) { print("PASS\n"); };
+    if (!t1) { print("FAIL\n"); };
+
+    print("  Test 2 (multi-stub)        : ");
+    if (t2) { print("PASS\n"); };
+    if (!t2) { print("FAIL\n"); };
+
+    print("  Test 3 (round-robin churn) : ");
+    if (t3) { print("PASS\n"); };
+    if (!t3) { print("FAIL\n"); };
+
+    print("  Test 4 (accumulator chain) : ");
+    if (t4) { print("PASS\n"); };
+    if (!t4) { print("FAIL\n"); };
+
+    print("  Test 5 (stub reuse)        : ");
+    if (t5) { print("PASS\n"); };
+    if (!t5) { print("FAIL\n"); };
+
+    bool all = t1 & t2 & t3 & t4 & t5;
+    print("========================================\n");
+    if (all)  { print("ALL TESTS PASSED\n"); };
+    if (!all) { print("ONE OR MORE TESTS FAILED\n"); };
+
+    return 0;
+};

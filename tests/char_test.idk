@@ -1,0 +1,7 @@
+#import <standard.idk>;
+
+def main() -> int
+{
+    char x = "A";
+	return 0;
+};

@@ -1,0 +1,16 @@
+#import <standard.idk>;
+
+using standard::io::console;
+
+def recurse(int c) -> void
+{
+    if (--c == 0) { return 0; };
+    println(f"Recurse {c}");
+    recurse(c);
+};
+
+def main() -> int
+{
+    recurse(1000);
+    return 0;
+};

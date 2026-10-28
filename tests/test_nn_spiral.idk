@@ -1,0 +1,341 @@
+// test_nn_spiral.idk
+//
+// Two-spiral classification - a classic hard non-linearly-separable problem.
+//
+// Two interleaved Archimedean spirals in 2D, one per class.  No linear
+// classifier (and no shallow network) can separate them.  This test
+// requires the network to learn a complex, highly non-linear boundary.
+//
+// Dataset: 24 points per class (48 total), generated analytically.
+//   Class 0: theta in [0, 3*PI/2], r = theta / (3*PI/2)
+//   Class 1: same spiral rotated by PI
+//
+// Network:  Linear(2->32, Tanh) -> Linear(32->32, Tanh) -> Linear(32->1, None)
+// Optimizer: Adam  lr=0.005
+// Loss:      MSE  (target 0.0 / 1.0, output clamped to [0,1] at eval time)
+// Steps:     8000
+//
+// Expected: loss below 0.05 by ~6000 steps; accuracy above 90% on train set.
+// Prints a 2D ASCII grid showing the learned decision boundary at the end.
+
+#import <standard.idk>, <neuralnet.idk>, <autograd_vis.idk>;
+
+using standard::autograd,
+      standard::neuralnet,
+      standard::random,
+      standard::math,
+      standard::io::console,
+      standard::autograd_vis;
+
+#def N_PER_CLASS 24;
+#def N_TOTAL     48;
+
+// ASCII grid for decision boundary.
+#def GRID_W 48;
+#def GRID_H 24;
+
+// Print a 2D ASCII map of the learned decision boundary.
+// Samples a GRID_W x GRID_H grid over [-1.2, 1.2] x [-1.2, 1.2].
+def plot_boundary(Sequential* net, Tape* tape,
+                  float* x_data, float* y_label, int n) -> void
+{
+    float  step_x, step_y, gx, gy, pred_val;
+    int    gxi, gyi, i, cell;
+    byte*  grid;
+    float* pts_buf;
+    size_t[2] pts_dims;
+    GradTensor* pts_gt;
+    GradTensor* pts_pred;
+
+    grid     = (byte*)fmalloc(GRID_H * GRID_W);
+    pts_buf  = (float*)fmalloc(GRID_H * GRID_W * 2 * 32);
+
+    step_x = 2.4 / (float)GRID_W;
+    step_y = 2.4 / (float)GRID_H;
+
+    // Build a [GRID_H*GRID_W x 2] input batch covering the whole grid.
+    cell = 0;
+    gyi = 0;
+    while (gyi < GRID_H)
+    {
+        gy = 1.2 - (float)gyi * step_y;
+        gxi = 0;
+        while (gxi < GRID_W)
+        {
+            gx = -1.2 + (float)gxi * step_x;
+            pts_buf[cell * 2 + 0] = gx;
+            pts_buf[cell * 2 + 1] = gy;
+            cell++;
+            gxi++;
+        };
+        gyi++;
+    };
+
+    pts_dims[0] = GRID_H * GRID_W;
+    pts_dims[1] = 2;
+
+    pts_gt = (GradTensor*)fmalloc(sizeof(GradTensor));
+    gt_init(pts_gt, tape, pts_buf, 2, @pts_dims[0]);
+    pts_gt.requires_grad = false;
+    ffree((u64)pts_buf);
+
+    // Single forward pass over the entire grid batch.
+    pts_pred = nn_seq_forward(net, tape, pts_gt);
+
+    // Fill grid with decision values.
+    cell = 0;
+    gyi = 0;
+    while (gyi < GRID_H)
+    {
+        gxi = 0;
+        while (gxi < GRID_W)
+        {
+            pred_val = pts_pred.vals[cell];
+            if (pred_val >= 0.5)
+            {
+                grid[gyi * GRID_W + gxi] = '+';
+            }
+            else
+            {
+                grid[gyi * GRID_W + gxi] = '.';
+            };
+            cell++;
+            gxi++;
+        };
+        gyi++;
+    };
+
+    gt_free_heap(pts_pred);
+    gt_free_heap(pts_gt);
+    nn_seq_free_intermediates(net);
+    tape.reset();
+
+    // Overlay training data: class 0 = '0', class 1 = '1'.
+    i = 0;
+    while (i < n)
+    {
+        gxi = (int)((x_data[i * 2 + 0] + 1.2) / 2.4 * (float)GRID_W);
+        gyi = (int)((1.2 - x_data[i * 2 + 1]) / 2.4 * (float)GRID_H);
+        if (gxi < 0)        { gxi = 0; };
+        if (gxi >= GRID_W)  { gxi = GRID_W - 1; };
+        if (gyi < 0)        { gyi = 0; };
+        if (gyi >= GRID_H)  { gyi = GRID_H - 1; };
+        if (y_label[i] < 0.5)
+        {
+            grid[gyi * GRID_W + gxi] = '0';
+        }
+        else
+        {
+            grid[gyi * GRID_W + gxi] = '1';
+        };
+        i++;
+    };
+
+    // Render.
+    console::print("\n  Decision boundary  (+= class 1  .= class 0  0/1= training pts)\n\n");
+    gyi = 0;
+    while (gyi < GRID_H)
+    {
+        console::print("  |");
+        gxi = 0;
+        while (gxi < GRID_W)
+        {
+            console::print(grid[gyi * GRID_W + gxi]);
+            gxi++;
+        };
+        console::print("|\n");
+        gyi++;
+    };
+    console::print("  +");
+    gxi = 0;
+    while (gxi < GRID_W)
+    {
+        console::print('-');
+        gxi++;
+    };
+    console::print("+\n");
+
+    ffree((u64)grid);
+    return;
+};
+
+def main() -> int
+{
+    // All locals at top.
+
+    float[N_TOTAL * 2] x_buf;
+    float[N_TOTAL]     y_buf;
+
+    size_t[2] x_dims,
+              y_dims;
+
+    PCG32        rng;
+    Sequential   net;
+    Adam         opt;
+    Tape         tape(512);
+    AutogradVis  vis;
+
+    GradTensor* x_gt,
+                y_gt,
+                pred,
+                loss;
+
+    float  loss_val;
+    int    step, i;
+    int    correct;
+    float  theta, r, cx, cy, pred_val;
+    float  acc;
+    bool   graph_built;
+
+    // -----------------------------------------------------------------------
+    // Generate spiral dataset.
+    // Class 0: theta in [0, 1.5*PI].  Class 1: offset by PI.
+    // -----------------------------------------------------------------------
+
+    i = 0;
+    while (i < N_PER_CLASS)
+    {
+        theta = 1.5 * math::PIF * (float)i / (float)N_PER_CLASS;
+        r     = theta / (1.5 * math::PIF);
+
+        // Class 0.
+        cx = r * math::cos(theta);
+        cy = r * math::sin(theta);
+        x_buf[i * 2 + 0] = cx;
+        x_buf[i * 2 + 1] = cy;
+        y_buf[i]          = 0.0;
+
+        // Class 1: rotate by PI.
+        cx = r * math::cos(theta + math::PIF);
+        cy = r * math::sin(theta + math::PIF);
+        x_buf[(N_PER_CLASS + i) * 2 + 0] = cx;
+        x_buf[(N_PER_CLASS + i) * 2 + 1] = cy;
+        y_buf[N_PER_CLASS + i]             = 1.0;
+
+        i++;
+    };
+
+    x_dims[0] = N_TOTAL;  x_dims[1] = 2;
+    y_dims[0] = N_TOTAL;  y_dims[1] = 1;
+
+    // -----------------------------------------------------------------------
+    // Build network: 2 -> 32 (Tanh) -> 32 (Tanh) -> 1 (None)
+    // -----------------------------------------------------------------------
+
+    pcg32_init(@rng);
+
+    nn_seq_init(@net);
+    nn_seq_add_linear(@net,  2, 32, NN_ACT_TANH, @rng);
+    nn_seq_add_linear(@net, 32, 32, NN_ACT_TANH, @rng);
+    nn_seq_add_linear(@net, 32,  1, NN_ACT_NONE, @rng);
+
+    adam_init_default(@opt, 0.005);
+    adam_register_seq(@opt, @net);
+
+    vis_init(@vis, 1024, 768, "Two-Spiral  -  Computation Graph + Loss\0");
+
+    // -----------------------------------------------------------------------
+    // Training loop.
+    // -----------------------------------------------------------------------
+
+    console::print("Two-spiral classification  (2->32->32->1, Tanh, Adam lr=0.005)\n");
+    console::print("Step      Loss\n");
+    console::print("----      ----\n");
+
+    while (step < 8000)
+    {
+        x_gt = (GradTensor*)fmalloc(sizeof(GradTensor));
+        y_gt = (GradTensor*)fmalloc(sizeof(GradTensor));
+        gt_init(x_gt, @tape, @x_buf[0], 2, @x_dims[0]);
+        gt_init(y_gt, @tape, @y_buf[0], 2, @y_dims[0]);
+        x_gt.requires_grad = false;
+        y_gt.requires_grad = false;
+
+        pred     = nn_seq_forward(@net, @tape, x_gt);
+        loss     = nn_loss_mse(@tape, pred, y_gt);
+        loss_val = loss.vals[0];
+
+        if (!graph_built)
+        {
+            vis_build_graph(@vis, @tape);
+            graph_built = true;
+        };
+
+        vis_push_loss(@vis, loss_val);
+        vis_render(@vis);
+        vis_poll(@vis);
+
+        if (step % 800 == 0)
+        {
+            console::print(step);
+            console::print("      ");
+            console::print(loss_val);
+            console::print("\n");
+        };
+
+        nn_seq_zero_grad(@net);
+        backward(@tape, loss);
+        adam_step(@opt, @net);
+
+        gt_free_heap(loss);
+        gt_free_heap(y_gt);
+        gt_free_heap(x_gt);
+        nn_seq_free_intermediates(@net);
+        tape.reset();
+
+        step++;
+    };
+
+    // -----------------------------------------------------------------------
+    // Evaluate accuracy on training set.
+    // -----------------------------------------------------------------------
+
+    console::print("\nEvaluating accuracy on training set...\n");
+
+    x_gt = (GradTensor*)fmalloc(sizeof(GradTensor));
+    gt_init(x_gt, @tape, @x_buf[0], 2, @x_dims[0]);
+    x_gt.requires_grad = false;
+    pred = nn_seq_forward(@net, @tape, x_gt);
+
+    correct = 0;
+    i = 0;
+    while (i < N_TOTAL)
+    {
+        pred_val = pred.vals[i];
+        if (pred_val >= 0.5 & y_buf[i] >= 0.5) { correct++; };
+        if (pred_val <  0.5 & y_buf[i] <  0.5) { correct++; };
+        i++;
+    };
+
+    acc = (float)correct / (float)N_TOTAL * 100.0;
+    console::print("Train accuracy: ");
+    console::print(correct);
+    console::print(" / ");
+    console::print(N_TOTAL);
+    console::print("  (");
+    console::print(acc);
+    console::print("%)\n");
+
+    gt_free_heap(x_gt);
+    nn_seq_free_intermediates(@net);
+    tape.reset();
+
+    // -----------------------------------------------------------------------
+    // Decision boundary plot.
+    // -----------------------------------------------------------------------
+
+    plot_boundary(@net, @tape, @x_buf[0], @y_buf[0], N_TOTAL);
+
+    // Hold window open until closed.
+    while (vis_poll(@vis))
+    {
+        vis_render(@vis);
+    };
+
+    vis_shutdown(@vis);
+
+    adam_free(@opt);
+    nn_seq_free(@net);
+
+    return 0;
+};

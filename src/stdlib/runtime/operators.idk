@@ -1,0 +1,57 @@
+// Author: Karac V. Thweatt
+
+#ifndef IDEKA_STANDARD_TYPES
+#import "types.idk";
+#endif;
+
+#ifndef IDEKA_STANDARD_OPERATORS
+#def IDEKA_STANDARD_OPERATORS 1;
+
+
+namespace standard
+{
+    namespace operators
+    {
+        ///
+        Name: Swap
+
+        Takes two integer pointers, swaps the values at each address.
+        ///
+        operator (int* a, int* b)[<>] -> void
+        {
+            *a `^|= *b;
+            *b `^|= *a;
+            *a `^|= *b;
+        };
+
+        operator (int a, int b)[<>] -> void
+        {
+            a ^|= b;
+            b ^|= a;
+            a ^|= b;
+        };
+
+        ///
+        Name: Null-Swap
+
+        Swap only if neither A or B are null.
+        ///
+        operator (int* a, int* b)[<?>] -> void
+        {
+            if (a is void | b is void) { return; };
+            *a `^|= *b;
+            *b `^|= *a;
+            *a `^|= *b;
+        };
+
+        operator (int a, int b)[<?>] -> void
+        {
+            if (a is void | b is void) { return; };
+            a ^|= b;
+            b ^|= a;
+            a ^|= b;
+        };
+    };
+};
+
+#endif;

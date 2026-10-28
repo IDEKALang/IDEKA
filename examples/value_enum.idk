@@ -1,0 +1,15 @@
+#import <standard.idk>;
+
+using standard::io::console;
+
+enum myenum {
+	val1 = 100,
+	val2 = 200,
+	val3 = 300
+};
+
+def main() -> int
+{
+	println(f"{myenum.val1}");
+	return 0;
+};

@@ -1,0 +1,25 @@
+#import <standard.idk>;
+ 
+using standard::io::console;
+ 
+object COUT
+{
+    byte* dat;
+    def __init() -> this { return this; };
+
+    def __expr() -> COUT* { return this; };
+
+    def __exit() -> void { (void)this; };
+};
+
+operator (COUT a, byte* b)[<<] -> void
+{
+    print(b);
+};
+ 
+def main() -> int
+{
+    COUT cout();
+    cout << "testing!";
+    return 0;
+};

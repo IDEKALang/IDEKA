@@ -1,0 +1,63 @@
+#import <standard.idk>;
+
+using standard::io::console;
+
+object ErrorA
+{
+    int code;
+    def __init(int c) -> this { this.code = c; return this; };
+    def __expr() -> ErrorA* { return this; };
+    def __exit() -> void {return;};
+};
+
+object ErrorB
+{
+    byte* message;
+    def __init(byte* m) -> this { this.message = m; return this; };
+    def __expr() -> ErrorB* { return this; };
+    def __exit() -> void {return;};
+};
+
+def risky_operation(int mode) -> void
+{
+    if (mode == 1)
+    {
+        ErrorA a(100);
+        throw(a);
+    }
+    elif (mode == 2)
+    {
+        ErrorB b("Something failed.");
+        throw(b);
+    }
+    else
+    {
+        throw("Generic error\0");
+    };
+};
+
+def main() -> int
+{
+    try
+    {
+        risky_operation(2);
+    }
+    catch (ErrorA e)
+    {
+        print(f"ErrorA caught: code {e.code}\0");
+    }
+    catch (ErrorB e)
+    {
+        print(f"ErrorB caught: {e.message}\0");
+    }
+    catch (byte* s)
+    {
+        print(f"String error: {s}\0");
+    }
+    catch (auto x)
+    {
+        print("Unknown error type\0");
+    };
+
+    return 0;
+};

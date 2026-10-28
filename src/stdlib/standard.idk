@@ -1,0 +1,19 @@
+// Author: Karac V. Thweatt
+
+// IDEKA Standard Library
+//
+// Do not modify.
+
+// 
+// #def IDEKA_REDUCED_SPECIFICATION 1;
+//
+
+#ifndef IDEKA_STANDARD
+#def IDEKA_STANDARD 1;
+#endif;
+
+#ifndef IDEKA_RUNTIME
+// Disable with 0 to not include the IDEKA runtime.
+#def IDEKA_RUNTIME 1;
+#import <runtime\runtime.idk>;
+#endif;

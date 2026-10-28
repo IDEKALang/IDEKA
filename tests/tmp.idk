@@ -1,0 +1,6 @@
+#import <standard.idk>;
+
+def main() -> int
+{
+    return 0;
+};

@@ -1,0 +1,67 @@
+// bctest_race.idk
+// Two threads writing into their own private message buffers.
+// No shared mutable state -> no race for the borrow checker to flag,
+// and no corrupted output at runtime.
+#import <standard.idk>, <threading.idk>;
+using standard::io::console,
+      standard::threading;
+
+// Thread A: writes "Hello from thread A" into its own private buffer
+def thread_a(void* arg) -> void*
+{
+    byte* buf = (byte*)arg;
+    int i = 0;
+    while (i < 5)
+    {
+        buf[0..19] = ['H','e','l','l','o',' ','f','r','o','m',' ','t','h','r','e','a','d',' ','A','\0'];
+        println(buf);
+        i = i + 1;
+    };
+    return (void*)0;
+};
+
+// Thread B: writes "Hello from thread B" into its own private buffer
+def thread_b(void* arg) -> void*
+{
+    byte* buf = (byte*)arg;
+    int i = 0;
+    while (i < 5)
+    {
+        buf[0..19] = ['H','e','l','l','o',' ','f','r','o','m',' ','t','h','r','e','a','d',' ','B','\0'];
+        println(buf);
+        i = i + 1;
+    };
+    return (void*)0;
+};
+
+def main() -> int
+{
+    // Separate buffers -- each thread (and main) gets its own,
+    // so there is no shared/escaping site to race on.
+    byte[64] msg_main;
+    byte[64] msg_a;
+    byte[64] msg_b;
+
+    byte* buf_main = @msg_main[0];
+    byte* buf_a = @msg_a[0];
+    byte* buf_b = @msg_b[0];
+
+    Thread ta, tb;
+
+    // Spawn thread A with its own private buffer
+    thread_create(@thread_a, (void*)buf_a, @ta);
+
+    // Spawn thread B with its own private buffer
+    thread_create(@thread_b, (void*)buf_b, @tb);
+    defer
+    {
+        thread_join(@ta);
+        thread_join(@tb);
+    };
+
+    // main writes to its own buffer -- no longer shared with the threads
+    buf_main[0..1] = ['M',void];
+    println(buf_main);
+
+    return 0;
+};

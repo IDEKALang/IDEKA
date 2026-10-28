@@ -1,0 +1,179 @@
+// test_nn_multiout.idk
+//
+// Multi-output regression — learn AND, OR, and XOR simultaneously.
+//
+// A single network with 3 outputs learns all three binary logic functions
+// at once from the same 4 input pairs.  This tests that the backward pass
+// correctly propagates gradients through a wider output layer and that the
+// optimizer handles more than one output unit cleanly.
+//
+// Truth table (4 samples, 2 inputs -> 3 outputs):
+//   [0, 0] -> [AND=0, OR=0, XOR=0]
+//   [0, 1] -> [AND=0, OR=1, XOR=1]
+//   [1, 0] -> [AND=0, OR=1, XOR=1]
+//   [1, 1] -> [AND=1, OR=1, XOR=0]
+//
+// Network:  Linear(2->16, ReLU) -> Linear(16->16, ReLU) -> Linear(16->3, None)
+// Optimizer: Adam  lr=0.01
+// Loss:      MSE  (over all 3 outputs at once)
+// Steps:     4000
+//
+// Expected: loss falls below 0.01 by ~2500 steps.
+// Final table shows all three function outputs side by side.
+
+#import <standard.idk>, <neuralnet.idk>;
+
+using standard::autograd,
+      standard::neuralnet,
+      standard::io::console,
+      standard::random;
+
+def main() -> int
+{
+    // All locals hoisted to function top.
+
+    // 4 samples x 2 inputs = 8 floats.
+    float[8] x_buf = [
+        0.0, 0.0,
+        0.0, 1.0,
+        1.0, 0.0,
+        1.0, 1.0
+    ];
+
+    // 4 samples x 3 outputs = 12 floats.
+    // Column order: AND, OR, XOR.
+    float[12] y_buf = [
+        0.0, 0.0, 0.0,
+        0.0, 1.0, 1.0,
+        0.0, 1.0, 1.0,
+        1.0, 1.0, 0.0
+    ];
+
+    size_t[2] x_dims,
+              y_dims;
+    PCG32      rng;
+    Sequential net;
+    Adam       opt;
+    Tape       tape(256);
+    GradTensor* x_gt,
+                y_gt,
+                pred,
+                loss;
+    float      loss_val;
+    int        step, si;
+    float      and_pred, or_pred, xor_pred;
+
+    // -----------------------------------------------------------------------
+    // Initialise RNG, network, optimizer.
+    // -----------------------------------------------------------------------
+
+    x_dims[0] = 4;  x_dims[1] = 2;
+    y_dims[0] = 4;  y_dims[1] = 3;
+
+    pcg32_init(@rng);
+
+    nn_seq_init(@net);
+    nn_seq_add_linear(@net,  2, 16, NN_ACT_RELU, @rng);
+    nn_seq_add_linear(@net, 16, 16, NN_ACT_RELU, @rng);
+    nn_seq_add_linear(@net, 16,  3, NN_ACT_NONE, @rng);
+
+    adam_init_default(@opt, 0.01);
+    adam_register_seq(@opt, @net);
+
+    // -----------------------------------------------------------------------
+    // Training loop.
+    // -----------------------------------------------------------------------
+
+    console::print("Multi-output logic (AND/OR/XOR) regression  (2->16->16->3, ReLU, Adam lr=0.01)\n");
+    console::print("Step     Loss\n");
+    console::print("----     ----\n");
+
+    while (step < 4000)
+    {
+        x_gt = (GradTensor*)fmalloc(sizeof(GradTensor));
+        y_gt = (GradTensor*)fmalloc(sizeof(GradTensor));
+        gt_init(x_gt, @tape, @x_buf[0], 2, @x_dims[0]);
+        gt_init(y_gt, @tape, @y_buf[0], 2, @y_dims[0]);
+        x_gt.requires_grad = false;
+        y_gt.requires_grad = false;
+
+        pred     = nn_seq_forward(@net, @tape, x_gt);
+        loss     = nn_loss_mse(@tape, pred, y_gt);
+        loss_val = loss.vals[0];
+
+        if (step % 400 == 0)
+        {
+            console::print(step);
+            console::print("     ");
+            console::print(loss_val);
+            console::print("\n");
+        };
+
+        nn_seq_zero_grad(@net);
+        backward(@tape, loss);
+        adam_step(@opt, @net);
+
+        gt_free_heap(loss);
+        gt_free_heap(y_gt);
+        gt_free_heap(x_gt);
+        nn_seq_free_intermediates(@net);
+        tape.reset();
+
+        step++;
+    };
+
+    // -----------------------------------------------------------------------
+    // Final evaluation.
+    // -----------------------------------------------------------------------
+
+    console::print("\nFinal predictions after ");
+    console::print(step);
+    console::print(" steps:\n");
+    console::print("Input      AND_pred  OR_pred  XOR_pred  | AND  OR  XOR\n");
+    console::print("------     --------  -------  --------  | ---  --  ---\n");
+
+    x_gt = (GradTensor*)fmalloc(sizeof(GradTensor));
+    gt_init(x_gt, @tape, @x_buf[0], 2, @x_dims[0]);
+    x_gt.requires_grad = false;
+    pred = nn_seq_forward(@net, @tape, x_gt);
+
+    while (si < 4)
+    {
+        and_pred = pred.vals[si * 3 + 0];
+        or_pred  = pred.vals[si * 3 + 1];
+        xor_pred = pred.vals[si * 3 + 2];
+
+        console::print("[");
+        console::print(x_buf[si * 2]);
+        console::print(", ");
+        console::print(x_buf[si * 2 + 1]);
+        console::print("]   ");
+        console::print(and_pred);
+        console::print("   ");
+        console::print(or_pred);
+        console::print("   ");
+        console::print(xor_pred);
+        console::print("   | ");
+        console::print(y_buf[si * 3 + 0]);
+        console::print("   ");
+        console::print(y_buf[si * 3 + 1]);
+        console::print("   ");
+        console::print(y_buf[si * 3 + 2]);
+        console::print("\n");
+        si++;
+    };
+
+    gt_free_heap(pred);
+    gt_free_heap(x_gt);
+    nn_seq_free_intermediates(@net);
+    tape.reset();
+
+    // -----------------------------------------------------------------------
+    // Cleanup.
+    // -----------------------------------------------------------------------
+
+    adam_free(@opt);
+    nn_seq_free(@net);
+
+    return 0;
+};

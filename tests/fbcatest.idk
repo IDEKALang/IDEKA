@@ -1,0 +1,88 @@
+// fbc_alias_demo.idk
+// Demonstrates interprocedural mutable alias detection by the FBC.
+//
+// Run with:
+//     python fbc.py fbc_alias_demo.idk --entry main
+//
+// Expected FBC output: three mutable_alias violations, one per call site below.
+//
+// No violation should be reported for the safe_call at the end,
+// where distinct heap allocations are passed.
+
+#import <standard.idk>;
+
+// ---------------------------------------------------------------------------
+// Helper: does work with two byte pointers.
+// Inside this function p and q must not alias the same site.
+// ---------------------------------------------------------------------------
+def process(byte* p, byte* q) -> void
+{
+    p[0] = 0xFF;
+    q[0] = 0x00;
+    return;
+};
+
+
+// ---------------------------------------------------------------------------
+// Object with a method that takes two pointers.
+// ---------------------------------------------------------------------------
+object Worker
+{
+    def __init() -> this
+    {
+        return this;
+    };
+
+    def __expr() -> Worker*
+    {
+        return this;
+    };
+
+    def __exit() -> void { return; };
+
+    def run(byte* a, byte* b) -> void
+    {
+        a[0] = 1;
+        b[0] = 2;
+        return;
+    };
+};
+
+
+// ---------------------------------------------------------------------------
+// Entry point
+// ---------------------------------------------------------------------------
+def main() -> int
+{
+    byte* buf = fmalloc(64);
+
+    // Case 1: named direct call.
+    // Both p and q point at buf. FBC catches this interprocedurally
+    // by propagating buf's heap site into process()'s parameter slots.
+    byte* p = buf;
+    byte* q = buf;
+    process(p, q);
+
+    // Case 2: function pointer call.
+    // Same aliasing violation but dispatched through a function pointer.
+    // FBC executes the pointer expression through the FVM to recover
+    // the callee name and then propagates the site context.
+    def{}* fp(byte*, byte*) -> void = @process;
+    fp(p, q);
+
+    // Case 3: method call.
+    // Same violation through an object method.
+    // FBC resolves Worker::run via name mangling and checks arg sites.
+    Worker w();
+    w.run(p, q);
+
+    // Safe call: distinct allocations, no violation expected.
+    byte* buf2 = fmalloc(64);
+    byte* r = buf2;
+    process(p, r);
+
+    ffree(long(buf));
+    ffree(long(buf2));
+
+    return 0;
+};

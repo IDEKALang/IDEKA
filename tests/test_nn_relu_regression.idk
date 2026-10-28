@@ -1,0 +1,290 @@
+// test_nn_relu_regression.idk
+//
+// ReLU regression — learn f(x) = |x| (absolute value) over [-1, 1].
+//
+// This is the natural counterpart to test_nn_sine.idk, which uses Tanh
+// throughout.  Here every hidden layer uses ReLU instead, which is a
+// piecewise-linear activation.  Absolute value is itself piecewise linear,
+// so a network with enough ReLU units should represent it exactly.
+//
+// The test also verifies that the network generalises: training points are
+// evenly spaced on [-1, 1] and test points are interleaved between them.
+//
+// Network:  Linear(1->32, ReLU) -> Linear(32->32, ReLU) -> Linear(32->1, None)
+// Optimizer: Adam  lr=0.003
+// Loss:      MSE
+// Steps:     3000
+//
+// Expected: loss below 0.0005 by ~2000 steps.
+// ASCII plot of predicted vs true |x| at the end.
+
+#import <standard.idk>, <neuralnet.idk>;
+
+using standard::autograd,
+      standard::neuralnet,
+      standard::random,
+      standard::math,
+      standard::io::console;
+
+#def N_TRAIN 40;
+#def N_TEST  20;
+
+#def PLOT_W  64;
+#def PLOT_H  16;
+
+// Print a simple ASCII plot of true vs predicted |x| over the test set.
+def plot_results(float* true_vals, float* pred_vals, int n) -> void
+{
+    byte[PLOT_H][PLOT_W] chars;
+    int   row, col, i,
+          row_true, row_pred;
+    float y_true, y_pred,
+          y_min, y_max, y_range;
+
+    // Fill with spaces.
+    row = 0;
+    while (row < PLOT_H)
+    {
+        col = 0;
+        while (col < PLOT_W)
+        {
+            chars[row][col] = ' ';
+            col++;
+        };
+        row++;
+    };
+
+    y_min   = -0.1;
+    y_max   =  1.1;
+    y_range = y_max - y_min;
+
+    i = 0;
+    while (i < n)
+    {
+        col      = (int)((float)i / (float)n * (float)PLOT_W);
+        y_true   = true_vals[i];
+        y_pred   = pred_vals[i];
+
+        row_true = (int)((1.0 - (y_true - y_min) / y_range) * (float)(PLOT_H - 1));
+        row_pred = (int)((1.0 - (y_pred - y_min) / y_range) * (float)(PLOT_H - 1));
+
+        if (row_true < 0)       { row_true = 0; };
+        if (row_true >= PLOT_H) { row_true = PLOT_H - 1; };
+        if (row_pred < 0)       { row_pred = 0; };
+        if (row_pred >= PLOT_H) { row_pred = PLOT_H - 1; };
+
+        if (row_true == row_pred)
+        {
+            chars[row_true][col] = '+';
+        }
+        else
+        {
+            chars[row_true][col] = '*';
+            chars[row_pred][col] = 'o';
+        };
+
+        i++;
+    };
+
+    console::print("\n  True=* Pred=o Both=+\n\n");
+    row = 0;
+    while (row < PLOT_H)
+    {
+        console::print("  |");
+        col = 0;
+        while (col < PLOT_W)
+        {
+            console::print(chars[row][col]);
+            col++;
+        };
+        console::print("|\n");
+        row++;
+    };
+    console::print("  +");
+    col = 0;
+    while (col < PLOT_W)
+    {
+        console::print('-');
+        col++;
+    };
+    console::print("+\n");
+    return;
+};
+
+def main() -> int
+{
+    // All locals at top.
+
+    float[N_TRAIN] x_train,
+                   y_train;
+
+    float[N_TEST]  x_test,
+                   y_test,
+                   y_pred_out;
+
+    size_t[2] x_tr_dims,
+              y_tr_dims,
+              x_te_dims,
+              y_te_dims;
+
+    PCG32      rng;
+    Sequential net;
+    Adam       opt;
+    Tape       tape(256);
+
+    GradTensor* x_gt,
+                y_gt,
+                pred,
+                loss;
+
+    float  loss_val, x_val;
+    int    step, i;
+    float  test_mse, err;
+
+    // -----------------------------------------------------------------------
+    // Build dataset.
+    // Train: x = -1 + 2*k/N_TRAIN  for k in 0..N_TRAIN.   y = |x|
+    // Test:  x interleaved between train points.
+    // -----------------------------------------------------------------------
+
+    i = 0;
+    while (i < N_TRAIN)
+    {
+        x_val      = -1.0 + 2.0 * (float)i / (float)N_TRAIN;
+        x_train[i] = x_val;
+        y_train[i] = x_val < 0.0 ? -x_val : x_val;
+        i++;
+    };
+
+    i = 0;
+    while (i < N_TEST)
+    {
+        x_val     = -1.0 + 2.0 * ((float)i + 0.5) / (float)N_TRAIN;
+        x_test[i] = x_val;
+        y_test[i] = x_val < 0.0 ? -x_val : x_val;
+        i++;
+    };
+
+    x_tr_dims[0] = N_TRAIN;  x_tr_dims[1] = 1;
+    y_tr_dims[0] = N_TRAIN;  y_tr_dims[1] = 1;
+    x_te_dims[0] = N_TEST;   x_te_dims[1] = 1;
+    y_te_dims[0] = N_TEST;   y_te_dims[1] = 1;
+
+    // -----------------------------------------------------------------------
+    // Build network: 1 -> 32 (ReLU) -> 32 (ReLU) -> 1 (None)
+    // -----------------------------------------------------------------------
+
+    pcg32_init(@rng);
+
+    nn_seq_init(@net);
+    nn_seq_add_linear(@net,  1, 32, NN_ACT_RELU, @rng);
+    nn_seq_add_linear(@net, 32, 32, NN_ACT_RELU, @rng);
+    nn_seq_add_linear(@net, 32,  1, NN_ACT_NONE, @rng);
+
+    adam_init_default(@opt, 0.003);
+    adam_register_seq(@opt, @net);
+
+    // -----------------------------------------------------------------------
+    // Training loop.
+    // -----------------------------------------------------------------------
+
+    console::print("Absolute value regression  (1->32->32->1, ReLU, Adam lr=0.003)\n");
+    console::print("Step      Loss\n");
+    console::print("----      ----\n");
+
+    while (step < 3000)
+    {
+        x_gt = (GradTensor*)fmalloc(sizeof(GradTensor));
+        y_gt = (GradTensor*)fmalloc(sizeof(GradTensor));
+        gt_init(x_gt, @tape, @x_train[0], 2, @x_tr_dims[0]);
+        gt_init(y_gt, @tape, @y_train[0], 2, @y_tr_dims[0]);
+        x_gt.requires_grad = false;
+        y_gt.requires_grad = false;
+
+        pred     = nn_seq_forward(@net, @tape, x_gt);
+        loss     = nn_loss_mse(@tape, pred, y_gt);
+        loss_val = loss.vals[0];
+
+        if (step % 300 == 0)
+        {
+            console::print(step);
+            console::print("      ");
+            console::print(loss_val);
+            console::print("\n");
+        };
+
+        nn_seq_zero_grad(@net);
+        backward(@tape, loss);
+        adam_step(@opt, @net);
+
+        gt_free_heap(loss);
+        gt_free_heap(y_gt);
+        gt_free_heap(x_gt);
+        nn_seq_free_intermediates(@net);
+        tape.reset();
+
+        step++;
+    };
+
+    // -----------------------------------------------------------------------
+    // Evaluate on test set.
+    // -----------------------------------------------------------------------
+
+    console::print("\nEvaluating on ");
+    console::print(N_TEST);
+    console::print(" held-out test points...\n\n");
+
+    x_gt = (GradTensor*)fmalloc(sizeof(GradTensor));
+    gt_init(x_gt, @tape, @x_test[0], 2, @x_te_dims[0]);
+    x_gt.requires_grad = false;
+    pred = nn_seq_forward(@net, @tape, x_gt);
+
+    test_mse = 0.0;
+    i = 0;
+    while (i < N_TEST)
+    {
+        y_pred_out[i] = pred.vals[i];
+        err           = pred.vals[i] - y_test[i];
+        test_mse      = test_mse + err * err;
+        i++;
+    };
+    test_mse = test_mse / (float)N_TEST;
+
+    console::print("Test MSE: ");
+    console::print(test_mse);
+    console::print("\n");
+
+    // -----------------------------------------------------------------------
+    // Print table of x / true / pred for first 8 test points.
+    // -----------------------------------------------------------------------
+
+    console::print("\n       x         true      pred\n");
+    console::print("---------- ---------- ----------\n");
+    i = 0;
+    while (i < 8)
+    {
+        console::print(x_test[i]);
+        console::print("   ");
+        console::print(y_test[i]);
+        console::print("   ");
+        console::print(y_pred_out[i]);
+        console::print("\n");
+        i++;
+    };
+
+    // -----------------------------------------------------------------------
+    // ASCII plot.
+    // -----------------------------------------------------------------------
+
+    plot_results(@y_test[0], @y_pred_out[0], N_TEST);
+
+    gt_free_heap(pred);
+    gt_free_heap(x_gt);
+    nn_seq_free_intermediates(@net);
+    tape.reset();
+
+    adam_free(@opt);
+    nn_seq_free(@net);
+
+    return 0;
+};

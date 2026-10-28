@@ -1,0 +1,27 @@
+// Author: Karac V. Thweatt
+
+// Reduced Specification Standard Library `dostypes.idk`
+// DOS LIBRARY
+#ifndef IDEKA_STANDARD
+#def IDEKA_STANDARD 1;
+#endif;
+
+#ifndef IDEKA_STANDARD_DOS_TYPES
+#def IDEKA_STANDARD_DOS_TYPES 1;
+#endif;
+
+namespace standard
+{
+	namespace types
+	{
+		unsigned data{4} as nybble;
+        unsigned data{8} as byte;
+        byte[] as noopstr;
+        unsigned data{16} as u16;
+
+        signed data{8}  as i8;
+        signed data{16} as i16;
+	};
+};
+
+using standard::types;

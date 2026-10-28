@@ -1,0 +1,175 @@
+// test_autograd_vis.idk
+//
+// Live training simulation for autograd_vis.idk.
+// Runs a real forward+backward pass each frame, updates weights with SGD,
+// and streams the scalar loss into the visualizer in real time.
+//
+// Network topology (all float, row-major):
+//   x   : [4 x 3]  - fixed input batch
+//   W1  : [3 x 4]  - first weight matrix  (trained)
+//   W2  : [4 x 2]  - second weight matrix (trained)
+//
+//   h1  = matmul(x, W1)   [4 x 4]
+//   h2  = relu(h1)         [4 x 4]
+//   out = matmul(h2, W2)  [4 x 2]
+//   L   = sum(out)         scalar
+//
+// The simulation runs for 10 seconds (~600 steps at ~60 steps/sec),
+// then keeps the window open until the user closes it.
+
+#import <standard.idk>, <autograd_vis.idk>;
+
+using standard::autograd,
+      standard::autograd_vis,
+      standard::time;
+
+// SGD step: w[i] -= lr * grad[i]
+def sgd_step(float* vals, float* grad, size_t n, float lr) -> void
+{
+    size_t i;
+    while (i < n)
+    {
+        vals[i] = vals[i] - lr * grad[i];
+        i++;
+    };
+    return;
+};
+
+def main() -> int
+{
+    // -----------------------------------------------------------------------
+    // Weight buffers — kept alive across all training steps.
+    // Weights are updated in-place; only the tape and intermediate
+    // GradTensors are rebuilt each step.
+    // -----------------------------------------------------------------------
+
+    float[12] w1_vals = [
+        0.10, 0.20, 0.30, 0.40,
+        0.50, 0.60, 0.70, 0.80,
+        0.90, 1.00, 1.10, 1.20
+    ];
+    float[8] w2_vals = [
+        0.5, 0.6,
+        0.7, 0.8,
+        0.9, 1.0,
+        1.1, 1.2
+    ];
+
+    // Fixed input — never trained.
+    float[12] x_data = [
+        0.1, 0.2, 0.3,
+        0.4, 0.5, 0.6,
+        0.7, 0.8, 0.9,
+        1.0, 1.1, 1.2
+    ];
+
+    size_t[2] x_dims,
+              w1_dims,
+              w2_dims;
+    x_dims[0]  = 4;  x_dims[1]  = 3;
+    w1_dims[0] = 3;  w1_dims[1] = 4;
+    w2_dims[0] = 4;  w2_dims[1] = 2;
+
+    float lr = 0.001;
+
+    // -----------------------------------------------------------------------
+    // Open the visualizer before the first forward pass so the window
+    // appears immediately.  The graph layout is built after the first step.
+    // -----------------------------------------------------------------------
+
+    AutogradVis vis;
+    bool ok = vis_init(@vis, 1280, 720, "Autograd Visualizer - Live Training\0");
+    if (!ok) { return 1; };
+
+    // -----------------------------------------------------------------------
+    // Training loop — ~10 seconds at ~60 steps per second.
+    // -----------------------------------------------------------------------
+
+    i64 train_start = time_now();
+    i64 ten_seconds = 10000000000;   // 10 s in nanoseconds
+    i64 step_ns     = 16666666;      // ~60 steps/s  (16.67 ms)
+    bool graph_built;
+    int  step;
+
+    // All GradTensor / Tape variables declared at top — no in-loop allocation.
+    Tape        tape(64);
+    GradTensor  x, W1, W2;
+    GradTensor* h1;
+    GradTensor* h2;
+    GradTensor* out;
+    GradTensor* L;
+    float       loss_val;
+    i64         step_start;
+
+    while (vis_poll(@vis))
+    {
+        step_start = time_now();
+
+        // ---- Forward pass ----
+        gt_init(@x,  @tape, @x_data[0],  2, @x_dims[0]);
+        gt_init(@W1, @tape, @w1_vals[0], 2, @w1_dims[0]);
+        gt_init(@W2, @tape, @w2_vals[0], 2, @w2_dims[0]);
+        x.requires_grad  = false;
+        W1.requires_grad = true;
+        W2.requires_grad = true;
+
+        h1  = grad_matmul(@tape, @x,  @W1);
+        h2  = grad_relu(@tape, h1);
+        out = grad_matmul(@tape, h2, @W2);
+        L   = grad_sum(@tape, out);
+
+        loss_val = L.vals[0];
+
+        // ---- Build graph layout on the first step ----
+        if (!graph_built)
+        {
+            vis_build_graph(@vis, @tape);
+            graph_built = true;
+        };
+
+        // ---- Backward pass ----
+        gt_zero_grad(@W1);
+        gt_zero_grad(@W2);
+        backward(@tape, L);
+
+        // ---- SGD weight update ----
+        sgd_step(@w1_vals[0], W1.grad, W1.numel, lr);
+        sgd_step(@w2_vals[0], W2.grad, W2.numel, lr);
+
+        // ---- Push loss and render ----
+        vis_push_loss(@vis, loss_val);
+        vis_render(@vis);
+
+        // ---- Cleanup this step's heap tensors and tape ----
+        gt_free_heap(L);
+        gt_free_heap(out);
+        gt_free_heap(h2);
+        gt_free_heap(h1);
+        gt_free(@W2);
+        gt_free(@W1);
+        gt_free(@x);
+        tape.reset();
+
+        step++;
+
+        // ---- Stop training after 10 seconds but keep rendering ----
+        if (time_now() - train_start >= ten_seconds) { break; };
+
+        // ---- Throttle to ~60 steps/s ----
+        i64 elapsed = time_now() - step_start;
+        if (elapsed < step_ns)
+        {
+            sleep_ms((u32)((step_ns - elapsed) / 1000000));
+        };
+    };
+
+    // ---- Keep window open after training ends ----
+    while (vis_poll(@vis))
+    {
+        vis_render(@vis);
+    };
+
+    vis_shutdown(@vis);
+
+    return 0;
+};

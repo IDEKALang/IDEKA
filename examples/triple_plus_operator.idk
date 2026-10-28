@@ -1,0 +1,15 @@
+#import <standard.idk>;
+
+using standard::io::console;
+
+operator (int L, int R) [+++] -> int
+{
+    return ++L + ++R;
+};
+
+
+def main() -> int
+{
+    print(5 +++ 3); // 10
+    return 0;
+};

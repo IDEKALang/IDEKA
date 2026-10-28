@@ -1,0 +1,27 @@
+#import <standard.idk>;
+ 
+using standard::io::console;
+ 
+object Counter
+{
+    uint value;
+    def __init(int start) -> this { this.value = start; return this; };
+    def __exit() -> void { return; };
+    def __expr() -> Counter* { return this; };
+    def inc() -> void { this.value++; return; };
+    def dec() -> void { this.value--; return; };
+    def get() -> int { return this.value; };
+};
+ 
+def main() -> int
+{
+    Counter c = 0u;
+    defer c.__exit();
+    c.inc();
+    c.inc();
+    c.inc();
+    println(f"Counter = {c.get()}");
+    c.dec(); c.dec(); c.dec(); c.dec();
+    println(f"Counter = {c.get()}");
+    return 0;
+};

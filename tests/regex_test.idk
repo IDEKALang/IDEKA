@@ -1,0 +1,465 @@
+// regex_test.idk
+//
+// Tests exercised:
+//
+//   1.  regex_compile          - valid patterns compile, invalid patterns fail
+//   2.  regex_match literals   - exact literal match, full-string anchoring
+//   3.  regex_match '.'        - any char except newline
+//   4.  regex_match '*'        - zero or more
+//   5.  regex_match '+'        - one or more
+//   6.  regex_match '?'        - zero or one
+//   7.  regex_match char class - [a-z], [0-9], [^aeiou]
+//   8.  regex_match \d \w \s   - shorthand classes
+//   9.  regex_match anchors    - ^ and $
+//   10. regex_match alternation - a|b|c
+//   11. regex_match grouping   - (foo|bar)baz
+//   12. regex_search           - leftmost match inside string
+//   13. regex_find iteration   - walk all non-overlapping matches
+//   14. regex_replace          - replace all matches
+
+#import <standard.idk>, <regex.idk>;
+
+using standard::io::console,
+      standard::regex;
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+def check(bool ok, noopstr name) -> bool
+{
+	print("  \0");
+	print(name);
+	if (ok) { print(" : PASS\n\0"); }
+	else    { print(" : FAIL\n\0"); };
+	return ok;
+};
+
+def compile_ok(noopstr pat) -> bool
+{
+	RegexProgram prog;
+	return regex_compile(pat, @prog);
+};
+
+def match(noopstr pat, noopstr text) -> bool
+{
+	RegexProgram prog;
+	if (!regex_compile(pat, @prog)) { return false; };
+	return regex_match(@prog, text);
+};
+
+def search_len(noopstr pat, noopstr text, int* ms, int* ml) -> bool
+{
+	RegexProgram prog;
+	if (!regex_compile(pat, @prog)) { return false; };
+	return regex_search(@prog, text, ms, ml);
+};
+
+// ============================================================================
+// TEST 1 - regex_compile
+// ============================================================================
+
+def test_compile() -> bool
+{
+	print("\n[TEST 1] regex_compile\n\0");
+	bool ok = true;
+
+	ok = check( compile_ok("hello\0"),           "literal          \0") & ok;
+	ok = check( compile_ok("a*b+c?\0"),          "quantifiers      \0") & ok;
+	ok = check( compile_ok("[a-z]+\0"),           "char class       \0") & ok;
+	ok = check( compile_ok("[^aeiou]\0"),         "negated class    \0") & ok;
+	ok = check( compile_ok("(foo|bar)\0"),        "alternation group\0") & ok;
+	ok = check( compile_ok("^start\0"),           "bol anchor       \0") & ok;
+	ok = check( compile_ok("end$\0"),             "eol anchor       \0") & ok;
+	ok = check( compile_ok("\\d+\0"),             "digit shorthand  \0") & ok;
+	ok = check( compile_ok("\\w+\\s\\w+\0"),      "word/space       \0") & ok;
+	ok = check( compile_ok(".\0"),               "dot              \0") & ok;
+
+	return ok;
+};
+
+// ============================================================================
+// TEST 2 - regex_match literals
+// ============================================================================
+
+def test_match_literal() -> bool
+{
+	print("\n[TEST 2] regex_match literals\n\0");
+	bool ok = true;
+
+	ok = check( match("hello\0",   "hello\0"),   "exact match      \0") & ok;
+	ok = check(!match("hello\0",   "world\0"),   "no match         \0") & ok;
+	ok = check(!match("hello\0",   "hell\0"),    "prefix only      \0") & ok;
+	ok = check(!match("hello\0",   "helloo\0"),  "suffix extra     \0") & ok;
+	ok = check( match("\0",        "\0"),        "empty pat+text   \0") & ok;
+	ok = check( match("abc\0",     "abc\0"),     "three chars      \0") & ok;
+
+	return ok;
+};
+
+// ============================================================================
+// TEST 3 - regex_match '.'
+// ============================================================================
+
+def test_match_dot() -> bool
+{
+	print("\n[TEST 3] regex_match '.'\n\0");
+	bool ok = true;
+
+	ok = check( match(".\0",    "a\0"),    "dot matches a    \0") & ok;
+	ok = check( match(".\0",    "Z\0"),    "dot matches Z    \0") & ok;
+	ok = check( match(".\0",    "5\0"),    "dot matches 5    \0") & ok;
+	ok = check(!match(".\0",    "\0"),     "dot needs 1 char \0") & ok;
+	ok = check( match("a.c\0",  "abc\0"),  "a.c matches abc  \0") & ok;
+	ok = check( match("a.c\0",  "a5c\0"),  "a.c matches a5c  \0") & ok;
+	ok = check(!match("a.c\0",  "ac\0"),   "a.c no match ac  \0") & ok;
+
+	return ok;
+};
+
+// ============================================================================
+// TEST 4 - regex_match '*'
+// ============================================================================
+
+def test_match_star() -> bool
+{
+	print("\n[TEST 4] regex_match '*'\n\0");
+	bool ok = true;
+
+	ok = check( match("a*\0",    "\0"),      "a* matches empty \0") & ok;
+	ok = check( match("a*\0",    "a\0"),     "a* matches a     \0") & ok;
+	ok = check( match("a*\0",    "aaa\0"),   "a* matches aaa   \0") & ok;
+	ok = check( match("ab*c\0",  "ac\0"),    "ab*c matches ac  \0") & ok;
+	ok = check( match("ab*c\0",  "abc\0"),   "ab*c matches abc \0") & ok;
+	ok = check( match("ab*c\0",  "abbc\0"),  "ab*c matches abbc\0") & ok;
+	ok = check(!match("ab*c\0",  "adc\0"),   "ab*c no adc      \0") & ok;
+
+	return ok;
+};
+
+// ============================================================================
+// TEST 5 - regex_match '+'
+// ============================================================================
+
+def test_match_plus() -> bool
+{
+	print("\n[TEST 5] regex_match '+'\n\0");
+	bool ok = true;
+
+	ok = check(!match("a+\0",    "\0"),      "a+ no empty      \0") & ok;
+	ok = check( match("a+\0",    "a\0"),     "a+ matches a     \0") & ok;
+	ok = check( match("a+\0",    "aaa\0"),   "a+ matches aaa   \0") & ok;
+	ok = check( match("ab+c\0",  "abc\0"),   "ab+c matches abc \0") & ok;
+	ok = check( match("ab+c\0",  "abbc\0"),  "ab+c matches abbc\0") & ok;
+	ok = check(!match("ab+c\0",  "ac\0"),    "ab+c no ac       \0") & ok;
+
+	return ok;
+};
+
+// ============================================================================
+// TEST 6 - regex_match '?'
+// ============================================================================
+
+def test_match_question() -> bool
+{
+	print("\n[TEST 6] regex_match '?'\n\0");
+	bool ok = true;
+
+	ok = check( match("a?\0",    "\0"),     "a? matches empty \0") & ok;
+	ok = check( match("a?\0",    "a\0"),    "a? matches a     \0") & ok;
+	ok = check(!match("a?\0",    "aa\0"),   "a? no aa         \0") & ok;
+	ok = check( match("ab?c\0",  "ac\0"),   "ab?c matches ac  \0") & ok;
+	ok = check( match("ab?c\0",  "abc\0"),  "ab?c matches abc \0") & ok;
+	ok = check(!match("ab?c\0",  "abbc\0"), "ab?c no abbc     \0") & ok;
+
+	return ok;
+};
+
+// ============================================================================
+// TEST 7 - regex_match character classes
+// ============================================================================
+
+def test_match_class() -> bool
+{
+	print("\n[TEST 7] regex_match character classes\n\0");
+	bool ok = true;
+
+	ok = check( match("[a-z]+\0",     "hello\0"),    "[a-z]+ hello    \0") & ok;
+	ok = check(!match("[a-z]+\0",     "Hello\0"),    "[a-z]+ no Hello \0") & ok;
+	ok = check( match("[0-9]+\0",     "12345\0"),    "[0-9]+ digits   \0") & ok;
+	ok = check(!match("[0-9]+\0",     "123x5\0"),    "[0-9]+ no alpha \0") & ok;
+	ok = check( match("[a-zA-Z]+\0",  "Hello\0"),    "[a-zA-Z]+ mixed \0") & ok;
+	ok = check( match("[^aeiou]+\0",  "xyz\0"),      "[^aeiou]+ xyz   \0") & ok;
+	ok = check(!match("[^aeiou]+\0",  "aaa\0"),      "[^aeiou]+ no aaa\0") & ok;
+	ok = check( match("[a-z0-9_]+\0", "hello_42\0"), "ident class      \0") & ok;
+
+	return ok;
+};
+
+// ============================================================================
+// TEST 8 - regex_match shorthand classes \d \w \s
+// ============================================================================
+
+def test_match_shorthands() -> bool
+{
+	print("\n[TEST 8] regex_match shorthand classes\n\0");
+	bool ok = true;
+
+	ok = check( match("\\d+\0",   "12345\0"),    "\\d+ digits      \0") & ok;
+	ok = check(!match("\\d+\0",   "abc\0"),      "\\d+ no alpha    \0") & ok;
+	ok = check( match("\\D+\0",   "abc\0"),      "\\D+ alpha       \0") & ok;
+	ok = check(!match("\\D+\0",   "123\0"),      "\\D+ no digits   \0") & ok;
+	ok = check( match("\\w+\0",   "hello_42\0"), "\\w+ word chars  \0") & ok;
+	ok = check(!match("\\w+\0",   "hi there\0"), "\\w+ no space    \0") & ok;
+	ok = check( match("\\W+\0",   "!@#\0"),      "\\W+ non-word    \0") & ok;
+	ok = check( match("\\d+\0",   "007\0"),      "\\d+ 007         \0") & ok;
+
+	return ok;
+};
+
+// ============================================================================
+// TEST 9 - regex_match anchors ^ $
+// ============================================================================
+
+def test_match_anchors() -> bool
+{
+	print("\n[TEST 9] regex_match anchors\n\0");
+	bool ok = true;
+
+	RegexProgram prog_start, prog_end, prog_both;
+	regex_compile("^hello\0",       @prog_start);
+	regex_compile("world$\0",       @prog_end);
+	regex_compile("^hello world$\0", @prog_both);
+
+	ok = check( regex_match(@prog_start, "hello\0"),       "^ matches start \0") & ok;
+	ok = check(!regex_match(@prog_start, "say hello\0"),   "^ no mid match  \0") & ok;
+	ok = check( regex_match(@prog_end,   "world\0"),       "$ matches end   \0") & ok;
+	ok = check(!regex_match(@prog_end,   "worldwide\0"),   "$ no mid match  \0") & ok;
+	ok = check( regex_match(@prog_both,  "hello world\0"), "^...$ full match\0") & ok;
+	ok = check(!regex_match(@prog_both,  "hello world!\0"),"^...$ fails extra\0") & ok;
+
+	return ok;
+};
+
+// ============================================================================
+// TEST 10 - regex_match alternation
+// ============================================================================
+
+def test_match_alternation() -> bool
+{
+	print("\n[TEST 10] regex_match alternation\n\0");
+	bool ok = true;
+
+	ok = check( match("cat|dog\0",    "cat\0"),    "cat|dog = cat    \0") & ok;
+	ok = check( match("cat|dog\0",    "dog\0"),    "cat|dog = dog    \0") & ok;
+	ok = check(!match("cat|dog\0",    "fish\0"),   "cat|dog no fish  \0") & ok;
+	ok = check( match("a|b|c\0",      "a\0"),      "a|b|c = a       \0") & ok;
+	ok = check( match("a|b|c\0",      "b\0"),      "a|b|c = b       \0") & ok;
+	ok = check( match("a|b|c\0",      "c\0"),      "a|b|c = c       \0") & ok;
+	ok = check(!match("a|b|c\0",      "d\0"),      "a|b|c no d      \0") & ok;
+
+	return ok;
+};
+
+// ============================================================================
+// TEST 11 - regex_match grouping
+// ============================================================================
+
+def test_match_grouping() -> bool
+{
+	print("\n[TEST 11] regex_match grouping\n\0");
+	bool ok = true;
+
+	ok = check( match("(foo|bar)baz\0",  "foobaz\0"),   "(foo|bar)baz foo \0") & ok;
+	ok = check( match("(foo|bar)baz\0",  "barbaz\0"),   "(foo|bar)baz bar \0") & ok;
+	ok = check(!match("(foo|bar)baz\0",  "quxbaz\0"),   "(foo|bar)baz no  \0") & ok;
+	ok = check( match("a(bc)+d\0",       "abcd\0"),     "a(bc)+d one      \0") & ok;
+	ok = check( match("a(bc)+d\0",       "abcbcd\0"),   "a(bc)+d two      \0") & ok;
+	ok = check(!match("a(bc)+d\0",       "ad\0"),       "a(bc)+d zero     \0") & ok;
+	ok = check( match("(a|b)*(c|d)\0",   "ababc\0"),    "(a|b)*(c|d)      \0") & ok;
+
+	return ok;
+};
+
+// ============================================================================
+// TEST 12 - regex_search
+// ============================================================================
+
+def test_search() -> bool
+{
+	print("\n[TEST 12] regex_search\n\0");
+	bool ok = true;
+
+	int ms, ml;
+
+	// Simple substring
+	ok = check(search_len("world\0", "hello world\0", @ms, @ml) & ms == 6 & ml == 5,
+	           "find 'world'         \0") & ok;
+
+	// Digit run inside text
+	ok = check(search_len("\\d+\0", "abc 123 def\0", @ms, @ml) & ms == 4 & ml == 3,
+	           "find digit run       \0") & ok;
+
+	// No match
+	ok = check(!search_len("xyz\0", "hello world\0", @ms, @ml),
+	           "no match             \0") & ok;
+
+	// Match at start
+	ok = check(search_len("hel+o\0", "hello world\0", @ms, @ml) & ms == 0 & ml == 5,
+	           "match at start       \0") & ok;
+
+	// Match at end
+	ok = check(search_len("rld\0", "hello world\0", @ms, @ml) & ms == 8 & ml == 3,
+	           "match at end         \0") & ok;
+
+	// Leftmost of two candidates
+	ok = check(search_len("a+\0", "bbaacaa\0", @ms, @ml) & ms == 2,
+	           "leftmost match       \0") & ok;
+
+	return ok;
+};
+
+// ============================================================================
+// TEST 13 - regex_find iteration
+// ============================================================================
+
+def test_find_iter() -> bool
+{
+	print("\n[TEST 13] regex_find iteration\n\0");
+	bool ok = true;
+
+	RegexProgram prog;
+	int ms, ml, pos, count;
+
+	// Find all word runs in "one two three"
+	regex_compile("\\w+\0", @prog);
+	pos   = 0;
+	count = 0;
+	while (regex_find(@prog, "one two three\0", pos, @ms, @ml))
+	{
+		count++;
+		pos = ms + ml;
+		if (pos > 13) { break; };
+	};
+	ok = check(count == 3, "3 words in 'one two three'\0") & ok;
+
+	// Find all digit groups in "a1b22c333"
+	regex_compile("\\d+\0", @prog);
+	pos   = 0;
+	count = 0;
+	while (regex_find(@prog, "a1b22c333\0", pos, @ms, @ml))
+	{
+		count++;
+		pos = ms + ml;
+		if (pos > 9) { break; };
+	};
+	ok = check(count == 3, "3 digit groups           \0") & ok;
+
+	// No matches
+	regex_compile("\\d+\0", @prog);
+	ok = check(!regex_find(@prog, "no digits here\0", 0, @ms, @ml),
+	           "no matches returns false \0") & ok;
+
+	return ok;
+};
+
+// ============================================================================
+// TEST 14 - regex_replace
+// ============================================================================
+
+def test_replace() -> bool
+{
+	print("\n[TEST 14] regex_replace\n\0");
+	bool ok = true;
+
+	RegexProgram prog;
+	byte[256] dst;
+	int n;
+
+	// Replace single word
+	regex_compile("world\0", @prog);
+	n = regex_replace(@prog, "hello world\0", "IDEKA\0", @dst[0], 256);
+	ok = check(n > 0 & dst[6] == (byte)70 & dst[7] == (byte)108,  // 'F','l'
+	           "replace 'world'->'IDEKA'  \0") & ok;
+
+	// Replace all digit runs with '#'
+	regex_compile("\\d+\0", @prog);
+	n = regex_replace(@prog, "a1b22c333\0", "#\0", @dst[0], 256);
+	ok = check(n == 6, "replace digits -> # (len=6)\0") & ok;
+	// Result should be "a#b#c#"
+	ok = check(dst[0] == (byte)97 & dst[1] == (byte)35 &   // 'a','#'
+	           dst[2] == (byte)98 & dst[3] == (byte)35 &   // 'b','#'
+	           dst[4] == (byte)99 & dst[5] == (byte)35,    // 'c','#'
+	           "replace result 'a#b#c#' \0") & ok;
+
+	// No matches — output equals input
+	regex_compile("xyz\0", @prog);
+	n = regex_replace(@prog, "hello\0", "!\0", @dst[0], 256);
+	ok = check(n == 5 & dst[0] == (byte)104,  // 'h'
+	           "no match passthrough     \0") & ok;
+
+	// Replace with empty string (delete matches)
+	regex_compile("\\s+\0", @prog);
+	n = regex_replace(@prog, "a b c\0", "\0", @dst[0], 256);
+	ok = check(n == 3 & dst[0] == (byte)97 &   // 'a'
+	                    dst[1] == (byte)98 &    // 'b'
+	                    dst[2] == (byte)99,     // 'c'
+	           "delete whitespace        \0") & ok;
+
+	// dst_cap too small returns -1
+	regex_compile("o\0", @prog);
+	byte[4] tiny;
+	int nr = regex_replace(@prog, "hello world\0", "000\0", @tiny[0], 4);
+	ok = check(nr == -1, "cap too small -> -1      \0") & ok;
+
+	return ok;
+};
+
+// ============================================================================
+// Main
+// ============================================================================
+
+def main() -> int
+{
+	print("=== IDEKA Regex Library Test ===\n\0");
+
+	bool t1  = test_compile();
+	bool t2  = test_match_literal();
+	bool t3  = test_match_dot();
+	bool t4  = test_match_star();
+	bool t5  = test_match_plus();
+	bool t6  = test_match_question();
+	bool t7  = test_match_class();
+	bool t8  = test_match_shorthands();
+	bool t9  = test_match_anchors();
+	bool t10 = test_match_alternation();
+	bool t11 = test_match_grouping();
+	bool t12 = test_search();
+	bool t13 = test_find_iter();
+	bool t14 = test_replace();
+
+	print("\n========================================\n\0");
+	print("Results:\n\0");
+
+	print("  Test 1  (compile)             : \0"); if (t1)  { print("PASS\n\0"); } else { print("FAIL\n\0"); };
+	print("  Test 2  (match literals)      : \0"); if (t2)  { print("PASS\n\0"); } else { print("FAIL\n\0"); };
+	print("  Test 3  (match dot)           : \0"); if (t3)  { print("PASS\n\0"); } else { print("FAIL\n\0"); };
+	print("  Test 4  (match star)          : \0"); if (t4)  { print("PASS\n\0"); } else { print("FAIL\n\0"); };
+	print("  Test 5  (match plus)          : \0"); if (t5)  { print("PASS\n\0"); } else { print("FAIL\n\0"); };
+	print("  Test 6  (match question)      : \0"); if (t6)  { print("PASS\n\0"); } else { print("FAIL\n\0"); };
+	print("  Test 7  (match class)         : \0"); if (t7)  { print("PASS\n\0"); } else { print("FAIL\n\0"); };
+	print("  Test 8  (match shorthands)    : \0"); if (t8)  { print("PASS\n\0"); } else { print("FAIL\n\0"); };
+	print("  Test 9  (match anchors)       : \0"); if (t9)  { print("PASS\n\0"); } else { print("FAIL\n\0"); };
+	print("  Test 10 (match alternation)   : \0"); if (t10) { print("PASS\n\0"); } else { print("FAIL\n\0"); };
+	print("  Test 11 (match grouping)      : \0"); if (t11) { print("PASS\n\0"); } else { print("FAIL\n\0"); };
+	print("  Test 12 (search)              : \0"); if (t12) { print("PASS\n\0"); } else { print("FAIL\n\0"); };
+	print("  Test 13 (find iteration)      : \0"); if (t13) { print("PASS\n\0"); } else { print("FAIL\n\0"); };
+	print("  Test 14 (replace)             : \0"); if (t14) { print("PASS\n\0"); } else { print("FAIL\n\0"); };
+
+	bool all = t1 & t2 & t3 & t4 & t5 & t6 & t7 & t8 & t9 & t10 & t11 & t12 & t13 & t14;
+	print("========================================\n\0");
+	if (all)  { print("ALL TESTS PASSED\n\0"); };
+	if (!all) { print("ONE OR MORE TESTS FAILED\n\0"); };
+
+	return 0;
+};
